@@ -1,0 +1,21 @@
+{
+    "name": "pico/zen",
+    "autoload": {
+        "psr-4": {
+            "Zen\\Core\\": "src/classes"
+        },
+        "files": [
+            "src/functions.php"
+        ]
+    },
+    "require": {
+        "php": "^8.4"
+    },
+    "require-dev": {
+        "nette/php-generator": "^4.1",
+        "nikic/php-parser": "^5.4"
+    },
+    "scripts": {
+        "build": "php src/scripts/build.php"
+    }
+}
