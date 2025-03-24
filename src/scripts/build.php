@@ -10,7 +10,6 @@ $filepath = sprintf('%s/%s', $dir, $argv[2] ?? 'index.php');
 $classes = [
     Essentio\Core\Application::class    => 'Application.php',
     Essentio\Core\Argument::class       => 'Argument.php',
-    Essentio\Core\Configuration::class  => 'Configuration.php',
     Essentio\Core\Container::class      => 'Container.php',
     Essentio\Core\Environment::class    => 'Environment.php',
     Essentio\Core\HttpException::class  => 'HttpException.php',

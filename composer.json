@@ -1,5 +1,7 @@
 {
     "name": "essentio/core",
+    "license": "MIT",
+    "type": "library",
     "autoload": {
         "psr-4": {
             "Essentio\\Core\\": "src/classes"
@@ -15,6 +17,7 @@
         "nette/php-generator": "^4.1",
         "nikic/php-parser": "^5.4"
     },
+    "minimum-stability": "dev",
     "scripts": {
         "build": "php src/scripts/build.php"
     }

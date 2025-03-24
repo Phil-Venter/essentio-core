@@ -9,7 +9,7 @@ Because sometimes you don't want the overhead. You don't need the dogma. You're 
 If you see something here that you don't like, that's fine. You have two options:
 
 - **Don't use it.** Seriously, there are plenty of bloated, convention-riddled alternatives out there.
-- **Change it yourself.** Essentio is less than 700 lines of pure, straightforward PHP (excluding comments). It won't bite. If you want something improved, send a pull request. Pull requests speak louder than bug reports.
+- **Change it yourself.** Essentio is less than 600 lines of pure, straightforward PHP (excluding comments). It won't bite. If you want something improved, send a pull request. Pull requests speak louder than bug reports.
 
 ## What Essentio Gives You
 
@@ -19,7 +19,7 @@ If you see something here that you don't like, that's fine. You have two options
 - Basic configuration and environment management.
 - Simple, understandable session management.
 - Clean and straightforward HTTP request and response handling.
-- Essential utility functions (config, env, logging, etc.) without the noise.
+- Essential utility functions (dump, env, logging, etc.) without the noise.
 
 ## What Essentio Does Not Care About
 

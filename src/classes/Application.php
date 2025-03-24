@@ -33,7 +33,6 @@ class Application
         static::$isWeb = true;
 
         static::$container->bind(Environment::class, fn() => new Environment)->once = true;
-        static::$container->bind(Configuration::class, fn() => new Configuration)->once = true;
         static::$container->bind(Request::class, fn() => Request::init())->once = true;
         static::$container->bind(Router::class, fn() => new Router)->once = true;
 
@@ -61,7 +60,6 @@ class Application
         static::$isWeb = false;
 
         static::$container->bind(Environment::class, fn() => new Environment)->once = true;
-        static::$container->bind(Configuration::class, fn() => new Configuration)->once = true;
         static::$container->bind(Argument::class, fn() => Argument::init())->once = true;
     }
 

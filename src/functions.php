@@ -13,18 +13,6 @@ function env(string $key, mixed $default = null): mixed
 }
 
 /**
- * This function fetches a configuration value from the Configuration instance.
- *
- * @param string $key
- * @param mixed  $default
- * @return mixed
- */
-function config(string $key, mixed $default = null): mixed
-{
-    return app(Essentio\Core\Configuration::class)->get($key, $default);
-}
-
-/**
  * If no identifier is provided, returns the container instance.
  *
  * @template T of object
