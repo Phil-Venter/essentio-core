@@ -1,5 +1,5 @@
 {
-    "name": "pico/zen",
+    "name": "zen/core",
     "autoload": {
         "psr-4": {
             "Zen\\Core\\": "src/classes"
