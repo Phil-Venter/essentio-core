@@ -1,6 +1,6 @@
 <?php
 
-namespace Zen\Core;
+namespace Essentio\Core;
 
 /**
  * Handles the registration and execution of routes for HTTP requests.

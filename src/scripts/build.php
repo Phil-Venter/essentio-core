@@ -8,16 +8,16 @@ $dir = $argv[1] ?? sprintf('%s/../../dist', __DIR__);
 $filepath = sprintf('%s/%s', $dir, $argv[2] ?? 'index.php');
 
 $classes = [
-    Zen\Core\Application::class    => 'Application.php',
-    Zen\Core\Argument::class       => 'Argument.php',
-    Zen\Core\Configuration::class  => 'Configuration.php',
-    Zen\Core\Container::class      => 'Container.php',
-    Zen\Core\Environment::class    => 'Environment.php',
-    Zen\Core\HttpException::class  => 'HttpException.php',
-    Zen\Core\Request::class        => 'Request.php',
-    Zen\Core\Response::class       => 'Response.php',
-    Zen\Core\Router::class         => 'Router.php',
-    Zen\Core\SessionHandler::class => 'SessionHandler.php',
+    Essentio\Core\Application::class    => 'Application.php',
+    Essentio\Core\Argument::class       => 'Argument.php',
+    Essentio\Core\Configuration::class  => 'Configuration.php',
+    Essentio\Core\Container::class      => 'Container.php',
+    Essentio\Core\Environment::class    => 'Environment.php',
+    Essentio\Core\HttpException::class  => 'HttpException.php',
+    Essentio\Core\Request::class        => 'Request.php',
+    Essentio\Core\Response::class       => 'Response.php',
+    Essentio\Core\Router::class         => 'Router.php',
+    Essentio\Core\SessionHandler::class => 'SessionHandler.php',
 ];
 
 if (!is_dir($dir)) {
@@ -35,7 +35,7 @@ $code = file_get_contents(sprintf('%s/../functions.php', __DIR__));
 $contents += PhpFile::fromCode($code)->getFunctions();
 
 foreach ($contents as $key => $content) {
-    $contents[$key] = str_replace(['\\Zen\\Core\\', "\n\n\n"], ['', "\n\n"], $content);
+    $contents[$key] = str_replace(['\\Essentio\\Core\\', "\n\n\n"], ['', "\n\n"], $content);
 }
 
 if (is_file($filepath)) {

@@ -1,6 +1,6 @@
 <?php
 
-namespace Zen\Core;
+namespace Essentio\Core;
 
 /**
  * A simple dependency injection container that allows binding of

@@ -1,6 +1,6 @@
 <?php
 
-namespace Zen\Core;
+namespace Essentio\Core;
 
 /**
  * Handles the initialization and execution of the application for both

@@ -9,7 +9,7 @@
  */
 function env(string $key, mixed $default = null): mixed
 {
-    return app(Zen\Core\Environment::class)->get($key, $default);
+    return app(Essentio\Core\Environment::class)->get($key, $default);
 }
 
 /**
@@ -21,7 +21,7 @@ function env(string $key, mixed $default = null): mixed
  */
 function config(string $key, mixed $default = null): mixed
 {
-    return app(Zen\Core\Configuration::class)->get($key, $default);
+    return app(Essentio\Core\Configuration::class)->get($key, $default);
 }
 
 /**
@@ -34,8 +34,8 @@ function config(string $key, mixed $default = null): mixed
 function app(?string $id = null): object
 {
     return $id
-        ? Zen\Core\Application::$container->get($id)
-        : Zen\Core\Application::$container;
+        ? Essentio\Core\Application::$container->get($id)
+        : Essentio\Core\Application::$container;
 }
 
 /**
@@ -59,11 +59,11 @@ function bind(string $id, callable $factory): object
  */
 function command(string $name, callable $handle): void
 {
-    if (Zen\Core\Application::$isWeb) {
+    if (Essentio\Core\Application::$isWeb) {
         return;
     }
 
-    $argv = app(Zen\Core\Argument::class);
+    $argv = app(Essentio\Core\Argument::class);
 
     if ($argv->command !== $name) {
         return;
@@ -83,7 +83,7 @@ function command(string $name, callable $handle): void
  */
 function request(string $key, mixed $default = null): mixed
 {
-    return app(Zen\Core\Request::class)->get($key, $default);
+    return app(Essentio\Core\Request::class)->get($key, $default);
 }
 
 /**
@@ -98,11 +98,11 @@ function request(string $key, mixed $default = null): mixed
  */
 function route(string $method, string $path, callable $handle, array $middleware = []): void
 {
-    if (!Zen\Core\Application::$isWeb) {
+    if (!Essentio\Core\Application::$isWeb) {
         return;
     }
 
-    app(Zen\Core\Router::class)->route($method, $path, $handle, $middleware);
+    app(Essentio\Core\Router::class)->route($method, $path, $handle, $middleware);
 }
 
 /**
@@ -148,7 +148,7 @@ function session(string $key, mixed $value = null): mixed
 }
 
 /**
- * This function attempts to resolve the template as a file based on the Zen\Core\Application's base path.
+ * This function attempts to resolve the template as a file based on the Essentio\Core\Application's base path.
  * If the resolved path is a file, it extracts the provided data, includes the file, and returns the output.
  * Otherwise, if the template string contains placeholder patterns (using curly braces),
  * it processes the string using regex callbacks to replace placeholders with data values.
@@ -159,7 +159,7 @@ function session(string $key, mixed $value = null): mixed
  */
 function render(string $template, array $data = []): string
 {
-    if ($path = Zen\Core\Application::fromBase($template)) {
+    if ($path = Essentio\Core\Application::fromBase($template)) {
         extract($data);
         ob_start();
         include $path;
@@ -183,11 +183,11 @@ function render(string $template, array $data = []): string
  *
  * @param string $uri
  * @param int    $status
- * @return Zen\Core\Response
+ * @return Essentio\Core\Response
  */
-function redirect(string $uri, int $status = 302): Zen\Core\Response
+function redirect(string $uri, int $status = 302): Essentio\Core\Response
 {
-    return (new Zen\Core\Response)
+    return (new Essentio\Core\Response)
         ->withStatus($status)
         ->withHeaders(['Location' => $uri]);
 }
@@ -197,13 +197,13 @@ function redirect(string $uri, int $status = 302): Zen\Core\Response
  *
  * @param mixed $data
  * @param int   $status
- * @return Zen\Core\Response
+ * @return Essentio\Core\Response
  */
-function json(mixed $data, int $status = 200): Zen\Core\Response
+function json(mixed $data, int $status = 200): Essentio\Core\Response
 {
-    return (new Zen\Core\Response)
+    return (new Essentio\Core\Response)
         ->withStatus($status)
-        ->withHeaders(['Content-Type' => 'Zen\Core\Application/json'])
+        ->withHeaders(['Content-Type' => 'Essentio\Core\Application/json'])
         ->withBody(json_encode($data));
 }
 
@@ -212,11 +212,11 @@ function json(mixed $data, int $status = 200): Zen\Core\Response
  *
  * @param string $text
  * @param int    $status
- * @return Zen\Core\Response
+ * @return Essentio\Core\Response
  */
-function text(string $text, int $status = 200): Zen\Core\Response
+function text(string $text, int $status = 200): Essentio\Core\Response
 {
-    return (new Zen\Core\Response)
+    return (new Essentio\Core\Response)
         ->withStatus($status)
         ->withHeaders(['Content-Type' => 'text/plain'])
         ->withBody($text);
@@ -228,11 +228,11 @@ function text(string $text, int $status = 200): Zen\Core\Response
  * @param string $template
  * @param array  $data
  * @param int    $status
- * @return Zen\Core\Response
+ * @return Essentio\Core\Response
  */
-function view(string $template, array $data = [], int $status = 200): Zen\Core\Response
+function view(string $template, array $data = [], int $status = 200): Essentio\Core\Response
 {
-    return (new Zen\Core\Response)
+    return (new Essentio\Core\Response)
         ->withStatus($status)
         ->withHeaders(['Content-Type' => 'text/html'])
         ->withBody(render($template, $data));
@@ -260,7 +260,7 @@ function log_cli(string $format, ...$values): void
 function logger(string $level, string $message): void
 {
     $file = config(sprintf('log.%s', strtolower($level)), 'app.log');
-    $file = Zen\Core\Application::fromBase(dirname($file)) . '/' . basename($file);
+    $file = Essentio\Core\Application::fromBase(dirname($file)) . '/' . basename($file);
 
     if (!is_file($file)) {
         touch($file);
@@ -280,7 +280,7 @@ function logger(string $level, string $message): void
  */
 function dump(...$data): void
 {
-    if (!Zen\Core\Application::$isWeb) {
+    if (!Essentio\Core\Application::$isWeb) {
         var_dump(...$data);
         return;
     }

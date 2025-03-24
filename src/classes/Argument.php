@@ -1,6 +1,6 @@
 <?php
 
-namespace Zen\Core;
+namespace Essentio\Core;
 
 /**
  * Parses and holds command-line arguments including the command,

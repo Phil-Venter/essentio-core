@@ -1,6 +1,6 @@
 <?php
 
-namespace Zen\Core;
+namespace Essentio\Core;
 
 /**
  * Represents an HTTP response that encapsulates the status code, headers,

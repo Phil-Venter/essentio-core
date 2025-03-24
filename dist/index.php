@@ -1085,7 +1085,7 @@ function session(string $key, mixed $value = null): mixed
 }
 
 /**
- * This function attempts to resolve the template as a file based on the Zen\Core\Application's base path.
+ * This function attempts to resolve the template as a file based on the Essentio\Core\Application's base path.
  * If the resolved path is a file, it extracts the provided data, includes the file, and returns the output.
  * Otherwise, if the template string contains placeholder patterns (using curly braces),
  * it processes the string using regex callbacks to replace placeholders with data values.
@@ -1120,7 +1120,7 @@ function render(string $template, array $data = []): string
  *
  * @param string $uri
  * @param int    $status
- * @return Zen\Core\Response
+ * @return Essentio\Core\Response
  */
 function redirect(string $uri, int $status = 302): Response
 {
@@ -1134,13 +1134,13 @@ function redirect(string $uri, int $status = 302): Response
  *
  * @param mixed $data
  * @param int   $status
- * @return Zen\Core\Response
+ * @return Essentio\Core\Response
  */
 function json(mixed $data, int $status = 200): Response
 {
 	return (new Response)
 	    ->withStatus($status)
-	    ->withHeaders(['Content-Type' => 'Zen\Core\Application/json'])
+	    ->withHeaders(['Content-Type' => 'Essentio\Core\Application/json'])
 	    ->withBody(\json_encode($data));
 }
 
@@ -1149,7 +1149,7 @@ function json(mixed $data, int $status = 200): Response
  *
  * @param string $text
  * @param int    $status
- * @return Zen\Core\Response
+ * @return Essentio\Core\Response
  */
 function text(string $text, int $status = 200): Response
 {
@@ -1165,7 +1165,7 @@ function text(string $text, int $status = 200): Response
  * @param string $template
  * @param array  $data
  * @param int    $status
- * @return Zen\Core\Response
+ * @return Essentio\Core\Response
  */
 function view(string $template, array $data = [], int $status = 200): Response
 {

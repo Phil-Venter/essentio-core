@@ -1,8 +1,8 @@
 {
-    "name": "zen/core",
+    "name": "essentio/core",
     "autoload": {
         "psr-4": {
-            "Zen\\Core\\": "src/classes"
+            "Essentio\\Core\\": "src/classes"
         },
         "files": [
             "src/functions.php"

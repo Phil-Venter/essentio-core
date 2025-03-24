@@ -1,6 +1,6 @@
 <?php
 
-namespace Zen\Core;
+namespace Essentio\Core;
 
 /**
  * Encapsulates an HTTP request by extracting data from PHP superglobals.
