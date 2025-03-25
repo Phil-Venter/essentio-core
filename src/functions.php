@@ -9,7 +9,7 @@
  */
 function env(string $key, mixed $default = null): mixed
 {
-    return app(Essentio\Core\Environment::class)->get($key, $default);
+    return \app(Essentio\Core\Environment::class)->get($key, $default);
 }
 
 /**
@@ -35,7 +35,7 @@ function app(?string $id = null): object
  */
 function bind(string $id, callable $factory): object
 {
-    return app()->bind($id, $factory);
+    return \app()->bind($id, $factory);
 }
 
 /**
@@ -51,7 +51,7 @@ function command(string $name, callable $handle): void
         return;
     }
 
-    $argv = app(Essentio\Core\Argument::class);
+    $argv = \app(Essentio\Core\Argument::class);
 
     if ($argv->command !== $name) {
         return;
@@ -59,7 +59,7 @@ function command(string $name, callable $handle): void
 
     $result = $handle($argv);
 
-    exit(is_int($result) ? $result : 0);
+    exit(\is_int($result) ? $result : 0);
 }
 
 /**
@@ -71,7 +71,19 @@ function command(string $name, callable $handle): void
  */
 function request(string $key, mixed $default = null): mixed
 {
-    return app(Essentio\Core\Request::class)->get($key, $default);
+    return \app(Essentio\Core\Request::class)->get($key, $default);
+}
+
+/**
+ * Fetches a value from the current Request instance body using the specified key.
+ *
+ * @param string $key
+ * @param mixed  $default
+ * @return mixed
+ */
+function post(string $key, mixed $default = null): mixed
+{
+    return \app(Essentio\Core\Request::class)->post($key, $default);
 }
 
 /**
@@ -90,7 +102,7 @@ function route(string $method, string $path, callable $handle, array $middleware
         return;
     }
 
-    app(Essentio\Core\Router::class)->route($method, $path, $handle, $middleware);
+    \app(Essentio\Core\Router::class)->route($method, $path, $handle, $middleware);
 }
 
 /**
@@ -102,7 +114,7 @@ function route(string $method, string $path, callable $handle, array $middleware
  */
 function flash(string $key, mixed $value = null): mixed
 {
-    if (session_status() !== PHP_SESSION_ACTIVE) {
+    if (\session_status() !== PHP_SESSION_ACTIVE) {
         return null;
     }
 
@@ -124,7 +136,7 @@ function flash(string $key, mixed $value = null): mixed
  */
 function session(string $key, mixed $value = null): mixed
 {
-    if (session_status() !== PHP_SESSION_ACTIVE) {
+    if (\session_status() !== PHP_SESSION_ACTIVE) {
         return null;
     }
 
@@ -148,20 +160,20 @@ function session(string $key, mixed $value = null): mixed
 function render(string $template, array $data = []): string
 {
     if ($path = Essentio\Core\Application::fromBase($template)) {
-        extract($data);
-        ob_start();
+        \extract($data);
+        \ob_start();
         include $path;
-        return ob_get_clean();
+        return \ob_get_clean();
     }
 
-    if (!str_contains($template, '{{') || !str_contains($template, '}}')) {
+    if (\preg_match('/^(\/|\.\/|\.\.\/)?[\w\-\/]+\.php$/', $template) === 1) {
         return '';
     }
 
-    return preg_replace_callback_array([
+    return \preg_replace_callback_array([
         '/\{\{\{\s*(.*?)\s*\}\}\}/' => fn($matches) => $data[$matches[1]] ?? '',
         '/\{\{\s*(.*?)\s*\}\}/' => fn($matches) => isset($data[$matches[1]])
-            ? htmlentities($data[$matches[1]])
+            ? \htmlentities($data[$matches[1]])
             : '',
     ], $template);
 }
@@ -235,7 +247,7 @@ function view(string $template, array $data = [], int $status = 200): Essentio\C
  */
 function log_cli(string $format, ...$values): void
 {
-    error_log(sprintf($format, ...$values));
+    \error_log(\sprintf($format, ...$values));
 }
 
 /**
@@ -247,16 +259,16 @@ function log_cli(string $format, ...$values): void
  */
 function logger(string $level, string $message): void
 {
-    $file = config(sprintf('log.%s', strtolower($level)), 'app.log');
-    $file = Essentio\Core\Application::fromBase(dirname($file)) . '/' . basename($file);
+    $file = \config(\sprintf('log.%s', \strtolower($level)), 'app.log');
+    $file = Essentio\Core\Application::fromBase(\dirname($file)) . '/' . \basename($file);
 
-    if (!is_file($file)) {
-        touch($file);
+    if (!\is_file($file)) {
+        \touch($file);
     }
 
-    $msg = sprintf("[%s] [%s]: %s\n", date('Y-m-d H:i:s'), strtoupper($level), $message);
+    $msg = \sprintf("[%s] [%s]: %s\n", \date('Y-m-d H:i:s'), \strtoupper($level), $message);
 
-    file_put_contents($file, $msg, FILE_APPEND);
+    \file_put_contents($file, $msg, FILE_APPEND);
 }
 
 /**
@@ -269,12 +281,12 @@ function logger(string $level, string $message): void
 function dump(...$data): void
 {
     if (!Essentio\Core\Application::$isWeb) {
-        var_dump(...$data);
+        \var_dump(...$data);
         return;
     }
 
     echo '<pre>';
-    var_dump(...$data);
+    \var_dump(...$data);
     echo '</pre>';
 }
 
@@ -306,7 +318,7 @@ function safe(callable $callback, mixed $default = null): mixed
     try {
         return $callback();
     } catch (\Throwable $e) {
-        logger('error', $e->getMessage());
+        \logger('error', $e->getMessage());
         return $default;
     }
 }
@@ -334,7 +346,7 @@ function tap(mixed $value, callable $callback): mixed
  */
 function value(mixed $value): mixed
 {
-    if (is_callable($value)) {
+    if (\is_callable($value)) {
         return $value();
     }
 
@@ -356,7 +368,7 @@ function when(bool $condition, mixed $callback): mixed
         return null;
     }
 
-    if (is_callable($callback)) {
+    if (\is_callable($callback)) {
         return $callback();
     }
 

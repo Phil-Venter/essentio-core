@@ -109,26 +109,26 @@ class Request
     }
 
     /**
-     * Returns a new Request instance with the specified parameters.
+     * Sets custom parameters for the request.
      *
-     * This method clones the current Request object and updates the
-     * parameters property with the provided array.
+     * This method allows you to override the request parameters with a custom
+     * associative array. These parameters can later be used by the get() method
+     * to retrieve specific request values.
      *
-     * @param array $parameters
+     * @param array<string, mixed> $parameters
      * @return static
      */
     public function withParameters(array $parameters): static
     {
-        $that = clone $this;
-        $that->parameters = $parameters;
-        return $that;
+        $this->parameters = $parameters;
+        return $this;
     }
 
     /**
      * Retrieve a value from the request parameters.
      *
-     * Checks the custom parameters, then the parsed request body, and finally
-     * the query parameters. If the key is not found, returns the provided default.
+     * Checks the custom parameters, then the query parameters.
+     * If the key is not found, returns the provided default.
      *
      * @param string $key
      * @param mixed  $default
@@ -137,8 +137,22 @@ class Request
     public function get(string $key, mixed $default = null): mixed
     {
         return $this->parameters[$key]
-            ?? $this->body[$key]
             ?? $this->query[$key]
             ?? $default;
+    }
+
+    /**
+     * Retrieves a value from the parsed request body.
+     *
+     * This method checks the request body for the specified key and returns its value.
+     * If the key is not found within the body, the provided default value is returned.
+     *
+     * @param string $key
+     * @param mixed $default
+     * @return mixed
+     */
+    public function post(string $key, mixed $default = null): mixed
+    {
+        return $this->body[$key] ?? $default;
     }
 }

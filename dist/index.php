@@ -93,7 +93,7 @@ class Application
 
 		try {
 		    static::$container->get(Router::class)
-		        ->run(static::$container->get(Request::class))
+		        ->dispatch(static::$container->get(Request::class))
 		        ->send();
 		} catch (HttpException $e) {
 		    (new Response)
@@ -457,7 +457,7 @@ class Request
 
 		$that->host = $host ?? $_SERVER['SERVER_NAME'];
 		$that->port = $port ?? (int) $_SERVER['SERVER_PORT'];
-		$that->path = \parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '/';
+		$that->path = \trim(\parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '', '/');
 		$that->parameters = [];
 		$that->query = $_GET ?? [];
 		$that->headers = \function_exists('getallheaders') ? (\getallheaders() ?: []) : [];
@@ -482,26 +482,26 @@ class Request
 	}
 
 	/**
-	 * Returns a new Request instance with the specified parameters.
+	 * Sets custom parameters for the request.
 	 *
-	 * This method clones the current Request object and updates the
-	 * parameters property with the provided array.
+	 * This method allows you to override the request parameters with a custom
+	 * associative array. These parameters can later be used by the get() method
+	 * to retrieve specific request values.
 	 *
-	 * @param array $parameters
+	 * @param array<string, mixed> $parameters
 	 * @return static
 	 */
 	public function withParameters(array $parameters): static
 	{
-		$that = clone $this;
-		$that->parameters = $parameters;
-		return $that;
+		$this->parameters = $parameters;
+		return $this;
 	}
 
 	/**
 	 * Retrieve a value from the request parameters.
 	 *
-	 * Checks the custom parameters, then the parsed request body, and finally
-	 * the query parameters. If the key is not found, returns the provided default.
+	 * Checks the custom parameters, then the query parameters.
+	 * If the key is not found, returns the provided default.
 	 *
 	 * @param string $key
 	 * @param mixed  $default
@@ -510,9 +510,23 @@ class Request
 	public function get(string $key, mixed $default = null): mixed
 	{
 		return $this->parameters[$key]
-		    ?? $this->body[$key]
 		    ?? $this->query[$key]
 		    ?? $default;
+	}
+
+	/**
+	 * Retrieves a value from the parsed request body.
+	 *
+	 * This method checks the request body for the specified key and returns its value.
+	 * If the key is not found within the body, the provided default value is returned.
+	 *
+	 * @param string $key
+	 * @param mixed $default
+	 * @return mixed
+	 */
+	public function post(string $key, mixed $default = null): mixed
+	{
+		return $this->body[$key] ?? $default;
 	}
 }
 
@@ -993,6 +1007,18 @@ function request(string $key, mixed $default = null): mixed
 }
 
 /**
+ * Fetches a value from the current Request instance body using the specified key.
+ *
+ * @param string $key
+ * @param mixed  $default
+ * @return mixed
+ */
+function post(string $key, mixed $default = null): mixed
+{
+	return \app(Request::class)->post($key, $default);
+}
+
+/**
  * Registers a route for the given HTTP method and path with an associated handler and optional middleware.
  * This function is only applicable in a web environment.
  *
@@ -1072,7 +1098,7 @@ function render(string $template, array $data = []): string
 	    return \ob_get_clean();
 	}
 
-	if (!\str_contains($template, '{{') || !\str_contains($template, '}}')) {
+	if (\preg_match('/^(\/|\.\/|\.\.\/)?[\w\-\/]+\.php$/', $template) === 1) {
 	    return '';
 	}
 
