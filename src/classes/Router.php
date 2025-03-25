@@ -8,6 +8,9 @@ namespace Essentio\Core;
  */
 class Router
 {
+    protected const LEAFNODE = "\0L";
+    protected const WILDCARD = "\0W";
+
     /** @var array<string, array{array<callable>, callable}> */
     protected array $staticRoutes = [];
 
@@ -29,50 +32,110 @@ class Router
      */
     public function route(string $method, string $path, callable $handle, array $middleware = []): static
     {
-        $path = '/' . \trim(\preg_replace(['/\/+/', '/\{([^\/]+)\}/'], ['/', '(?P<$1>[^\/]+)'], $path), '/');
+        $path = \trim(\preg_replace('/\/+/', '/', $path), '/');
 
-        if (\str_contains($path, '(?P<')) {
-            $this->dynamicRoutes[$path][$method] = [$middleware, $handle];
-        } else {
+        if (!\str_contains($path, ':')) {
             $this->staticRoutes[$path][$method] = [$middleware, $handle];
+            return $this;
         }
 
+        $node = &$this->dynamicRoutes;
+        $params = [];
+
+        foreach (\explode('/', $path) as $segment) {
+            if (\str_starts_with($segment, ':')) {
+                $node = &$node[static::WILDCARD];
+                $params[] = \substr($segment, 1);
+            } else {
+                $node = &$node[$segment];
+            }
+        }
+
+        $node[static::LEAFNODE][$method] = [$params, $middleware, $handle];
         return $this;
     }
 
     /**
-     * Executes the matching route for the given request.
+     * Dispatches the incoming HTTP request and executes the corresponding route.
      *
-     * Attempts to match the request path and method with registered static or dynamic routes.
-     * If a matching route is found, its middleware pipeline and handler are executed.
-     * Returns a 404 response if no route is matched, or a 500 response if an error occurs.
+     * This method first checks for a matching static route based on the request path and HTTP method.
+     * If a static match is found, its middleware pipeline and handler are executed.
+     * If no static route is found, it searches for a matching dynamic route using an internal trie structure.
+     *
+     * For dynamic routes, if a match is found, the extracted parameters are merged into the request,
+     * and the associated middleware and handler are executed.
+     *
+     * If no matching route is found, a HttpException with a 404 status code is thrown.
+     * If a matching route is found but does not support the request method, a HttpException with a 405 status code is thrown.
      *
      * @param Request $request
      * @return Response
+     *
+     * @throws HttpException
      */
-    public function run(Request $request): Response
+    public function dispatch(Request $request): Response
     {
         if (isset($this->staticRoutes[$request->path][$request->method])) {
             [$middleware, $handle] = $this->staticRoutes[$request->path][$request->method];
             return $this->call($request, $middleware, $handle);
         }
 
-        foreach ($this->dynamicRoutes as $pattern => $node) {
-            if (!\preg_match($pattern, $request->path, $matches)) {
-                continue;
-            }
+        $result = $this->search($this->dynamicRoutes, \explode('/', $request->path));
 
-            if (!isset($node[$request->method])) {
-                continue;
-            }
-
-            $parameters = \array_filter($matches, 'is_string', ARRAY_FILTER_USE_KEY);
-            [$middleware, $handle] = $node[$request->method];
-
-            return $this->call($request->withParameters($parameters), $middleware, $handle);
+        if ($result === null) {
+            throw new HttpException("Route not found", 404);
         }
 
-        return (new Response)->withStatus(404);
+        [$values, $methods] = $result;
+
+        if (!isset($methods[$request->method])) {
+            throw new HttpException("Method not allowed", 405);
+        }
+
+        [$params, $middleware, $handle] = $methods[$request->method];
+
+        $req = $request->withParameters(\array_combine($params, $values));
+        return $this->call($req, $middleware, $handle);
+    }
+
+    /**
+     * Recursively searches the route trie for a matching route.
+     *
+     * Traverses the trie using the provided path segments to determine if a route exists.
+     * If a segment matches a literal or wildcard, the function recursively proceeds.
+     * When all segments have been processed, if a leaf node is found, it returns an array
+     * containing the dynamic parameters extracted from the path and the associated methods mapping.
+     *
+     * @param array $trie
+     * @param array $segments
+     * @param array $params
+     * @return array|null
+     */
+    protected function search(array $trie, array $segments, array $params = []): ?array
+    {
+        if (empty($segments)) {
+            if (isset($trie[static::LEAFNODE])) {
+                return [$params, $trie[static::LEAFNODE]];
+            }
+            return null;
+        }
+
+        $segment = \array_shift($segments);
+
+        if (isset($trie[$segment])) {
+            if ($result = $this->search($trie[$segment], $segments, $params)) {
+                return $result;
+            }
+        }
+
+        if (isset($trie[static::WILDCARD])) {
+            $params[] = $segment;
+            if ($result = $this->search($trie[static::WILDCARD], $segments, $params)) {
+                return $result;
+            }
+        }
+
+        return null;
     }
 
     /**
