@@ -2,6 +2,16 @@
 
 namespace Essentio\Core;
 
+use function array_reverse;
+use function array_shift;
+use function call_user_func;
+use function explode;
+use function preg_replace;
+use function str_contains;
+use function str_starts_with;
+use function substr;
+use function trim;
+
 /**
  * Handles the registration and execution of routes for HTTP requests.
  * Supports both static and dynamic routes with middleware pipelines.
@@ -32,9 +42,9 @@ class Router
      */
     public function route(string $method, string $path, callable $handle, array $middleware = []): static
     {
-        $path = \trim(\preg_replace('/\/+/', '/', $path), '/');
+        $path = trim(preg_replace("/\/+/", "/", $path), "/");
 
-        if (!\str_contains($path, ':')) {
+        if (!str_contains($path, ":")) {
             $this->staticRoutes[$path][$method] = [$middleware, $handle];
             return $this;
         }
@@ -42,10 +52,10 @@ class Router
         $node = &$this->dynamicRoutes;
         $params = [];
 
-        foreach (\explode('/', $path) as $segment) {
-            if (\str_starts_with($segment, ':')) {
+        foreach (explode("/", $path) as $segment) {
+            if (str_starts_with($segment, ":")) {
                 $node = &$node[static::WILDCARD];
-                $params[] = \substr($segment, 1);
+                $params[] = substr($segment, 1);
             } else {
                 $node = &$node[$segment];
             }
@@ -80,7 +90,7 @@ class Router
             return $this->call($request, $middleware, $handle);
         }
 
-        $result = $this->search($this->dynamicRoutes, \explode('/', $request->path));
+        $result = $this->search($this->dynamicRoutes, explode("/", $request->path));
 
         if ($result === null) {
             throw new HttpException("Route not found", 404);
@@ -94,7 +104,7 @@ class Router
 
         [$params, $middleware, $handle] = $methods[$request->method];
 
-        $req = $request->withParameters(\array_combine($params, $values));
+        $req = $request->withParameters(array_combine($params, $values));
         return $this->call($req, $middleware, $handle);
     }
 
@@ -120,7 +130,7 @@ class Router
             return null;
         }
 
-        $segment = \array_shift($segments);
+        $segment = array_shift($segments);
 
         if (isset($trie[$segment])) {
             if ($result = $this->search($trie[$segment], $segments, $params)) {
@@ -130,6 +140,7 @@ class Router
 
         if (isset($trie[static::WILDCARD])) {
             $params[] = $segment;
+
             if ($result = $this->search($trie[static::WILDCARD], $segments, $params)) {
                 return $result;
             }
@@ -154,12 +165,12 @@ class Router
     {
         $pipeline = $handle;
 
-        foreach (\array_reverse($middleware) as $m) {
-            $pipeline = fn($req, $res) => \call_user_func($m, $req, $res, $pipeline);
+        foreach (array_reverse($middleware) as $m) {
+            $pipeline = fn($req, $res) => call_user_func($m, $req, $res, $pipeline);
         }
 
         $response = new Response();
-        $result = \call_user_func($pipeline, $request, $response);
+        $result = call_user_func($pipeline, $request, $response);
 
         if ($result instanceof Response) {
             return $result;

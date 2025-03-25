@@ -2,6 +2,16 @@
 
 namespace Essentio\Core;
 
+use function count;
+use function explode;
+use function file;
+use function file_exists;
+use function is_numeric;
+use function str_contains;
+use function strtolower;
+use function substr;
+use function trim;
+
 /**
  * Handles the loading and retrieval of environment variables from a file.
  * The file is parsed line-by-line, skipping comments and empty lines, while
@@ -24,35 +34,33 @@ class Environment
      */
     public function load(string $file): static
     {
-        if (!\file_exists($file)) {
+        if (!file_exists($file)) {
             return $this;
         }
 
-        foreach (\file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] as $line) {
-            if (\trim($line)[0] === '#') {
+        foreach (file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] as $line) {
+            if (trim($line)[0] === '#') {
                 continue;
             }
 
-            $parts = \explode('=', $line, 2);
+            $parts = explode('=', $line, 2);
 
-            if (\count($parts) !== 2) {
+            if (count($parts) !== 2) {
                 continue;
             }
 
-            $name = \trim($parts[0]);
-            $value = \trim($parts[1]);
+            $name = trim($parts[0]);
+            $value = trim($parts[1]);
 
-            if (isset($value[0]) && (($value[0] === '"' && \substr($value, -1) === '"') || ($value[0] === "'" && \substr($value, -1) === "'"))) {
-                $value = \substr($value, 1, -1);
+            if (isset($value[0]) && (($value[0] === '"' && substr($value, -1) === '"') || ($value[0] === "'" && substr($value, -1) === "'"))) {
+                $value = substr($value, 1, -1);
             } else {
-                $lower = \strtolower($value);
+                $lower = strtolower($value);
                 $value = match (true) {
                     $lower === 'true'  => true,
                     $lower === 'false' => false,
                     $lower === 'null'  => null,
-                    \is_numeric($value) => (\str_contains($value, 'e') || \str_contains($value, '.'))
-                        ? (float)$value
-                        : (int)$value,
+                    is_numeric($value) => (str_contains($value, 'e') || str_contains($value, '.')) ? (float)$value : (int)$value,
                     default            => $value,
                 };
             }

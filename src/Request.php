@@ -2,6 +2,19 @@
 
 namespace Essentio\Core;
 
+use function explode;
+use function file_get_contents;
+use function filter_var;
+use function function_exists;
+use function getallheaders;
+use function json_decode;
+use function parse_str;
+use function parse_url;
+use function str_contains;
+use function strtolower;
+use function strtoupper;
+use function trim;
+
 /**
  * Encapsulates an HTTP request by extracting data from PHP superglobals.
  * Provides methods to initialize request properties such as method, scheme,
@@ -11,12 +24,12 @@ class Request
 {
     /** @var string */
     public protected(set) string $method {
-        set => \strtoupper($value);
+        set => strtoupper($value);
     }
 
     /** @var string */
     public protected(set) string $scheme {
-        set => \strtolower($value);
+        set => strtolower($value);
     }
 
     /** @var ?string */
@@ -63,7 +76,7 @@ class Request
 
         $that->method = $_POST['_method'] ?? $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
-        if (\filter_var($_SERVER['HTTPS'] ?? '', FILTER_VALIDATE_BOOLEAN)) {
+        if (filter_var($_SERVER['HTTPS'] ?? '', FILTER_VALIDATE_BOOLEAN)) {
             $that->scheme = 'https';
         } else {
             $that->scheme = 'http';
@@ -73,8 +86,8 @@ class Request
         $port = null;
 
         if (isset($_SERVER['HTTP_HOST'])) {
-            if (\str_contains($_SERVER['HTTP_HOST'], ':')) {
-                [$host, $port] = \explode(':', $_SERVER['HTTP_HOST'], 2);
+            if (str_contains($_SERVER['HTTP_HOST'], ':')) {
+                [$host, $port] = explode(':', $_SERVER['HTTP_HOST'], 2);
                 $port = (int) $port;
             } else {
                 $host = $_SERVER['HTTP_HOST'];
@@ -84,24 +97,24 @@ class Request
 
         $that->host = $host ?? $_SERVER['SERVER_NAME'];
         $that->port = $port ?? (int) $_SERVER['SERVER_PORT'];
-        $that->path = \trim(\parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '', '/');
+        $that->path = trim(parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '', '/');
         $that->parameters = [];
         $that->query = $_GET ?? [];
-        $that->headers = \function_exists('getallheaders') ? (\getallheaders() ?: []) : [];
+        $that->headers = function_exists('getallheaders') ? (getallheaders() ?: []) : [];
         $that->cookies = $_COOKIE ?? [];
         $that->files = $_FILES ?? [];
 
-        $that->rawInput = \file_get_contents('php://input') ?: '';
+        $that->rawInput = file_get_contents('php://input') ?: '';
 
         $contentType = $that->headers['Content-Type'] ?? '';
-        $mimeType = \explode(';', $contentType, 2)[0];
+        $mimeType = explode(';', $contentType, 2)[0];
 
         $that->body = match ($mimeType) {
             'application/x-www-form-urlencoded' => (function (string $input): array {
-                \parse_str($input, $result);
+                parse_str($input, $result);
                 return $result;
             })($that->rawInput),
-            'application/json' => \json_decode($that->rawInput, true),
+            'application/json' => json_decode($that->rawInput, true),
             default => [],
         };
 

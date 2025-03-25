@@ -2,6 +2,11 @@
 
 namespace Essentio\Core;
 
+use RuntimeException;
+
+use function call_user_func;
+use function sprintf;
+
 /**
  * A simple dependency injection container that allows binding of
  * factories to service identifiers and resolves them when needed.
@@ -30,12 +35,9 @@ class Container
      */
     public function bind(string $id, callable $factory): object
     {
-        return $this->bindings[$id] = new class($factory) {
+        return $this->bindings[$id] = new class ($factory) {
             public bool $once = false;
-
-            public function __construct(
-                public $factory
-            ) {}
+            public function __construct(public $factory) {}
         };
     }
 
@@ -54,15 +56,15 @@ class Container
     public function get(string $id): object
     {
         if (!isset($this->bindings[$id])) {
-            throw new \RuntimeException(\sprintf('No binding for %s exists', $id));
+            throw new RuntimeException(sprintf("No binding for %s exists", $id));
         }
 
         if (isset($this->cache[$id])) {
             return $this->cache[$id];
         }
 
-        $binding  = $this->bindings[$id];
-        $resolved = \call_user_func($binding->factory, $this);
+        $binding = $this->bindings[$id];
+        $resolved = call_user_func($binding->factory, $this);
 
         if ($binding->once) {
             $this->cache[$id] = $resolved;

@@ -26,20 +26,16 @@ class Application
 	 */
 	public static function http(string $basePath): void
 	{
-		static::$basePath = \rtrim($basePath, '/');
-		static::$container = new Container;
+		static::$basePath = rtrim($basePath, "/");
+		static::$container = new Container();
 		static::$isWeb = true;
 
-		static::$container->bind(Environment::class, fn() => new Environment)->once = true;
+		static::$container->bind(Environment::class, fn() => new Environment())->once = true;
 		static::$container->bind(Request::class, fn() => Request::init())->once = true;
-		static::$container->bind(Router::class, fn() => new Router)->once = true;
+		static::$container->bind(Router::class, fn() => new Router())->once = true;
 
-		if (\session_status() !== PHP_SESSION_ACTIVE) {
-		    if (\function_exists('apcu_enabled') && \apcu_enabled()) {
-		        \session_set_save_handler(new SessionHandler(3600), true);
-		    }
-
-		    \session_start();
+		if (session_status() !== PHP_SESSION_ACTIVE) {
+		    session_start();
 		}
 	}
 
@@ -53,11 +49,11 @@ class Application
 	 */
 	public static function cli(string $basePath): void
 	{
-		static::$basePath = \rtrim($basePath, '/');
-		static::$container = new Container;
+		static::$basePath = rtrim($basePath, "/");
+		static::$container = new Container();
 		static::$isWeb = false;
 
-		static::$container->bind(Environment::class, fn() => new Environment)->once = true;
+		static::$container->bind(Environment::class, fn() => new Environment())->once = true;
 		static::$container->bind(Argument::class, fn() => Argument::init())->once = true;
 	}
 
@@ -73,7 +69,7 @@ class Application
 	 */
 	public static function fromBase(string $path): string|false
 	{
-		return \realpath(\sprintf('%s/%s', static::$basePath, $path));
+		return realpath(sprintf("%s/%s", static::$basePath, $path));
 	}
 
 	/**
@@ -92,132 +88,98 @@ class Application
 		}
 
 		try {
-		    static::$container->get(Router::class)
+		    static::$container
+		        ->get(Router::class)
 		        ->dispatch(static::$container->get(Request::class))
 		        ->send();
 		} catch (HttpException $e) {
-		    (new Response)
+		    (new Response())
 		        ->withStatus($e->getCode())
-		        ->withHeaders(['Content-Type' => 'text/html'])
+		        ->withHeaders(["Content-Type" => "text/html"])
 		        ->withBody($e->getMessage())
 		        ->send();
-		} catch (\Throwable $e) {
-		    (new Response)
+		} catch (Throwable $e) {
+		    (new Response())
 		        ->withStatus(500)
-		        ->withHeaders(['Content-Type' => 'text/plain'])
-		        ->withBody('Something went wrong. Please try again later.')
+		        ->withHeaders(["Content-Type" => "text/plain"])
+		        ->withBody("Something went wrong. Please try again later.")
 		        ->send();
 		}
 	}
 }
 
 /**
- * Parses and holds command-line arguments including the command,
- * named parameters, and positional parameters.
+ * Handles the loading and retrieval of environment variables from a file.
+ * The file is parsed line-by-line, skipping comments and empty lines, while
+ * converting the configuration into an associative array.
  */
-class Argument
+class Environment
 {
-	/** @var string */
-	public protected(set) string $command = '';
-
 	/** @var array<string, mixed> */
-	public protected(set) array $named = [];
-
-	/** @var list<mixed> */
-	public protected(set) array $positional = [];
+	public protected(set) array $data = [];
 
 	/**
-	 * Initializes and parses the command-line arguments.
+	 * Loads environment variables from a file.
 	 *
-	 * This method extracts the command, named, and positional arguments
-	 * from the $_SERVER['argv'] array. It supports both long (--name)
-	 * and short (-n) argument formats.
+	 * Reads a file line-by-line, ignoring lines that are empty or start with a '#'.
+	 * Each valid line is parsed into a key-value pair. Values are trimmed, unquoted if necessary,
+	 * and typecasted to boolean, null, or numeric values when applicable.
 	 *
+	 * @param string $file
 	 * @return static
 	 */
-	public static function init(): static
+	public function load(string $file): static
 	{
-		$argv = $_SERVER['argv'] ?? [];
-
-		\array_shift($argv);
-
-		$that = new static;
-
-		while ($arg = \array_shift($argv)) {
-		    if ($arg === '--') {
-		        $that->positional = \array_merge($that->positional, $argv);
-		        break;
-		    }
-
-		    if (\str_starts_with($arg, '--')) {
-		        $name = \substr($arg, 2);
-
-		        if (\str_contains($name, '=')) {
-		            [$key, $value] = \explode('=', $name, 2);
-		            $that->named[$key] = $value;
-		            continue;
-		        }
-
-		        if (isset($argv[0]) && $argv[0][0] !== '-') {
-		            $that->named[$name] = \array_shift($argv);
-		            continue;
-		        }
-
-		        $that->named[$name] = true;
-		        continue;
-		    }
-
-		    if ($arg[0] === '-') {
-		        $name = \substr($arg, 1, 1);
-		        $value = \substr($arg, 2);
-
-		        if (\str_contains($value, '=')) {
-		            break;
-		        }
-
-		        if (!empty($value)) {
-		            $that->named[$name] = $value;
-		            continue;
-		        }
-
-		        if (isset($argv[0]) && $argv[0][0] !== '-') {
-		            $that->named[$name] = \array_shift($argv);
-		            continue;
-		        }
-
-		        $that->named[$name] = true;
-		        continue;
-		    }
-
-		    if ($that->command === '') {
-		        $that->command = $arg;
-		    } else {
-		        $that->positional[] = $arg;
-		    }
+		if (!file_exists($file)) {
+		    return $this;
 		}
 
-		return $that;
+		foreach (file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] as $line) {
+		    if (trim($line)[0] === '#') {
+		        continue;
+		    }
+
+		    $parts = explode('=', $line, 2);
+
+		    if (count($parts) !== 2) {
+		        continue;
+		    }
+
+		    $name = trim($parts[0]);
+		    $value = trim($parts[1]);
+
+		    if (isset($value[0]) && (($value[0] === '"' && substr($value, -1) === '"') || ($value[0] === "'" && substr($value, -1) === "'"))) {
+		        $value = substr($value, 1, -1);
+		    } else {
+		        $lower = strtolower($value);
+		        $value = match (true) {
+		            $lower === 'true'  => true,
+		            $lower === 'false' => false,
+		            $lower === 'null'  => null,
+		            is_numeric($value) => (str_contains($value, 'e') || str_contains($value, '.')) ? (float)$value : (int)$value,
+		            default            => $value,
+		        };
+		    }
+
+		    $this->data[$name] = $value;
+		}
+
+		return $this;
 	}
 
 	/**
-	 * Retrieves a specific argument value.
+	 * Retrieves an environment variable.
 	 *
-	 * Depending on the type of key provided, this method returns
-	 * either a positional argument (if an integer is provided) or
-	 * a named argument (if a string is provided). If the argument
-	 * is not found, the default value is returned.
+	 * Returns the value of the specified environment variable from the loaded data.
+	 * If the variable is not found, the method returns the provided default value.
 	 *
-	 * @param int|string $key
-	 * @param mixed      $default
+	 * @param string $key
+	 * @param mixed  $default
 	 * @return mixed
 	 */
-	public function get(int|string $key, mixed $default = null): mixed
+	public function get(string $key, mixed $default = null): mixed
 	{
-		if (\is_int($key)) {
-		    return $this->positional[$key] ?? $default;
-		}
-
-		return $this->named[$key] ?? $default;
+		return $this->data[$key] ?? $default;
 	}
 }
 
@@ -249,12 +211,9 @@ class Container
 	 */
 	public function bind(string $id, callable $factory): object
 	{
-		return $this->bindings[$id] = new class($factory) {
+		return $this->bindings[$id] = new class ($factory) {
 		    public bool $once = false;
-
-		    public function __construct(
-		        public $factory
-		    ) {}
+		    public function __construct(public $factory) {}
 		};
 	}
 
@@ -273,15 +232,15 @@ class Container
 	public function get(string $id): object
 	{
 		if (!isset($this->bindings[$id])) {
-		    throw new \RuntimeException(\sprintf('No binding for %s exists', $id));
+		    throw new RuntimeException(sprintf("No binding for %s exists", $id));
 		}
 
 		if (isset($this->cache[$id])) {
 		    return $this->cache[$id];
 		}
 
-		$binding  = $this->bindings[$id];
-		$resolved = \call_user_func($binding->factory, $this);
+		$binding = $this->bindings[$id];
+		$resolved = call_user_func($binding->factory, $this);
 
 		if ($binding->once) {
 		    $this->cache[$id] = $resolved;
@@ -292,86 +251,119 @@ class Container
 }
 
 /**
- * Handles the loading and retrieval of environment variables from a file.
- * The file is parsed line-by-line, skipping comments and empty lines, while
- * converting the configuration into an associative array.
+ * Parses and holds command-line arguments including the command,
+ * named parameters, and positional parameters.
  */
-class Environment
+class Argument
 {
+	/** @var string */
+	public protected(set) string $command = '';
+
 	/** @var array<string, mixed> */
-	public protected(set) array $data = [];
+	public protected(set) array $named = [];
+
+	/** @var list<mixed> */
+	public protected(set) array $positional = [];
 
 	/**
-	 * Loads environment variables from a file.
+	 * Initializes and parses the command-line arguments.
 	 *
-	 * Reads a file line-by-line, ignoring lines that are empty or start with a '#'.
-	 * Each valid line is parsed into a key-value pair. Values are trimmed, unquoted if necessary,
-	 * and typecasted to boolean, null, or numeric values when applicable.
+	 * This method extracts the command, named, and positional arguments
+	 * from the $_SERVER['argv'] array. It supports both long (--name)
+	 * and short (-n) argument formats.
 	 *
-	 * @param string $file
 	 * @return static
 	 */
-	public function load(string $file): static
+	public static function init(): static
 	{
-		if (!\file_exists($file)) {
-		    return $this;
-		}
+		$argv = $_SERVER['argv'] ?? [];
 
-		foreach (\file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] as $line) {
-		    if (\trim($line)[0] === '#') {
+		array_shift($argv);
+
+		$that = new static;
+
+		while ($arg = array_shift($argv)) {
+		    if ($arg === '--') {
+		        $that->positional = array_merge($that->positional, $argv);
+		        break;
+		    }
+
+		    if (str_starts_with($arg, '--')) {
+		        $name = substr($arg, 2);
+
+		        if (str_contains($name, '=')) {
+		            [$key, $value] = explode('=', $name, 2);
+		            $that->named[$key] = $value;
+		            continue;
+		        }
+
+		        if (isset($argv[0]) && $argv[0][0] !== '-') {
+		            $that->named[$name] = array_shift($argv);
+		            continue;
+		        }
+
+		        $that->named[$name] = true;
 		        continue;
 		    }
 
-		    $parts = \explode('=', $line, 2);
+		    if ($arg[0] === '-') {
+		        $name = substr($arg, 1, 1);
+		        $value = substr($arg, 2);
 
-		    if (\count($parts) !== 2) {
+		        if (str_contains($value, '=')) {
+		            break;
+		        }
+
+		        if (!empty($value)) {
+		            $that->named[$name] = $value;
+		            continue;
+		        }
+
+		        if (isset($argv[0]) && $argv[0][0] !== '-') {
+		            $that->named[$name] = array_shift($argv);
+		            continue;
+		        }
+
+		        $that->named[$name] = true;
 		        continue;
 		    }
 
-		    $name = \trim($parts[0]);
-		    $value = \trim($parts[1]);
-
-		    if (isset($value[0]) && (($value[0] === '"' && \substr($value, -1) === '"') || ($value[0] === "'" && \substr($value, -1) === "'"))) {
-		        $value = \substr($value, 1, -1);
+		    if ($that->command === '') {
+		        $that->command = $arg;
 		    } else {
-		        $lower = \strtolower($value);
-		        $value = match (true) {
-		            $lower === 'true'  => true,
-		            $lower === 'false' => false,
-		            $lower === 'null'  => null,
-		            \is_numeric($value) => (\str_contains($value, 'e') || \str_contains($value, '.'))
-		                ? (float)$value
-		                : (int)$value,
-		            default            => $value,
-		        };
+		        $that->positional[] = $arg;
 		    }
-
-		    $this->data[$name] = $value;
 		}
 
-		return $this;
+		return $that;
 	}
 
 	/**
-	 * Retrieves an environment variable.
+	 * Retrieves a specific argument value.
 	 *
-	 * Returns the value of the specified environment variable from the loaded data.
-	 * If the variable is not found, the method returns the provided default value.
+	 * Depending on the type of key provided, this method returns
+	 * either a positional argument (if an integer is provided) or
+	 * a named argument (if a string is provided). If the argument
+	 * is not found, the default value is returned.
 	 *
-	 * @param string $key
-	 * @param mixed  $default
+	 * @param int|string $key
+	 * @param mixed      $default
 	 * @return mixed
 	 */
-	public function get(string $key, mixed $default = null): mixed
+	public function get(int|string $key, mixed $default = null): mixed
 	{
-		return $this->data[$key] ?? $default;
+		if (is_int($key)) {
+		    return $this->positional[$key] ?? $default;
+		}
+
+		return $this->named[$key] ?? $default;
 	}
 }
 
 /**
  * Represents an HTTP exception that can be thrown during request handling.
  */
-class HttpException extends \Exception
+class HttpException extends Exception
 {
 }
 
@@ -436,7 +428,7 @@ class Request
 
 		$that->method = $_POST['_method'] ?? $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
-		if (\filter_var($_SERVER['HTTPS'] ?? '', FILTER_VALIDATE_BOOLEAN)) {
+		if (filter_var($_SERVER['HTTPS'] ?? '', FILTER_VALIDATE_BOOLEAN)) {
 		    $that->scheme = 'https';
 		} else {
 		    $that->scheme = 'http';
@@ -446,8 +438,8 @@ class Request
 		$port = null;
 
 		if (isset($_SERVER['HTTP_HOST'])) {
-		    if (\str_contains($_SERVER['HTTP_HOST'], ':')) {
-		        [$host, $port] = \explode(':', $_SERVER['HTTP_HOST'], 2);
+		    if (str_contains($_SERVER['HTTP_HOST'], ':')) {
+		        [$host, $port] = explode(':', $_SERVER['HTTP_HOST'], 2);
 		        $port = (int) $port;
 		    } else {
 		        $host = $_SERVER['HTTP_HOST'];
@@ -457,24 +449,24 @@ class Request
 
 		$that->host = $host ?? $_SERVER['SERVER_NAME'];
 		$that->port = $port ?? (int) $_SERVER['SERVER_PORT'];
-		$that->path = \trim(\parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '', '/');
+		$that->path = trim(parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '', '/');
 		$that->parameters = [];
 		$that->query = $_GET ?? [];
-		$that->headers = \function_exists('getallheaders') ? (\getallheaders() ?: []) : [];
+		$that->headers = function_exists('getallheaders') ? (getallheaders() ?: []) : [];
 		$that->cookies = $_COOKIE ?? [];
 		$that->files = $_FILES ?? [];
 
-		$that->rawInput = \file_get_contents('php://input') ?: '';
+		$that->rawInput = file_get_contents('php://input') ?: '';
 
 		$contentType = $that->headers['Content-Type'] ?? '';
-		$mimeType = \explode(';', $contentType, 2)[0];
+		$mimeType = explode(';', $contentType, 2)[0];
 
 		$that->body = match ($mimeType) {
 		    'application/x-www-form-urlencoded' => (function (string $input): array {
-		        \parse_str($input, $result);
+		        parse_str($input, $result);
 		        return $result;
 		    })($that->rawInput),
-		    'application/json' => \json_decode($that->rawInput, true),
+		    'application/json' => json_decode($that->rawInput, true),
 		    default => [],
 		};
 
@@ -542,8 +534,8 @@ class Response
 	/** @var array<string, mixed> */
 	public protected(set) array $headers = [];
 
-	/** @var bool|float|int|string|\Stringable|null */
-	public protected(set) bool|float|int|string|\Stringable|null $body = null;
+	/** @var bool|float|int|string|Stringable|null */
+	public protected(set) bool|float|int|string|Stringable|null $body = null;
 
 	/**
 	 * Returns a new Response instance with the specified HTTP status code.
@@ -567,7 +559,7 @@ class Response
 	public function addHeaders(array $headers): static
 	{
 		$that = clone $this;
-		$that->headers = \array_merge($that->headers, $headers);
+		$that->headers = array_merge($that->headers, $headers);
 		return $that;
 	}
 
@@ -587,10 +579,10 @@ class Response
 	/**
 	 * Returns a new Response instance with the specified body.
 	 *
-	 * @param bool|float|int|string|\Stringable|null $body
+	 * @param bool|float|int|string|Stringable|null $body
 	 * @return static
 	 */
-	public function withBody(bool|float|int|string|\Stringable|null $body): static
+	public function withBody(bool|float|int|string|Stringable|null $body): static
 	{
 		$that = clone $this;
 		$that->body = $body;
@@ -607,24 +599,24 @@ class Response
 	 */
 	public function send(): bool
 	{
-		if (\headers_sent()) {
+		if (headers_sent()) {
 		    return false;
 		}
 
-		\http_response_code($this->status);
+		http_response_code($this->status);
 
 		foreach ($this->headers as $key => $value) {
-		    if (\is_array($value)) {
+		    if (is_array($value)) {
 		        foreach ($value as $i => $v) {
-		            \header("$key: $v", $i === 0);
+		            header("$key: $v", $i === 0);
 		        }
 		    } else {
-		        \header("$key: $value", true);
+		        header("$key: $value", true);
 		    }
 		}
 
 		echo (string) $this->body;
-		\flush();
+		flush();
 		return true;
 	}
 }
@@ -659,9 +651,9 @@ class Router
 	 */
 	public function route(string $method, string $path, callable $handle, array $middleware = []): static
 	{
-		$path = \trim(\preg_replace('/\/+/', '/', $path), '/');
+		$path = trim(preg_replace("/\/+/", "/", $path), "/");
 
-		if (!\str_contains($path, ':')) {
+		if (!str_contains($path, ":")) {
 		    $this->staticRoutes[$path][$method] = [$middleware, $handle];
 		    return $this;
 		}
@@ -669,10 +661,10 @@ class Router
 		$node = &$this->dynamicRoutes;
 		$params = [];
 
-		foreach (\explode('/', $path) as $segment) {
-		    if (\str_starts_with($segment, ':')) {
+		foreach (explode("/", $path) as $segment) {
+		    if (str_starts_with($segment, ":")) {
 		        $node = &$node[static::WILDCARD];
-		        $params[] = \substr($segment, 1);
+		        $params[] = substr($segment, 1);
 		    } else {
 		        $node = &$node[$segment];
 		    }
@@ -707,7 +699,7 @@ class Router
 		    return $this->call($request, $middleware, $handle);
 		}
 
-		$result = $this->search($this->dynamicRoutes, \explode('/', $request->path));
+		$result = $this->search($this->dynamicRoutes, explode("/", $request->path));
 
 		if ($result === null) {
 		    throw new HttpException("Route not found", 404);
@@ -721,7 +713,7 @@ class Router
 
 		[$params, $middleware, $handle] = $methods[$request->method];
 
-		$req = $request->withParameters(\array_combine($params, $values));
+		$req = $request->withParameters(array_combine($params, $values));
 		return $this->call($req, $middleware, $handle);
 	}
 
@@ -747,7 +739,7 @@ class Router
 		    return null;
 		}
 
-		$segment = \array_shift($segments);
+		$segment = array_shift($segments);
 
 		if (isset($trie[$segment])) {
 		    if ($result = $this->search($trie[$segment], $segments, $params)) {
@@ -757,6 +749,7 @@ class Router
 
 		if (isset($trie[static::WILDCARD])) {
 		    $params[] = $segment;
+
 		    if ($result = $this->search($trie[static::WILDCARD], $segments, $params)) {
 		        return $result;
 		    }
@@ -781,154 +774,18 @@ class Router
 	{
 		$pipeline = $handle;
 
-		foreach (\array_reverse($middleware) as $m) {
-		    $pipeline = fn($req, $res) => \call_user_func($m, $req, $res, $pipeline);
+		foreach (array_reverse($middleware) as $m) {
+		    $pipeline = fn($req, $res) => call_user_func($m, $req, $res, $pipeline);
 		}
 
 		$response = new Response();
-		$result = \call_user_func($pipeline, $request, $response);
+		$result = call_user_func($pipeline, $request, $response);
 
 		if ($result instanceof Response) {
 		    return $result;
 		}
 
 		return $response;
-	}
-}
-
-/**
- * A custom session handler using APCu for storing session data.
- * Implements both SessionHandlerInterface and SessionUpdateTimestampHandlerInterface.
- */
-class SessionHandler implements \SessionHandlerInterface, \SessionUpdateTimestampHandlerInterface
-{
-	/**
-	 * SessionHandler constructor.
-	 *
-	 * @param int $ttl
-	 */
-	public function __construct(
-		protected int $ttl = 3600,
-	) {
-	}
-
-	/**
-	 * Closes the session.
-	 *
-	 * This method is invoked when the session is closed.
-	 *
-	 * @return bool
-	 */
-	public function close(): bool
-	{
-		return true;
-	}
-
-	/**
-	 * Destroys a session.
-	 *
-	 * Deletes the session data from APCu.
-	 *
-	 * @param string $id
-	 * @return bool
-	 */
-	public function destroy(string $id): bool
-	{
-		return \apcu_delete($this->key($id));
-	}
-
-	/**
-	 * Performs garbage collection for sessions.
-	 *
-	 * This method is not utilized with APCu, as APCu handles expiration internally.
-	 *
-	 * @param int $max_lifetime
-	 * @return int
-	 */
-	public function gc(int $max_lifetime): int
-	{
-		return 0;
-	}
-
-	/**
-	 * Opens a session.
-	 *
-	 * Called when a session is started. No specific action is needed for APCu.
-	 *
-	 * @param string $path
-	 * @param string $name
-	 * @return bool
-	 */
-	public function open(string $path, string $name): bool
-	{
-		return true;
-	}
-
-	/**
-	 * Reads session data.
-	 *
-	 * Retrieves the session data from APCu.
-	 *
-	 * @param string $id
-	 * @return string
-	 */
-	public function read(string $id): string
-	{
-		return \apcu_fetch($this->key($id)) ?: '';
-	}
-
-	/**
-	 * Writes session data.
-	 *
-	 * Stores the session data in APCu with the configured TTL.
-	 *
-	 * @param string $id
-	 * @param string $data
-	 * @return bool
-	 */
-	public function write(string $id, string $data): bool
-	{
-		return \apcu_store($this->key($id), $data, $this->ttl);
-	}
-
-	/**
-	 * Validates a session ID.
-	 *
-	 * Checks if session data exists in APCu for the given session ID.
-	 *
-	 * @param string $id
-	 * @return bool
-	 */
-	public function validateId(string $id): bool
-	{
-		return \apcu_exists($this->key($id));
-	}
-
-	/**
-	 * Updates the session's timestamp.
-	 *
-	 * Refreshes the session data in APCu by storing it again with the current TTL.
-	 *
-	 * @param string $id
-	 * @param string $data
-	 * @return bool
-	 */
-	public function updateTimestamp(string $id, string $data): bool
-	{
-		return \apcu_store($this->key($id), $data, $this->ttl);
-	}
-
-	/**
-	 * Generates the APCu key for a session.
-	 *
-	 * Prepends a prefix to the session ID to ensure a unique key.
-	 *
-	 * @param string $id
-	 * @return string
-	 */
-	protected function key(string $id): string
-	{
-		return "session_" . $id;
 	}
 }
 
@@ -953,9 +810,7 @@ function env(string $key, mixed $default = null): mixed
  */
 function app(?string $id = null): object
 {
-	return $id
-	    ? \Application::$container->get($id)
-	    : \Application::$container;
+	return $id ? \Application::$container->get($id) : \Application::$container;
 }
 
 /**
@@ -968,6 +823,18 @@ function app(?string $id = null): object
 function bind(string $id, callable $factory): object
 {
 	return \app()->bind($id, $factory);
+}
+
+/**
+ * This function retrieves a command-line argument using the specified key.
+ *
+ * @param int|string $key
+ * @param mixed $default
+ * @return string|array|null
+ */
+function arg(int|string $key, mixed $default = null): string|array|null
+{
+	return \app(\Argument::class)->get($key, $default);
 }
 
 /**
@@ -1051,11 +918,11 @@ function flash(string $key, mixed $value = null): mixed
 	}
 
 	if ($value !== \null) {
-	    return $_SESSION['_flash'][$key] = $value;
+	    return $_SESSION["_flash"][$key] = $value;
 	}
 
-	$val = $_SESSION['_flash'][$key] ?? \null;
-	unset($_SESSION['_flash'][$key]);
+	$val = $_SESSION["_flash"][$key] ?? \null;
+	unset($_SESSION["_flash"][$key]);
 	return $val;
 }
 
@@ -1099,15 +966,18 @@ function render(string $template, array $data = []): string
 	}
 
 	if (\preg_match('/^(\/|\.\/|\.\.\/)?[\w\-\/]+\.php$/', $template) === 1) {
-	    return '';
+	    return "";
 	}
 
-	return \preg_replace_callback_array([
-	    '/\{\{\{\s*(.*?)\s*\}\}\}/' => fn($matches) => $data[$matches[1]] ?? '',
-	    '/\{\{\s*(.*?)\s*\}\}/' => fn($matches) => isset($data[$matches[1]])
-	        ? \htmlentities($data[$matches[1]])
-	        : '',
-	], $template);
+	return \preg_replace_callback_array(
+	    [
+	        "/\{\{\{\s*(.*?)\s*\}\}\}/" => fn($matches) => $data[$matches[1]] ?? "",
+	        "/\{\{\s*(.*?)\s*\}\}/" => fn($matches) => isset($data[$matches[1]])
+	            ? \htmlentities($data[$matches[1]])
+	            : "",
+	    ],
+	    $template
+	);
 }
 
 /**
@@ -1119,9 +989,7 @@ function render(string $template, array $data = []): string
  */
 function redirect(string $uri, int $status = 302): \Response
 {
-	return (new \Response)
-	    ->withStatus($status)
-	    ->withHeaders(['Location' => $uri]);
+	return (new \Response())->withStatus($status)->withHeaders(["Location" => $uri]);
 }
 
 /**
@@ -1133,9 +1001,9 @@ function redirect(string $uri, int $status = 302): \Response
  */
 function json(mixed $data, int $status = 200): \Response
 {
-	return (new \Response)
+	return (new \Response())
 	    ->withStatus($status)
-	    ->withHeaders(['Content-Type' => 'Application/json'])
+	    ->withHeaders(["Content-Type" => "Application/json"])
 	    ->withBody(\json_encode($data));
 }
 
@@ -1148,9 +1016,9 @@ function json(mixed $data, int $status = 200): \Response
  */
 function text(string $text, int $status = 200): \Response
 {
-	return (new \Response)
+	return (new \Response())
 	    ->withStatus($status)
-	    ->withHeaders(['Content-Type' => 'text/plain'])
+	    ->withHeaders(["Content-Type" => "text/plain"])
 	    ->withBody($text);
 }
 
@@ -1164,9 +1032,9 @@ function text(string $text, int $status = 200): \Response
  */
 function view(string $template, array $data = [], int $status = 200): \Response
 {
-	return (new \Response)
+	return (new \Response())
 	    ->withStatus($status)
-	    ->withHeaders(['Content-Type' => 'text/html'])
+	    ->withHeaders(["Content-Type" => "text/html"])
 	    ->withBody(\render($template, $data));
 }
 
@@ -1191,14 +1059,16 @@ function log_cli(string $format, ...$values): void
  */
 function logger(string $level, string $message): void
 {
-	$file = \config(\sprintf('log.%s', \strtolower($level)), 'app.log');
-	$file = \Application::fromBase(\dirname($file)) . '/' . \basename($file);
+	$level = \strtoupper($level);
+
+	$file = \env(\sprintf("%s_LOG_FILE", $level), "app.log");
+	$file = \sprintf("%s/%s", \Application::fromBase(\dirname($file)), \basename($file));
 
 	if (!\is_file($file)) {
 	    \touch($file);
 	}
 
-	$msg = \sprintf("[%s] [%s]: %s\n", \date('Y-m-d H:i:s'), \strtoupper($level), $message);
+	$msg = \sprintf("[%s] [%s]: %s\n", \date("Y-m-d H:i:s"), $level, $message);
 
 	\file_put_contents($file, $msg, \FILE_APPEND);
 }
@@ -1217,9 +1087,9 @@ function dump(...$data): void
 	    return;
 	}
 
-	echo '<pre>';
+	echo "<pre>";
 	\var_dump(...$data);
-	echo '</pre>';
+	echo "</pre>";
 }
 
 /**
@@ -1250,7 +1120,7 @@ function safe(callable $callback, mixed $default = null): mixed
 	try {
 	    return $callback();
 	} catch (\Throwable $e) {
-	    \logger('error', $e->getMessage());
+	    \logger("error", $e->getMessage());
 	    return $default;
 	}
 }
@@ -1279,7 +1149,7 @@ function tap(mixed $value, callable $callback): mixed
 function value(mixed $value): mixed
 {
 	if (\is_callable($value)) {
-	    return $value();
+	    return \call_user_func($value);
 	}
 
 	return $value;
@@ -1301,7 +1171,7 @@ function when(bool $condition, mixed $callback): mixed
 	}
 
 	if (\is_callable($callback)) {
-	    return $callback();
+	    return \call_user_func($callback);
 	}
 
 	return $callback;

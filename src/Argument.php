@@ -2,6 +2,13 @@
 
 namespace Essentio\Core;
 
+use function array_shift;
+use function explode;
+use function is_int;
+use function str_contains;
+use function str_starts_with;
+use function substr;
+
 /**
  * Parses and holds command-line arguments including the command,
  * named parameters, and positional parameters.
@@ -30,27 +37,27 @@ class Argument
     {
         $argv = $_SERVER['argv'] ?? [];
 
-        \array_shift($argv);
+        array_shift($argv);
 
         $that = new static;
 
-        while ($arg = \array_shift($argv)) {
+        while ($arg = array_shift($argv)) {
             if ($arg === '--') {
-                $that->positional = \array_merge($that->positional, $argv);
+                $that->positional = array_merge($that->positional, $argv);
                 break;
             }
 
-            if (\str_starts_with($arg, '--')) {
-                $name = \substr($arg, 2);
+            if (str_starts_with($arg, '--')) {
+                $name = substr($arg, 2);
 
-                if (\str_contains($name, '=')) {
-                    [$key, $value] = \explode('=', $name, 2);
+                if (str_contains($name, '=')) {
+                    [$key, $value] = explode('=', $name, 2);
                     $that->named[$key] = $value;
                     continue;
                 }
 
                 if (isset($argv[0]) && $argv[0][0] !== '-') {
-                    $that->named[$name] = \array_shift($argv);
+                    $that->named[$name] = array_shift($argv);
                     continue;
                 }
 
@@ -59,10 +66,10 @@ class Argument
             }
 
             if ($arg[0] === '-') {
-                $name = \substr($arg, 1, 1);
-                $value = \substr($arg, 2);
+                $name = substr($arg, 1, 1);
+                $value = substr($arg, 2);
 
-                if (\str_contains($value, '=')) {
+                if (str_contains($value, '=')) {
                     break;
                 }
 
@@ -72,7 +79,7 @@ class Argument
                 }
 
                 if (isset($argv[0]) && $argv[0][0] !== '-') {
-                    $that->named[$name] = \array_shift($argv);
+                    $that->named[$name] = array_shift($argv);
                     continue;
                 }
 
@@ -104,7 +111,7 @@ class Argument
      */
     public function get(int|string $key, mixed $default = null): mixed
     {
-        if (\is_int($key)) {
+        if (is_int($key)) {
             return $this->positional[$key] ?? $default;
         }
 

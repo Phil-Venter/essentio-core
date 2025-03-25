@@ -2,6 +2,17 @@
 
 namespace Essentio\Core;
 
+use Throwable;
+
+use function apcu_enabled;
+use function function_exists;
+use function realpath;
+use function rtrim;
+use function session_set_save_handler;
+use function session_start;
+use function session_status;
+use function sprintf;
+
 /**
  * Handles the initialization and execution of the application for both
  * web and CLI environments.
@@ -28,20 +39,16 @@ class Application
      */
     public static function http(string $basePath): void
     {
-        static::$basePath = \rtrim($basePath, '/');
-        static::$container = new Container;
+        static::$basePath = rtrim($basePath, "/");
+        static::$container = new Container();
         static::$isWeb = true;
 
-        static::$container->bind(Environment::class, fn() => new Environment)->once = true;
+        static::$container->bind(Environment::class, fn() => new Environment())->once = true;
         static::$container->bind(Request::class, fn() => Request::init())->once = true;
-        static::$container->bind(Router::class, fn() => new Router)->once = true;
+        static::$container->bind(Router::class, fn() => new Router())->once = true;
 
-        if (\session_status() !== PHP_SESSION_ACTIVE) {
-            if (\function_exists('apcu_enabled') && \apcu_enabled()) {
-                \session_set_save_handler(new SessionHandler(3600), true);
-            }
-
-            \session_start();
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            session_start();
         }
     }
 
@@ -55,11 +62,11 @@ class Application
      */
     public static function cli(string $basePath): void
     {
-        static::$basePath = \rtrim($basePath, '/');
-        static::$container = new Container;
+        static::$basePath = rtrim($basePath, "/");
+        static::$container = new Container();
         static::$isWeb = false;
 
-        static::$container->bind(Environment::class, fn() => new Environment)->once = true;
+        static::$container->bind(Environment::class, fn() => new Environment())->once = true;
         static::$container->bind(Argument::class, fn() => Argument::init())->once = true;
     }
 
@@ -75,7 +82,7 @@ class Application
      */
     public static function fromBase(string $path): string|false
     {
-        return \realpath(\sprintf('%s/%s', static::$basePath, $path));
+        return realpath(sprintf("%s/%s", static::$basePath, $path));
     }
 
     /**
@@ -94,20 +101,21 @@ class Application
         }
 
         try {
-            static::$container->get(Router::class)
+            static::$container
+                ->get(Router::class)
                 ->dispatch(static::$container->get(Request::class))
                 ->send();
         } catch (HttpException $e) {
-            (new Response)
+            (new Response())
                 ->withStatus($e->getCode())
-                ->withHeaders(['Content-Type' => 'text/html'])
+                ->withHeaders(["Content-Type" => "text/html"])
                 ->withBody($e->getMessage())
                 ->send();
-        } catch (\Throwable $e) {
-            (new Response)
+        } catch (Throwable $e) {
+            (new Response())
                 ->withStatus(500)
-                ->withHeaders(['Content-Type' => 'text/plain'])
-                ->withBody('Something went wrong. Please try again later.')
+                ->withHeaders(["Content-Type" => "text/plain"])
+                ->withBody("Something went wrong. Please try again later.")
                 ->send();
         }
     }

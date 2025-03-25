@@ -9,7 +9,7 @@ Because sometimes you don't want the overhead. You don't need the dogma. You're 
 If you see something here that you don't like, that's fine. You have two options:
 
 - **Don't use it.** Seriously, there are plenty of bloated, convention-riddled alternatives out there.
-- **Change it yourself.** Essentio is about 600 lines of pure, straightforward PHP (excluding comments). It won't bite. If you want something improved, send a pull request. Pull requests speak louder than bug reports.
+- **Change it yourself.** Essentio is about 550 lines of pure, straightforward PHP (excluding comments). It won't bite. If you want something improved, send a pull request. Pull requests speak louder than bug reports.
 
 ## What Essentio Gives You
 

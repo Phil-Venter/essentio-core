@@ -2,6 +2,15 @@
 
 namespace Essentio\Core;
 
+use Stringable;
+
+use function array_merge;
+use function flush;
+use function header;
+use function headers_sent;
+use function http_response_code;
+use function is_array;
+
 /**
  * Represents an HTTP response that encapsulates the status code, headers,
  * and body. Provides methods to modify the response immutably and send it.
@@ -14,8 +23,8 @@ class Response
     /** @var array<string, mixed> */
     public protected(set) array $headers = [];
 
-    /** @var bool|float|int|string|\Stringable|null */
-    public protected(set) bool|float|int|string|\Stringable|null $body = null;
+    /** @var bool|float|int|string|Stringable|null */
+    public protected(set) bool|float|int|string|Stringable|null $body = null;
 
     /**
      * Returns a new Response instance with the specified HTTP status code.
@@ -39,7 +48,7 @@ class Response
     public function addHeaders(array $headers): static
     {
         $that = clone $this;
-        $that->headers = \array_merge($that->headers, $headers);
+        $that->headers = array_merge($that->headers, $headers);
         return $that;
     }
 
@@ -59,10 +68,10 @@ class Response
     /**
      * Returns a new Response instance with the specified body.
      *
-     * @param bool|float|int|string|\Stringable|null $body
+     * @param bool|float|int|string|Stringable|null $body
      * @return static
      */
-    public function withBody(bool|float|int|string|\Stringable|null $body): static
+    public function withBody(bool|float|int|string|Stringable|null $body): static
     {
         $that = clone $this;
         $that->body = $body;
@@ -79,24 +88,24 @@ class Response
      */
     public function send(): bool
     {
-        if (\headers_sent()) {
+        if (headers_sent()) {
             return false;
         }
 
-        \http_response_code($this->status);
+        http_response_code($this->status);
 
         foreach ($this->headers as $key => $value) {
-            if (\is_array($value)) {
+            if (is_array($value)) {
                 foreach ($value as $i => $v) {
-                    \header("$key: $v", $i === 0);
+                    header("$key: $v", $i === 0);
                 }
             } else {
-                \header("$key: $value", true);
+                header("$key: $value", true);
             }
         }
 
         echo (string) $this->body;
-        \flush();
+        flush();
         return true;
     }
 }
