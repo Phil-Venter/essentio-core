@@ -34,7 +34,7 @@ $code = file_get_contents(sprintf('%s/../functions.php', __DIR__));
 $contents += PhpFile::fromCode($code)->getFunctions();
 
 foreach ($contents as $key => $content) {
-    $contents[$key] = str_replace(['\\Essentio\\Core\\', "\n\n\n"], ['', "\n\n"], $content);
+    $contents[$key] = str_replace(['Essentio\\Core\\', "\n\n\n"], ['', "\n\n"], $content);
 }
 
 if (is_file($filepath)) {

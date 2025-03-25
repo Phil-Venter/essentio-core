@@ -941,7 +941,7 @@ class SessionHandler implements \SessionHandlerInterface, \SessionUpdateTimestam
  */
 function env(string $key, mixed $default = null): mixed
 {
-	return \app(Environment::class)->get($key, $default);
+	return \app(\Environment::class)->get($key, $default);
 }
 
 /**
@@ -954,8 +954,8 @@ function env(string $key, mixed $default = null): mixed
 function app(?string $id = null): object
 {
 	return $id
-	    ? Application::$container->get($id)
-	    : Application::$container;
+	    ? \Application::$container->get($id)
+	    : \Application::$container;
 }
 
 /**
@@ -979,11 +979,11 @@ function bind(string $id, callable $factory): object
  */
 function command(string $name, callable $handle): void
 {
-	if (Application::$isWeb) {
+	if (\Application::$isWeb) {
 	    return;
 	}
 
-	$argv = \app(Argument::class);
+	$argv = \app(\Argument::class);
 
 	if ($argv->command !== $name) {
 	    return;
@@ -1003,7 +1003,7 @@ function command(string $name, callable $handle): void
  */
 function request(string $key, mixed $default = null): mixed
 {
-	return \app(Request::class)->get($key, $default);
+	return \app(\Request::class)->get($key, $default);
 }
 
 /**
@@ -1015,7 +1015,7 @@ function request(string $key, mixed $default = null): mixed
  */
 function post(string $key, mixed $default = null): mixed
 {
-	return \app(Request::class)->post($key, $default);
+	return \app(\Request::class)->post($key, $default);
 }
 
 /**
@@ -1030,11 +1030,11 @@ function post(string $key, mixed $default = null): mixed
  */
 function route(string $method, string $path, callable $handle, array $middleware = []): void
 {
-	if (!Application::$isWeb) {
+	if (!\Application::$isWeb) {
 	    return;
 	}
 
-	\app(Router::class)->route($method, $path, $handle, $middleware);
+	\app(\Router::class)->route($method, $path, $handle, $middleware);
 }
 
 /**
@@ -1080,7 +1080,7 @@ function session(string $key, mixed $value = null): mixed
 }
 
 /**
- * This function attempts to resolve the template as a file based on the Essentio\Core\Application's base path.
+ * This function attempts to resolve the template as a file based on the Application's base path.
  * If the resolved path is a file, it extracts the provided data, includes the file, and returns the output.
  * Otherwise, if the template string contains placeholder patterns (using curly braces),
  * it processes the string using regex callbacks to replace placeholders with data values.
@@ -1091,7 +1091,7 @@ function session(string $key, mixed $value = null): mixed
  */
 function render(string $template, array $data = []): string
 {
-	if ($path = Application::fromBase($template)) {
+	if ($path = \Application::fromBase($template)) {
 	    \extract($data);
 	    \ob_start();
 	    include $path;
@@ -1115,11 +1115,11 @@ function render(string $template, array $data = []): string
  *
  * @param string $uri
  * @param int    $status
- * @return Essentio\Core\Response
+ * @return Response
  */
-function redirect(string $uri, int $status = 302): Response
+function redirect(string $uri, int $status = 302): \Response
 {
-	return (new Response)
+	return (new \Response)
 	    ->withStatus($status)
 	    ->withHeaders(['Location' => $uri]);
 }
@@ -1129,13 +1129,13 @@ function redirect(string $uri, int $status = 302): Response
  *
  * @param mixed $data
  * @param int   $status
- * @return Essentio\Core\Response
+ * @return Response
  */
-function json(mixed $data, int $status = 200): Response
+function json(mixed $data, int $status = 200): \Response
 {
-	return (new Response)
+	return (new \Response)
 	    ->withStatus($status)
-	    ->withHeaders(['Content-Type' => 'Essentio\Core\Application/json'])
+	    ->withHeaders(['Content-Type' => 'Application/json'])
 	    ->withBody(\json_encode($data));
 }
 
@@ -1144,11 +1144,11 @@ function json(mixed $data, int $status = 200): Response
  *
  * @param string $text
  * @param int    $status
- * @return Essentio\Core\Response
+ * @return Response
  */
-function text(string $text, int $status = 200): Response
+function text(string $text, int $status = 200): \Response
 {
-	return (new Response)
+	return (new \Response)
 	    ->withStatus($status)
 	    ->withHeaders(['Content-Type' => 'text/plain'])
 	    ->withBody($text);
@@ -1160,11 +1160,11 @@ function text(string $text, int $status = 200): Response
  * @param string $template
  * @param array  $data
  * @param int    $status
- * @return Essentio\Core\Response
+ * @return Response
  */
-function view(string $template, array $data = [], int $status = 200): Response
+function view(string $template, array $data = [], int $status = 200): \Response
 {
-	return (new Response)
+	return (new \Response)
 	    ->withStatus($status)
 	    ->withHeaders(['Content-Type' => 'text/html'])
 	    ->withBody(\render($template, $data));
@@ -1192,7 +1192,7 @@ function log_cli(string $format, ...$values): void
 function logger(string $level, string $message): void
 {
 	$file = \config(\sprintf('log.%s', \strtolower($level)), 'app.log');
-	$file = Application::fromBase(\dirname($file)) . '/' . \basename($file);
+	$file = \Application::fromBase(\dirname($file)) . '/' . \basename($file);
 
 	if (!\is_file($file)) {
 	    \touch($file);
@@ -1212,7 +1212,7 @@ function logger(string $level, string $message): void
  */
 function dump(...$data): void
 {
-	if (!Application::$isWeb) {
+	if (!\Application::$isWeb) {
 	    \var_dump(...$data);
 	    return;
 	}
