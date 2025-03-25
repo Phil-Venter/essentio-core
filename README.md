@@ -32,7 +32,9 @@ If you see something here that you don't like, that's fine. You have two options
 ### One file wonder
 
 I have been enamored with the idea of just uploading a single php file to your server and calling it a day.
-So that's what I attempted to do, you can copy `dist/index.php` to your project root and start coding at the end of it.
+So that's what I attempted to do, you can run the command below in your project root and start coding at the end of it.
+
+get it: `curl -LO https://raw.githubusercontent.com/Phil-Venter/essentio_core/main/dist/index.php`
 
 NOTE: If something is in `src/` is missing from `dist/index.php` you can compile it anew with `composer run-script build`.
 
