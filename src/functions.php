@@ -1,6 +1,7 @@
 <?php
 
 use Essentio\Core\Application;
+use Essentio\Core\Argument;
 use Essentio\Core\Environment;
 use Essentio\Core\Request;
 use Essentio\Core\Response;

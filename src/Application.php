@@ -4,11 +4,8 @@ namespace Essentio\Core;
 
 use Throwable;
 
-use function apcu_enabled;
-use function function_exists;
 use function realpath;
 use function rtrim;
-use function session_set_save_handler;
 use function session_start;
 use function session_status;
 use function sprintf;
