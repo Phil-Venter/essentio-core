@@ -4,7 +4,7 @@
     "type": "library",
     "autoload": {
         "psr-4": {
-            "Essentio\\Core\\": "src/classes"
+            "Essentio\\Core\\": "src/"
         },
         "files": [
             "src/functions.php"

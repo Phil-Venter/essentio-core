@@ -26,7 +26,7 @@ if (!is_dir($dir)) {
 $contents = ["<?php\n"];
 
 foreach ($classes as $class => $file) {
-    $code = file_get_contents(sprintf('%s/../classes/%s', __DIR__, $file));
+    $code = file_get_contents(sprintf('%s/../%s', __DIR__, $file));
     $contents += PhpFile::fromCode($code)->getClasses();
 }
 
