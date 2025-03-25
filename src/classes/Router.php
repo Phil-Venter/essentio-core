@@ -155,7 +155,7 @@ class Router
         $pipeline = $handle;
 
         foreach (\array_reverse($middleware) as $m) {
-            $pipeline = fn($req, $res) => $m($req, $res, $pipeline);
+            $pipeline = fn($req, $res) => \call_user_func($m, $req, $res, $pipeline);
         }
 
         $response = new Response();
