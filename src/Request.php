@@ -84,7 +84,7 @@ class Request
 
         $that->host = $host ?? $_SERVER['SERVER_NAME'];
         $that->port = $port ?? (int) $_SERVER['SERVER_PORT'];
-        $that->path = \parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '/';
+        $that->path = \trim(\parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '', '/');
         $that->parameters = [];
         $that->query = $_GET ?? [];
         $that->headers = \function_exists('getallheaders') ? (\getallheaders() ?: []) : [];
