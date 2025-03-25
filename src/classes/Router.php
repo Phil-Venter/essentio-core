@@ -159,7 +159,7 @@ class Router
         }
 
         $response = new Response();
-        $result = $pipeline($request, $response);
+        $result = \call_user_func($pipeline, $request, $response);
 
         if ($result instanceof Response) {
             return $result;
