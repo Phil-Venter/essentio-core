@@ -81,31 +81,42 @@ class Response
     /**
      * Sends the HTTP response to the client.
      *
-     * This method sets the HTTP status code, outputs all headers, echoes the response body,
-     * and flushes the output buffer. It returns false if headers have already been sent.
-     *
+     * @param bool $soft
      * @return bool
      */
-    public function send(): bool
+    public function send(bool $soft = false): bool
     {
         if (headers_sent()) {
             return false;
         }
 
-        http_response_code($this->status);
+        try {
+            http_response_code($this->status);
 
-        foreach ($this->headers as $key => $value) {
-            if (is_array($value)) {
-                foreach ($value as $i => $v) {
-                    header("$key: $v", $i === 0);
+            foreach ($this->headers as $key => $value) {
+                if (is_array($value)) {
+                    foreach ($value as $i => $v) {
+                        header("$key: $v", $i === 0);
+                    }
+                } else {
+                    header("$key: $value", true);
                 }
-            } else {
-                header("$key: $value", true);
             }
-        }
 
-        echo (string) $this->body;
-        flush();
-        return true;
+            echo (string) $this->body;
+
+            if ($soft) {
+                session_write_close();
+                if (function_exists('fastcgi_finish_request')) {
+                    fastcgi_finish_request();
+                } else {
+                    flush();
+                }
+            }
+
+            return true;
+        } catch (Throwable) {
+            return false;
+        }
     }
 }
