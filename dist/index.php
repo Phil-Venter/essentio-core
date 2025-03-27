@@ -1079,7 +1079,7 @@ function json(mixed $data, int $status = 200): \Response
 {
 	return (new \Response())
 	    ->withStatus($status)
-	    ->withHeaders(["Content-Type" => "Application/json"])
+	    ->withHeaders(["Content-Type" => "application/json"])
 	    ->withBody(\json_encode($data));
 }
 
