@@ -82,7 +82,7 @@ class Response
     /**
      * Sends the HTTP response to the client.
      *
-     * @param bool $soft
+     * @param bool $detachResponse
      * @return bool
      */
     public function send(bool $detachResponse = false): bool
