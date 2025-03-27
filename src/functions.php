@@ -98,28 +98,84 @@ function request(string $key, mixed $default = null): mixed
  * @param mixed  $default
  * @return mixed
  */
-function post(string $key, mixed $default = null): mixed
+function input(string $key, mixed $default = null): mixed
 {
     return app(Request::class)->post($key, $default);
 }
 
 /**
- * Registers a route for the given HTTP method and path with an associated handler and optional middleware.
- * This function is only applicable in a web environment.
- *
- * @param string         $method
  * @param string         $path
  * @param callable       $handle
  * @param list<callable> $middleware
  * @return void
  */
-function route(string $method, string $path, callable $handle, array $middleware = []): void
+function get(string $path, callable $handle, array $middleware = []): void
 {
     if (!Application::$isWeb) {
         return;
     }
 
-    app(Router::class)->route($method, $path, $handle, $middleware);
+    app(Router::class)->add('GET', $path, $handle, $middleware);
+}
+
+/**
+ * @param string         $path
+ * @param callable       $handle
+ * @param list<callable> $middleware
+ * @return void
+ */
+function post(string $path, callable $handle, array $middleware = []): void
+{
+    if (!Application::$isWeb) {
+        return;
+    }
+
+    app(Router::class)->add('POST', $path, $handle, $middleware);
+}
+
+/**
+ * @param string         $path
+ * @param callable       $handle
+ * @param list<callable> $middleware
+ * @return void
+ */
+function put(string $path, callable $handle, array $middleware = []): void
+{
+    if (!Application::$isWeb) {
+        return;
+    }
+
+    app(Router::class)->add('PUT', $path, $handle, $middleware);
+}
+
+/**
+ * @param string         $path
+ * @param callable       $handle
+ * @param list<callable> $middleware
+ * @return void
+ */
+function patch(string $path, callable $handle, array $middleware = []): void
+{
+    if (!Application::$isWeb) {
+        return;
+    }
+
+    app(Router::class)->add('PATCH', $path, $handle, $middleware);
+}
+
+/**
+ * @param string         $path
+ * @param callable       $handle
+ * @param list<callable> $middleware
+ * @return void
+ */
+function delete(string $path, callable $handle, array $middleware = []): void
+{
+    if (!Application::$isWeb) {
+        return;
+    }
+
+    app(Router::class)->add('DELETE', $path, $handle, $middleware);
 }
 
 /**
@@ -336,10 +392,36 @@ function throw_if(bool $condition, Throwable $e): void
 function safe(callable $callback, mixed $default = null): mixed
 {
     try {
-        return $callback();
+        return call_user_func($callback);
     } catch (Throwable $e) {
         logger("error", $e->getMessage());
         return $default;
+    }
+}
+
+/**
+ * @param int $times
+ * @param callable $callback
+ * @param int $sleep
+ * @return mixed
+ * @throws \Throwable
+ */
+function retry(int $times, callable $callback, int $sleep = 0): mixed
+{
+    beginning:
+    $times--;
+
+    try {
+        return call_user_func($callback);
+    } catch (Throwable $e) {
+        error_log($e->getMessage());
+        throw_if($times <= 0, $e);
+
+        if ($sleep) {
+            usleep($sleep * 1000);
+        }
+
+        goto beginning;
     }
 }
 
@@ -382,15 +464,11 @@ function value(mixed $value): mixed
  * @param mixed $callback
  * @return mixed
  */
-function when(bool $condition, mixed $callback): mixed
+function when(bool $condition, mixed $value): mixed
 {
     if (!$condition) {
         return null;
     }
 
-    if (is_callable($callback)) {
-        return call_user_func($callback);
-    }
-
-    return $callback;
+    return value($value);
 }
