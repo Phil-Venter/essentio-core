@@ -84,7 +84,7 @@ class Response
      * @param bool $soft
      * @return bool
      */
-    public function send(bool $soft = false): bool
+    public function send(bool $detachResponse = false): bool
     {
         if (headers_sent()) {
             return false;
@@ -105,10 +105,10 @@ class Response
 
             echo (string) $this->body;
 
-            if ($soft) {
+            if ($detachResponse) {
                 session_write_close();
                 if (function_exists('fastcgi_finish_request')) {
-                    fastcgi_finish_request();
+                    return fastcgi_finish_request();
                 } else {
                     flush();
                 }
