@@ -334,17 +334,24 @@ function log_cli(string $format, ...$values): void
 function logger(string $level, string $message): void
 {
     $level = strtoupper($level);
-
-    $file = env(sprintf("%s_LOG_FILE", $level), "app.log");
-    $file = sprintf("%s/%s", Application::fromBase(dirname($file)), basename($file));
-
-    if (!is_file($file)) {
-        touch($file);
-    }
-
     $msg = sprintf("[%s] [%s]: %s\n", date("Y-m-d H:i:s"), $level, $message);
+    file_put_contents(env(sprintf("%s_LOG_FILE", $level), "app.log"), $msg, FILE_APPEND);
+}
 
-    file_put_contents($file, $msg, FILE_APPEND);
+/**
+ * This function returns a new callable that passes the result of the first callback to the next callback.
+ *
+ * @param callable ...$callbacks
+ * @return callable
+ */
+function pipeline(callable ...$callbacks): callable
+{
+    return function ($argument) use ($callbacks) {
+        foreach ($callbacks as $callback) {
+            $argument = call_user_func($callback, $argument);
+        }
+        return $argument;
+    };
 }
 
 /**
@@ -370,9 +377,9 @@ function dump(...$data): void
  * Evaluates the provided condition, and if it is true, throws the specified exception.
  *
  * @param bool $condition
- * @param \Throwable $e
+ * @param Throwable $e
  * @return void
- * @throws \Throwable
+ * @throws Throwable
  */
 function throw_if(bool $condition, Throwable $e): void
 {
