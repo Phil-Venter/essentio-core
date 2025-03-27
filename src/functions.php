@@ -100,7 +100,7 @@ function request(string $key, mixed $default = null): mixed
  */
 function input(string $key, mixed $default = null): mixed
 {
-    return app(Request::class)->post($key, $default);
+    return app(Request::class)->input($key, $default);
 }
 
 /**
@@ -115,7 +115,7 @@ function get(string $path, callable $handle, array $middleware = []): void
         return;
     }
 
-    app(Router::class)->add('GET', $path, $handle, $middleware);
+    app(Router::class)->add("GET", $path, $handle, $middleware);
 }
 
 /**
@@ -130,7 +130,7 @@ function post(string $path, callable $handle, array $middleware = []): void
         return;
     }
 
-    app(Router::class)->add('POST', $path, $handle, $middleware);
+    app(Router::class)->add("POST", $path, $handle, $middleware);
 }
 
 /**
@@ -145,7 +145,7 @@ function put(string $path, callable $handle, array $middleware = []): void
         return;
     }
 
-    app(Router::class)->add('PUT', $path, $handle, $middleware);
+    app(Router::class)->add("PUT", $path, $handle, $middleware);
 }
 
 /**
@@ -160,7 +160,7 @@ function patch(string $path, callable $handle, array $middleware = []): void
         return;
     }
 
-    app(Router::class)->add('PATCH', $path, $handle, $middleware);
+    app(Router::class)->add("PATCH", $path, $handle, $middleware);
 }
 
 /**
@@ -175,7 +175,7 @@ function delete(string $path, callable $handle, array $middleware = []): void
         return;
     }
 
-    app(Router::class)->add('DELETE', $path, $handle, $middleware);
+    app(Router::class)->add("DELETE", $path, $handle, $middleware);
 }
 
 /**
@@ -421,7 +421,7 @@ function retry(int $times, callable $callback, int $sleep = 0): mixed
     try {
         return call_user_func($callback);
     } catch (Throwable $e) {
-        error_log($e->getMessage());
+        logger("error", $e->getMessage());
         throw_if($times <= 0, $e);
 
         if ($sleep) {
@@ -430,6 +430,9 @@ function retry(int $times, callable $callback, int $sleep = 0): mixed
 
         goto beginning;
     }
+
+    // shut up intelephense
+    return null;
 }
 
 /**

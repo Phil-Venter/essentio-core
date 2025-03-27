@@ -3,6 +3,7 @@
 namespace Essentio\Core;
 
 use Stringable;
+use Throwable;
 
 use function array_merge;
 use function flush;

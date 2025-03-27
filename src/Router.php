@@ -40,7 +40,7 @@ class Router
      * @param list<callable> $middleware
      * @return static
      */
-    public function route(string $method, string $path, callable $handle, array $middleware = []): static
+    public function add(string $method, string $path, callable $handle, array $middleware = []): static
     {
         $path = trim(preg_replace("/\/+/", "/", $path), "/");
 
@@ -124,10 +124,7 @@ class Router
     protected function search(array $trie, array $segments, array $params = []): ?array
     {
         if (empty($segments)) {
-            if (isset($trie[static::LEAFNODE])) {
-                return [$params, $trie[static::LEAFNODE]];
-            }
-            return null;
+            return isset($trie[static::LEAFNODE]) ? [$params, $trie[static::LEAFNODE]] : null;
         }
 
         $segment = array_shift($segments);

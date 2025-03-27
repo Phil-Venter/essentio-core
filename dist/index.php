@@ -516,7 +516,7 @@ class Request
 	 * @param mixed $default
 	 * @return mixed
 	 */
-	public function post(string $key, mixed $default = null): mixed
+	public function input(string $key, mixed $default = null): mixed
 	{
 		return $this->body[$key] ?? $default;
 	}
@@ -592,32 +592,43 @@ class Response
 	/**
 	 * Sends the HTTP response to the client.
 	 *
-	 * This method sets the HTTP status code, outputs all headers, echoes the response body,
-	 * and flushes the output buffer. It returns false if headers have already been sent.
-	 *
+	 * @param bool $soft
 	 * @return bool
 	 */
-	public function send(): bool
+	public function send(bool $detachResponse = false): bool
 	{
 		if (headers_sent()) {
 		    return false;
 		}
 
-		http_response_code($this->status);
+		try {
+		    http_response_code($this->status);
 
-		foreach ($this->headers as $key => $value) {
-		    if (is_array($value)) {
-		        foreach ($value as $i => $v) {
-		            header("$key: $v", $i === 0);
+		    foreach ($this->headers as $key => $value) {
+		        if (is_array($value)) {
+		            foreach ($value as $i => $v) {
+		                header("$key: $v", $i === 0);
+		            }
+		        } else {
+		            header("$key: $value", true);
 		        }
-		    } else {
-		        header("$key: $value", true);
 		    }
-		}
 
-		echo (string) $this->body;
-		flush();
-		return true;
+		    echo (string) $this->body;
+
+		    if ($detachResponse) {
+		        session_write_close();
+		        if (function_exists('fastcgi_finish_request')) {
+		            return fastcgi_finish_request();
+		        } else {
+		            flush();
+		        }
+		    }
+
+		    return true;
+		} catch (Throwable) {
+		    return false;
+		}
 	}
 }
 
@@ -649,7 +660,7 @@ class Router
 	 * @param list<callable> $middleware
 	 * @return static
 	 */
-	public function route(string $method, string $path, callable $handle, array $middleware = []): static
+	public function add(string $method, string $path, callable $handle, array $middleware = []): static
 	{
 		$path = trim(preg_replace("/\/+/", "/", $path), "/");
 
@@ -733,10 +744,7 @@ class Router
 	protected function search(array $trie, array $segments, array $params = []): ?array
 	{
 		if (empty($segments)) {
-		    if (isset($trie[static::LEAFNODE])) {
-		        return [$params, $trie[static::LEAFNODE]];
-		    }
-		    return null;
+		    return isset($trie[static::LEAFNODE]) ? [$params, $trie[static::LEAFNODE]] : null;
 		}
 
 		$segment = array_shift($segments);
@@ -880,28 +888,84 @@ function request(string $key, mixed $default = null): mixed
  * @param mixed  $default
  * @return mixed
  */
-function post(string $key, mixed $default = null): mixed
+function input(string $key, mixed $default = null): mixed
 {
-	return \app(\Request::class)->post($key, $default);
+	return \app(\Request::class)->input($key, $default);
 }
 
 /**
- * Registers a route for the given HTTP method and path with an associated handler and optional middleware.
- * This function is only applicable in a web environment.
- *
- * @param string         $method
  * @param string         $path
  * @param callable       $handle
  * @param list<callable> $middleware
  * @return void
  */
-function route(string $method, string $path, callable $handle, array $middleware = []): void
+function get(string $path, callable $handle, array $middleware = []): void
 {
 	if (!\Application::$isWeb) {
 	    return;
 	}
 
-	\app(\Router::class)->route($method, $path, $handle, $middleware);
+	\app(\Router::class)->add("GET", $path, $handle, $middleware);
+}
+
+/**
+ * @param string         $path
+ * @param callable       $handle
+ * @param list<callable> $middleware
+ * @return void
+ */
+function post(string $path, callable $handle, array $middleware = []): void
+{
+	if (!\Application::$isWeb) {
+	    return;
+	}
+
+	\app(\Router::class)->add("POST", $path, $handle, $middleware);
+}
+
+/**
+ * @param string         $path
+ * @param callable       $handle
+ * @param list<callable> $middleware
+ * @return void
+ */
+function put(string $path, callable $handle, array $middleware = []): void
+{
+	if (!\Application::$isWeb) {
+	    return;
+	}
+
+	\app(\Router::class)->add("PUT", $path, $handle, $middleware);
+}
+
+/**
+ * @param string         $path
+ * @param callable       $handle
+ * @param list<callable> $middleware
+ * @return void
+ */
+function patch(string $path, callable $handle, array $middleware = []): void
+{
+	if (!\Application::$isWeb) {
+	    return;
+	}
+
+	\app(\Router::class)->add("PATCH", $path, $handle, $middleware);
+}
+
+/**
+ * @param string         $path
+ * @param callable       $handle
+ * @param list<callable> $middleware
+ * @return void
+ */
+function delete(string $path, callable $handle, array $middleware = []): void
+{
+	if (!\Application::$isWeb) {
+	    return;
+	}
+
+	\app(\Router::class)->add("DELETE", $path, $handle, $middleware);
 }
 
 /**
@@ -1060,17 +1124,24 @@ function log_cli(string $format, ...$values): void
 function logger(string $level, string $message): void
 {
 	$level = \strtoupper($level);
-
-	$file = \env(\sprintf("%s_LOG_FILE", $level), "app.log");
-	$file = \sprintf("%s/%s", \Application::fromBase(\dirname($file)), \basename($file));
-
-	if (!\is_file($file)) {
-	    \touch($file);
-	}
-
 	$msg = \sprintf("[%s] [%s]: %s\n", \date("Y-m-d H:i:s"), $level, $message);
+	\file_put_contents(\env(\sprintf("%s_LOG_FILE", $level), "app.log"), $msg, \FILE_APPEND);
+}
 
-	\file_put_contents($file, $msg, \FILE_APPEND);
+/**
+ * This function returns a new callable that passes the result of the first callback to the next callback.
+ *
+ * @param callable ...$callbacks
+ * @return callable
+ */
+function pipeline(callable ...$callbacks): callable
+{
+	return function ($argument) use ($callbacks) {
+	    foreach ($callbacks as $callback) {
+	        $argument = \call_user_func($callback, $argument);
+	    }
+	    return $argument;
+	};
 }
 
 /**
@@ -1096,9 +1167,9 @@ function dump(...$data): void
  * Evaluates the provided condition, and if it is true, throws the specified exception.
  *
  * @param bool $condition
- * @param \Throwable $e
+ * @param Throwable $e
  * @return void
- * @throws \Throwable
+ * @throws Throwable
  */
 function throw_if(bool $condition, \Throwable $e): void
 {
@@ -1118,11 +1189,40 @@ function throw_if(bool $condition, \Throwable $e): void
 function safe(callable $callback, mixed $default = null): mixed
 {
 	try {
-	    return $callback();
+	    return \call_user_func($callback);
 	} catch (\Throwable $e) {
 	    \logger("error", $e->getMessage());
 	    return $default;
 	}
+}
+
+/**
+ * @param int $times
+ * @param callable $callback
+ * @param int $sleep
+ * @return mixed
+ * @throws \Throwable
+ */
+function retry(int $times, callable $callback, int $sleep = 0): mixed
+{
+	beginning:
+	$times--;
+
+	try {
+	    return \call_user_func($callback);
+	} catch (\Throwable $e) {
+	    \logger("error", $e->getMessage());
+	    \throw_if($times <= 0, $e);
+
+	    if ($sleep) {
+	        \usleep($sleep * 1000);
+	    }
+
+	    goto beginning;
+	}
+
+	// shut up intelephense
+	return \null;
 }
 
 /**
@@ -1164,15 +1264,11 @@ function value(mixed $value): mixed
  * @param mixed $callback
  * @return mixed
  */
-function when(bool $condition, mixed $callback): mixed
+function when(bool $condition, mixed $value): mixed
 {
 	if (!$condition) {
 	    return \null;
 	}
 
-	if (\is_callable($callback)) {
-	    return \call_user_func($callback);
-	}
-
-	return $callback;
+	return \value($value);
 }

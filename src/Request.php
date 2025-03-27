@@ -164,7 +164,7 @@ class Request
      * @param mixed $default
      * @return mixed
      */
-    public function post(string $key, mixed $default = null): mixed
+    public function input(string $key, mixed $default = null): mixed
     {
         return $this->body[$key] ?? $default;
     }
