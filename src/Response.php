@@ -80,7 +80,9 @@ class Response
     }
 
     /**
-     * Sends the HTTP response to the client.
+     * Sends the HTTP response to the client. Optionally you can run it immediatly in detached mode, meaning it get's
+     * sent to the user and you can continue a long running task.
+     * NOTE: session data cannot be modified after response is sent in detached mode.
      *
      * @param bool $detachResponse
      * @return bool

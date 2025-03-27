@@ -590,9 +590,11 @@ class Response
 	}
 
 	/**
-	 * Sends the HTTP response to the client.
+	 * Sends the HTTP response to the client. Optionally you can run it immediatly in detached mode, meaning it get's
+	 * sent to the user and you can continue a long running task.
+	 * NOTE: session data cannot be modified after response is sent in detached mode.
 	 *
-	 * @param bool $soft
+	 * @param bool $detachResponse
 	 * @return bool
 	 */
 	public function send(bool $detachResponse = false): bool
@@ -724,7 +726,7 @@ class Router
 
 		[$params, $middleware, $handle] = $methods[$request->method];
 
-		$req = $request->withParameters(array_combine($params, $values));
+		$req = $request->setParameters(array_combine($params, $values));
 		return $this->call($req, $middleware, $handle);
 	}
 
@@ -798,18 +800,6 @@ class Router
 }
 
 /**
- * This function fetches an environment variable from the Environment instance.
- *
- * @param string $key
- * @param mixed  $default
- * @return mixed
- */
-function env(string $key, mixed $default = null): mixed
-{
-	return \app(\Environment::class)->get($key, $default);
-}
-
-/**
  * If no identifier is provided, returns the container instance.
  *
  * @template T of object
@@ -819,6 +809,18 @@ function env(string $key, mixed $default = null): mixed
 function app(?string $id = null): object
 {
 	return $id ? \Application::$container->get($id) : \Application::$container;
+}
+
+/**
+ * This function fetches an environment variable from the Environment instance.
+ *
+ * @param string $key
+ * @param mixed  $default
+ * @return mixed
+ */
+function env(string $key, mixed $default = null): mixed
+{
+	return \app(\Environment::class)->get($key, $default);
 }
 
 /**
@@ -894,6 +896,8 @@ function input(string $key, mixed $default = null): mixed
 }
 
 /**
+ * Create a GET method route
+ *
  * @param string         $path
  * @param callable       $handle
  * @param list<callable> $middleware
@@ -909,6 +913,8 @@ function get(string $path, callable $handle, array $middleware = []): void
 }
 
 /**
+ * Create a POST method route
+ *
  * @param string         $path
  * @param callable       $handle
  * @param list<callable> $middleware
@@ -924,6 +930,8 @@ function post(string $path, callable $handle, array $middleware = []): void
 }
 
 /**
+ * Create a PUT method route
+ *
  * @param string         $path
  * @param callable       $handle
  * @param list<callable> $middleware
@@ -939,6 +947,8 @@ function put(string $path, callable $handle, array $middleware = []): void
 }
 
 /**
+ * Create a PATCH method route
+ *
  * @param string         $path
  * @param callable       $handle
  * @param list<callable> $middleware
@@ -954,6 +964,8 @@ function patch(string $path, callable $handle, array $middleware = []): void
 }
 
 /**
+ * Create a DELETE method route
+ *
  * @param string         $path
  * @param callable       $handle
  * @param list<callable> $middleware
@@ -1129,22 +1141,6 @@ function logger(string $level, string $message): void
 }
 
 /**
- * This function returns a new callable that passes the result of the first callback to the next callback.
- *
- * @param callable ...$callbacks
- * @return callable
- */
-function pipeline(callable ...$callbacks): callable
-{
-	return function ($argument) use ($callbacks) {
-	    foreach ($callbacks as $callback) {
-	        $argument = \call_user_func($callback, $argument);
-	    }
-	    return $argument;
-	};
-}
-
-/**
  * In CLI mode, the data is dumped using var_dump.
  * In a web environment, the output is wrapped in <pre> tags.
  *
@@ -1164,39 +1160,24 @@ function dump(...$data): void
 }
 
 /**
- * Evaluates the provided condition, and if it is true, throws the specified exception.
+ * This function returns a new callable that passes the result of the first callback to the next callback.
  *
- * @param bool $condition
- * @param Throwable $e
- * @return void
- * @throws Throwable
+ * @param callable ...$callbacks
+ * @return callable
  */
-function throw_if(bool $condition, \Throwable $e): void
+function pipeline(callable ...$callbacks): callable
 {
-	if ($condition) {
-	    throw $e;
-	}
+	return function ($argument) use ($callbacks) {
+	    foreach ($callbacks as $callback) {
+	        $argument = \call_user_func($callback, $argument);
+	    }
+	    return $argument;
+	};
 }
 
 /**
- * This function attempts to execute the provided callable. If any exception or error is thrown,
- * it logs the error message using the error log mechanism and returns the default value.
+ * Retry the callable passed x amount of times with an optional sleep, if it fails all, throw the last error.
  *
- * @param callable $callback
- * @param mixed    $default
- * @return mixed
- */
-function safe(callable $callback, mixed $default = null): mixed
-{
-	try {
-	    return \call_user_func($callback);
-	} catch (\Throwable $e) {
-	    \logger("error", $e->getMessage());
-	    return $default;
-	}
-}
-
-/**
  * @param int $times
  * @param callable $callback
  * @param int $sleep
@@ -1226,6 +1207,24 @@ function retry(int $times, callable $callback, int $sleep = 0): mixed
 }
 
 /**
+ * This function attempts to execute the provided callable. If any exception or error is thrown,
+ * it logs the error message using the error log mechanism and returns the default value.
+ *
+ * @param callable $callback
+ * @param mixed    $default
+ * @return mixed
+ */
+function safe(callable $callback, mixed $default = null): mixed
+{
+	try {
+	    return \call_user_func($callback);
+	} catch (\Throwable $e) {
+	    \logger("error", $e->getMessage());
+	    return $default;
+	}
+}
+
+/**
  * This function allows you to perform an operation on the value and then
  * return the original value.
  *
@@ -1237,6 +1236,21 @@ function tap(mixed $value, callable $callback): mixed
 {
 	$callback($value);
 	return $value;
+}
+
+/**
+ * Evaluates the provided condition, and if it is true, throws the specified exception.
+ *
+ * @param bool $condition
+ * @param Throwable $e
+ * @return void
+ * @throws Throwable
+ */
+function throw_if(bool $condition, \Throwable $e): void
+{
+	if ($condition) {
+	    throw $e;
+	}
 }
 
 /**

@@ -104,7 +104,7 @@ class Router
 
         [$params, $middleware, $handle] = $methods[$request->method];
 
-        $req = $request->withParameters(array_combine($params, $values));
+        $req = $request->setParameters(array_combine($params, $values));
         return $this->call($req, $middleware, $handle);
     }
 
