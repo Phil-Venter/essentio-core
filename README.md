@@ -217,11 +217,11 @@ These functions register routes—only active in web mode.
 Middleware is just a glorified `Closure`
 ```php
 function (Request $request, Response $response, callable $next): Response {
-    if ($request->scheme === 'http') {
-        return $response->withStatus(400)->addHeaders(['X-INSECURE' => true])->withBody('');
+    if (!session('auth_user')) {
+        return redirect('/');
     }
 
-    $next($request, $response);
+    return $next($request, $response);
 }
 ```
 
@@ -255,7 +255,21 @@ function (Request $request, Response $response, callable $next): Response {
   Renders a template file (if found) or processes an inline template by replacing placeholders with data.
 - **Example:**
   ```php
+  // template file (it's just php)
   $html = render('views/dashboard.php', ['user' => $currentUser]);
+
+  // inline template
+  $html = render(<<<'HTML'
+  <section>
+      <div class="title">{{ username }}</div>
+      {{{ card_body }}}
+  </section>
+  HTML, [
+    'username' => $currentUser->username,
+    'card_body' => render('/views/card_body.php', [
+        'user' => $currentUser
+    ]),
+  ]);
   ```
 
 #### `redirect(string $uri, int $status = 302): Response`
