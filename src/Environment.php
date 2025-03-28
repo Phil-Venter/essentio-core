@@ -2,12 +2,10 @@
 
 namespace Essentio\Core;
 
-use function count;
 use function explode;
 use function file;
 use function file_exists;
 use function is_numeric;
-use function str_contains;
 use function strtolower;
 use function substr;
 use function trim;

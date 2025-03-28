@@ -19,6 +19,6 @@
     },
     "minimum-stability": "dev",
     "scripts": {
-        "build": "php src/scripts/build.php"
+        "build": "php scripts/build.php"
     }
 }

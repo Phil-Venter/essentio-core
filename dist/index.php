@@ -109,145 +109,6 @@ class Application
 }
 
 /**
- * Handles the loading and retrieval of environment variables from a file.
- * The file is parsed line-by-line, skipping comments and empty lines, while
- * converting the configuration into an associative array.
- */
-class Environment
-{
-	/** @var array<string, mixed> */
-	public protected(set) array $data = [];
-
-	/**
-	 * Loads environment variables from a file.
-	 *
-	 * Reads a file line-by-line, ignoring lines that are empty or start with a '#'.
-	 * Each valid line is parsed into a key-value pair. Values are trimmed, unquoted if necessary,
-	 * and typecasted to boolean, null, or numeric values when applicable.
-	 *
-	 * @param string $file
-	 * @return static
-	 */
-	public function load(string $file): static
-	{
-		if (!file_exists($file)) {
-		    return $this;
-		}
-
-		$lines = file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
-
-		foreach ($lines as $line) {
-		    if (trim($line)[0] === '#') {
-		        continue;
-		    }
-
-		    [$name, $value] = explode('=', $line, 2);
-		    $name = trim($name);
-		    $value = trim($value);
-
-		    if (preg_match('/^(["\']).*\1$/', $value)) {
-		        $value = substr($value, 1, -1);
-		    } else {
-		        $lower = strtolower($value);
-		        $value = match (true) {
-		            $lower === 'true'  => true,
-		            $lower === 'false' => false,
-		            $lower === 'null'  => null,
-		            is_numeric($value) => preg_match('/[e\.]/', $value) ? (float)$value : (int)$value,
-		            default            => $value,
-		        };
-		    }
-
-		    $this->data[$name] = $value;
-		}
-
-		return $this;
-	}
-
-	/**
-	 * Retrieves an environment variable.
-	 *
-	 * Returns the value of the specified environment variable from the loaded data.
-	 * If the variable is not found, the method returns the provided default value.
-	 *
-	 * @param string $key
-	 * @param mixed  $default
-	 * @return mixed
-	 */
-	public function get(string $key, mixed $default = null): mixed
-	{
-		return $this->data[$key] ?? $default;
-	}
-}
-
-/**
- * A simple dependency injection container that allows binding of
- * factories to service identifiers and resolves them when needed.
- */
-class Container
-{
-	/** @var array<string, object{factory: callable, once: bool}> */
-	protected array $bindings = [];
-
-	/**
-	 * @template T of object
-	 * @var array<class-string<T>, T>
-	 */
-	protected array $cache = [];
-
-	/**
-	 * Bind a service to the container.
-	 *
-	 * Registers a service with a unique identifier and a factory callable
-	 * responsible for creating the service instance.
-	 *
-	 * @template T of object
-	 * @param class-string<T>    $id
-	 * @param callable(static):T $factory
-	 * @return object{factory: callable, once: bool}
-	 */
-	public function bind(string $id, callable $factory): object
-	{
-		return $this->bindings[$id] = new class ($factory) {
-		    public bool $once = false;
-		    public function __construct(public $factory) {}
-		};
-	}
-
-	/**
-	 * Retrieve a service from the container.
-	 *
-	 * Resolves and returns a service based on its identifier. If the service
-	 * has been previously resolved and marked as a singleton (via the 'once' flag),
-	 * the cached instance is returned.
-	 *
-	 * @template T of object
-	 * @param  class-string<T>|string $id
-	 * @return ($id is class-string<T> ? T : object)
-	 * @throws \RuntimeException
-	 */
-	public function get(string $id): object
-	{
-		if (!isset($this->bindings[$id])) {
-		    throw new RuntimeException(sprintf("No binding for %s exists", $id));
-		}
-
-		if (isset($this->cache[$id])) {
-		    return $this->cache[$id];
-		}
-
-		$binding = $this->bindings[$id];
-		$resolved = call_user_func($binding->factory, $this);
-
-		if ($binding->once) {
-		    $this->cache[$id] = $resolved;
-		}
-
-		return $resolved;
-	}
-}
-
-/**
  * Parses and holds command-line arguments including the command,
  * named parameters, and positional parameters.
  */
@@ -354,6 +215,145 @@ class Argument
 		}
 
 		return $this->named[$key] ?? $default;
+	}
+}
+
+/**
+ * A simple dependency injection container that allows binding of
+ * factories to service identifiers and resolves them when needed.
+ */
+class Container
+{
+	/** @var array<string, object{factory: callable, once: bool}> */
+	protected array $bindings = [];
+
+	/**
+	 * @template T of object
+	 * @var array<class-string<T>, T>
+	 */
+	protected array $cache = [];
+
+	/**
+	 * Bind a service to the container.
+	 *
+	 * Registers a service with a unique identifier and a factory callable
+	 * responsible for creating the service instance.
+	 *
+	 * @template T of object
+	 * @param class-string<T>    $id
+	 * @param callable(static):T $factory
+	 * @return object{factory: callable, once: bool}
+	 */
+	public function bind(string $id, callable $factory): object
+	{
+		return $this->bindings[$id] = new class ($factory) {
+		    public bool $once = false;
+		    public function __construct(public $factory) {}
+		};
+	}
+
+	/**
+	 * Retrieve a service from the container.
+	 *
+	 * Resolves and returns a service based on its identifier. If the service
+	 * has been previously resolved and marked as a singleton (via the 'once' flag),
+	 * the cached instance is returned.
+	 *
+	 * @template T of object
+	 * @param  class-string<T>|string $id
+	 * @return ($id is class-string<T> ? T : object)
+	 * @throws \RuntimeException
+	 */
+	public function get(string $id): object
+	{
+		if (!isset($this->bindings[$id])) {
+		    throw new RuntimeException(sprintf("No binding for %s exists", $id));
+		}
+
+		if (isset($this->cache[$id])) {
+		    return $this->cache[$id];
+		}
+
+		$binding = $this->bindings[$id];
+		$resolved = call_user_func($binding->factory, $this);
+
+		if ($binding->once) {
+		    $this->cache[$id] = $resolved;
+		}
+
+		return $resolved;
+	}
+}
+
+/**
+ * Handles the loading and retrieval of environment variables from a file.
+ * The file is parsed line-by-line, skipping comments and empty lines, while
+ * converting the configuration into an associative array.
+ */
+class Environment
+{
+	/** @var array<string, mixed> */
+	public protected(set) array $data = [];
+
+	/**
+	 * Loads environment variables from a file.
+	 *
+	 * Reads a file line-by-line, ignoring lines that are empty or start with a '#'.
+	 * Each valid line is parsed into a key-value pair. Values are trimmed, unquoted if necessary,
+	 * and typecasted to boolean, null, or numeric values when applicable.
+	 *
+	 * @param string $file
+	 * @return static
+	 */
+	public function load(string $file): static
+	{
+		if (!file_exists($file)) {
+		    return $this;
+		}
+
+		$lines = file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+
+		foreach ($lines as $line) {
+		    if (trim($line)[0] === '#') {
+		        continue;
+		    }
+
+		    [$name, $value] = explode('=', $line, 2);
+		    $name = trim($name);
+		    $value = trim($value);
+
+		    if (preg_match('/^(["\']).*\1$/', $value)) {
+		        $value = substr($value, 1, -1);
+		    } else {
+		        $lower = strtolower($value);
+		        $value = match (true) {
+		            $lower === 'true'  => true,
+		            $lower === 'false' => false,
+		            $lower === 'null'  => null,
+		            is_numeric($value) => preg_match('/[e\.]/', $value) ? (float)$value : (int)$value,
+		            default            => $value,
+		        };
+		    }
+
+		    $this->data[$name] = $value;
+		}
+
+		return $this;
+	}
+
+	/**
+	 * Retrieves an environment variable.
+	 *
+	 * Returns the value of the specified environment variable from the loaded data.
+	 * If the variable is not found, the method returns the provided default value.
+	 *
+	 * @param string $key
+	 * @param mixed  $default
+	 * @return mixed
+	 */
+	public function get(string $key, mixed $default = null): mixed
+	{
+		return $this->data[$key] ?? $default;
 	}
 }
 
@@ -810,7 +810,7 @@ class Router
  */
 function app(?string $id = null): object
 {
-	return $id ? \Application::$container->get($id) : \Application::$container;
+	return $id ? Application::$container->get($id) : Application::$container;
 }
 
 /**
@@ -822,7 +822,7 @@ function app(?string $id = null): object
  */
 function env(string $key, mixed $default = null): mixed
 {
-	return \app(\Environment::class)->get($key, $default);
+	return \app(Environment::class)->get($key, $default);
 }
 
 /**
@@ -846,7 +846,7 @@ function bind(string $id, callable $factory): object
  */
 function arg(int|string $key, mixed $default = null): string|array|null
 {
-	return \app(\Argument::class)->get($key, $default);
+	return \app(Argument::class)->get($key, $default);
 }
 
 /**
@@ -858,11 +858,11 @@ function arg(int|string $key, mixed $default = null): string|array|null
  */
 function command(string $name, callable $handle): void
 {
-	if (\Application::$isWeb) {
+	if (Application::$isWeb) {
 	    return;
 	}
 
-	$argv = \app(\Argument::class);
+	$argv = \app(Argument::class);
 
 	if ($argv->command !== $name) {
 	    return;
@@ -882,7 +882,7 @@ function command(string $name, callable $handle): void
  */
 function request(string $key, mixed $default = null): mixed
 {
-	return \app(\Request::class)->get($key, $default);
+	return \app(Request::class)->get($key, $default);
 }
 
 /**
@@ -894,7 +894,7 @@ function request(string $key, mixed $default = null): mixed
  */
 function input(string $key, mixed $default = null): mixed
 {
-	return \app(\Request::class)->input($key, $default);
+	return \app(Request::class)->input($key, $default);
 }
 
 /**
@@ -907,11 +907,11 @@ function input(string $key, mixed $default = null): mixed
  */
 function get(string $path, callable $handle, array $middleware = []): void
 {
-	if (!\Application::$isWeb) {
+	if (!Application::$isWeb) {
 	    return;
 	}
 
-	\app(\Router::class)->add("GET", $path, $handle, $middleware);
+	\app(Router::class)->add("GET", $path, $handle, $middleware);
 }
 
 /**
@@ -924,11 +924,11 @@ function get(string $path, callable $handle, array $middleware = []): void
  */
 function post(string $path, callable $handle, array $middleware = []): void
 {
-	if (!\Application::$isWeb) {
+	if (!Application::$isWeb) {
 	    return;
 	}
 
-	\app(\Router::class)->add("POST", $path, $handle, $middleware);
+	\app(Router::class)->add("POST", $path, $handle, $middleware);
 }
 
 /**
@@ -941,11 +941,11 @@ function post(string $path, callable $handle, array $middleware = []): void
  */
 function put(string $path, callable $handle, array $middleware = []): void
 {
-	if (!\Application::$isWeb) {
+	if (!Application::$isWeb) {
 	    return;
 	}
 
-	\app(\Router::class)->add("PUT", $path, $handle, $middleware);
+	\app(Router::class)->add("PUT", $path, $handle, $middleware);
 }
 
 /**
@@ -958,11 +958,11 @@ function put(string $path, callable $handle, array $middleware = []): void
  */
 function patch(string $path, callable $handle, array $middleware = []): void
 {
-	if (!\Application::$isWeb) {
+	if (!Application::$isWeb) {
 	    return;
 	}
 
-	\app(\Router::class)->add("PATCH", $path, $handle, $middleware);
+	\app(Router::class)->add("PATCH", $path, $handle, $middleware);
 }
 
 /**
@@ -975,11 +975,11 @@ function patch(string $path, callable $handle, array $middleware = []): void
  */
 function delete(string $path, callable $handle, array $middleware = []): void
 {
-	if (!\Application::$isWeb) {
+	if (!Application::$isWeb) {
 	    return;
 	}
 
-	\app(\Router::class)->add("DELETE", $path, $handle, $middleware);
+	\app(Router::class)->add("DELETE", $path, $handle, $middleware);
 }
 
 /**
@@ -1036,7 +1036,7 @@ function session(string $key, mixed $value = null): mixed
  */
 function render(string $template, array $data = []): string
 {
-	if ($path = \Application::fromBase($template)) {
+	if ($path = Application::fromBase($template)) {
 	    \extract($data);
 	    \ob_start();
 	    include $path;
@@ -1065,9 +1065,9 @@ function render(string $template, array $data = []): string
  * @param int    $status
  * @return Response
  */
-function redirect(string $uri, int $status = 302): \Response
+function redirect(string $uri, int $status = 302): Response
 {
-	return (new \Response())->withStatus($status)->withHeaders(["Location" => $uri]);
+	return (new Response())->withStatus($status)->withHeaders(["Location" => $uri]);
 }
 
 /**
@@ -1077,9 +1077,9 @@ function redirect(string $uri, int $status = 302): \Response
  * @param int   $status
  * @return Response
  */
-function json(mixed $data, int $status = 200): \Response
+function json(mixed $data, int $status = 200): Response
 {
-	return (new \Response())
+	return (new Response())
 	    ->withStatus($status)
 	    ->withHeaders(["Content-Type" => "application/json"])
 	    ->withBody(\json_encode($data));
@@ -1092,9 +1092,9 @@ function json(mixed $data, int $status = 200): \Response
  * @param int    $status
  * @return Response
  */
-function text(string $text, int $status = 200): \Response
+function text(string $text, int $status = 200): Response
 {
-	return (new \Response())
+	return (new Response())
 	    ->withStatus($status)
 	    ->withHeaders(["Content-Type" => "text/plain"])
 	    ->withBody($text);
@@ -1108,9 +1108,9 @@ function text(string $text, int $status = 200): \Response
  * @param int    $status
  * @return Response
  */
-function view(string $template, array $data = [], int $status = 200): \Response
+function view(string $template, array $data = [], int $status = 200): Response
 {
-	return (new \Response())
+	return (new Response())
 	    ->withStatus($status)
 	    ->withHeaders(["Content-Type" => "text/html"])
 	    ->withBody(\render($template, $data));
@@ -1151,7 +1151,7 @@ function logger(string $level, string $message): void
  */
 function dump(...$data): void
 {
-	if (!\Application::$isWeb) {
+	if (!Application::$isWeb) {
 	    \var_dump(...$data);
 	    return;
 	}
