@@ -337,7 +337,11 @@ function (Request $request, Response $response, callable $next): Response {
   Combines multiple callbacks into a single callable that processes an argument through each callback sequentially.
 - **Example:**
   ```php
-  $process = pipeline(fn($x) => $x + 2, fn($x) => $x * 3);
+  $process = pipeline(
+    fn($x) => $x + 2,
+    fn($x) => $x * 3
+  );
+
   echo $process(4); // Outputs: 18
   ```
 
