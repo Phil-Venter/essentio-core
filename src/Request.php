@@ -131,7 +131,7 @@ class Request
      * @param array<string, mixed> $parameters
      * @return static
      */
-    public function withParameters(array $parameters): static
+    public function setParameters(array $parameters): static
     {
         $this->parameters = $parameters;
         return $this;

@@ -32,44 +32,41 @@ class Environment
      * @param string $file
      * @return static
      */
-    public function load(string $file): static
-    {
-        if (!file_exists($file)) {
-            return $this;
-        }
+     public function load(string $file): static
+	{
+		if (!file_exists($file)) {
+		    return $this;
+		}
 
-        foreach (file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] as $line) {
-            if (trim($line)[0] === '#') {
-                continue;
-            }
+		$lines = file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
 
-            $parts = explode('=', $line, 2);
+		foreach ($lines as $line) {
+		    if (trim($line)[0] === '#') {
+		        continue;
+		    }
 
-            if (count($parts) !== 2) {
-                continue;
-            }
+		    [$name, $value] = explode('=', $line, 2);
+		    $name = trim($name);
+		    $value = trim($value);
 
-            $name = trim($parts[0]);
-            $value = trim($parts[1]);
+		    if (preg_match('/^(["\']).*\1$/', $value)) {
+		        $value = substr($value, 1, -1);
+		    } else {
+		        $lower = strtolower($value);
+		        $value = match (true) {
+		            $lower === 'true'  => true,
+		            $lower === 'false' => false,
+		            $lower === 'null'  => null,
+		            is_numeric($value) => preg_match('/[e\.]/', $value) ? (float)$value : (int)$value,
+		            default            => $value,
+		        };
+		    }
 
-            if (isset($value[0]) && (($value[0] === '"' && substr($value, -1) === '"') || ($value[0] === "'" && substr($value, -1) === "'"))) {
-                $value = substr($value, 1, -1);
-            } else {
-                $lower = strtolower($value);
-                $value = match (true) {
-                    $lower === 'true'  => true,
-                    $lower === 'false' => false,
-                    $lower === 'null'  => null,
-                    is_numeric($value) => (str_contains($value, 'e') || str_contains($value, '.')) ? (float)$value : (int)$value,
-                    default            => $value,
-                };
-            }
+		    $this->data[$name] = $value;
+		}
 
-            $this->data[$name] = $value;
-        }
-
-        return $this;
-    }
+		return $this;
+	}
 
     /**
      * Retrieves an environment variable.

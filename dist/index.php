@@ -134,21 +134,18 @@ class Environment
 		    return $this;
 		}
 
-		foreach (file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] as $line) {
+		$lines = file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+
+		foreach ($lines as $line) {
 		    if (trim($line)[0] === '#') {
 		        continue;
 		    }
 
-		    $parts = explode('=', $line, 2);
+		    [$name, $value] = explode('=', $line, 2);
+		    $name = trim($name);
+		    $value = trim($value);
 
-		    if (count($parts) !== 2) {
-		        continue;
-		    }
-
-		    $name = trim($parts[0]);
-		    $value = trim($parts[1]);
-
-		    if (isset($value[0]) && (($value[0] === '"' && substr($value, -1) === '"') || ($value[0] === "'" && substr($value, -1) === "'"))) {
+		    if (preg_match('/^(["\']).*\1$/', $value)) {
 		        $value = substr($value, 1, -1);
 		    } else {
 		        $lower = strtolower($value);
@@ -156,7 +153,7 @@ class Environment
 		            $lower === 'true'  => true,
 		            $lower === 'false' => false,
 		            $lower === 'null'  => null,
-		            is_numeric($value) => (str_contains($value, 'e') || str_contains($value, '.')) ? (float)$value : (int)$value,
+		            is_numeric($value) => preg_match('/[e\.]/', $value) ? (float)$value : (int)$value,
 		            default            => $value,
 		        };
 		    }
@@ -483,7 +480,7 @@ class Request
 	 * @param array<string, mixed> $parameters
 	 * @return static
 	 */
-	public function withParameters(array $parameters): static
+	public function setParameters(array $parameters): static
 	{
 		$this->parameters = $parameters;
 		return $this;
