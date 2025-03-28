@@ -504,17 +504,22 @@ class Request
 	}
 
 	/**
-	 * Retrieves a value from the parsed request body.
+	 * Extracts a specific parameter from the incoming request data.
 	 *
-	 * This method checks the request body for the specified key and returns its value.
-	 * If the key is not found within the body, the provided default value is returned.
+	 * This function dynamically selects the data source based on the HTTP method used. For methods typically devoid
+	 * of a payload (e.g., GET, HEAD, OPTIONS, TRACE), it pulls the value from the query string. For methods expected
+	 * to contain a body (such as POST, PUT, or PATCH), it retrieves the value from the request payload.
+	 * If the parameter is absent in the relevant dataset, the function returns the specified fallback.
 	 *
 	 * @param string $key
-	 * @param mixed $default
+	 * @param mixed  $default
 	 * @return mixed
 	 */
 	public function input(string $key, mixed $default = null): mixed
 	{
+		if (in_array($this->method, ['GET', 'HEAD', 'OPTIONS', 'TRACE'])) {
+		    return $this->query[$key] ?? $default;
+		}
 		return $this->body[$key] ?? $default;
 	}
 }
