@@ -99,10 +99,10 @@ class Response
             foreach ($this->headers as $key => $value) {
                 if (is_array($value)) {
                     foreach ($value as $i => $v) {
-                        header("$key: $v", $i === 0);
+                        header(sprintf('%s: %s', $key, $v), $i === 0);
                     }
                 } else {
-                    header("$key: $value", true);
+                    header(sprintf('%s: %s', $key, $value), true);
                 }
             }
 

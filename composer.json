@@ -15,10 +15,16 @@
     },
     "require-dev": {
         "nette/php-generator": "^4.1",
-        "nikic/php-parser": "^5.4"
+        "nikic/php-parser": "^5.4",
+        "pestphp/pest": "3.x-dev"
     },
     "minimum-stability": "dev",
     "scripts": {
         "build": "php scripts/build.php"
+    },
+    "config": {
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
     }
 }

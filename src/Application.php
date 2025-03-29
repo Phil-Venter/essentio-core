@@ -2,6 +2,7 @@
 
 namespace Essentio\Core;
 
+use RuntimeException;
 use Throwable;
 
 use function realpath;
@@ -94,7 +95,7 @@ class Application
     public static function run(): void
     {
         if (!static::$isWeb) {
-            return;
+            throw new RuntimeException("CLI mode not supported in run()");
         }
 
         try {

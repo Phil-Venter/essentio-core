@@ -33,13 +33,17 @@ class Argument
      *
      * @return static
      */
-    public static function init(): static
+    public static function init(?array $argv = null): static
     {
-        $argv = $_SERVER['argv'] ?? [];
-
-        array_shift($argv);
+        $argv ??= $_SERVER['argv'] ?? [];
 
         $that = new static;
+
+        if (empty($argv)) {
+            return $that;
+        }
+
+        array_shift($argv);
 
         while ($arg = array_shift($argv)) {
             if ($arg === '--') {

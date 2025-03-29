@@ -84,7 +84,7 @@ class Application
 	public static function run(): void
 	{
 		if (!static::$isWeb) {
-		    return;
+		    throw new RuntimeException("CLI mode not supported in run()");
 		}
 
 		try {
@@ -132,13 +132,17 @@ class Argument
 	 *
 	 * @return static
 	 */
-	public static function init(): static
+	public static function init(?array $argv = null): static
 	{
-		$argv = $_SERVER['argv'] ?? [];
-
-		array_shift($argv);
+		$argv ??= $_SERVER['argv'] ?? [];
 
 		$that = new static;
+
+		if (empty($argv)) {
+		    return $that;
+		}
+
+		array_shift($argv);
 
 		while ($arg = array_shift($argv)) {
 		    if ($arg === '--') {
@@ -419,13 +423,22 @@ class Request
 	 *
 	 * @return static
 	 */
-	public static function init(): static
+	public static function init(
+		?array $server = null,
+		?array $get = null,
+		?array $post = null,
+		?array $cookie = null,
+		?array $files = null,
+		?string $body = null,
+	): static
 	{
+		$server ??= $_SERVER ?? [];
+
 		$that = new static;
 
-		$that->method = $_POST['_method'] ?? $_SERVER['REQUEST_METHOD'] ?? 'GET';
+		$that->method = ($post ?? $_POST ?? [])['_method'] ?? $server['REQUEST_METHOD'] ?? 'GET';
 
-		if (filter_var($_SERVER['HTTPS'] ?? '', FILTER_VALIDATE_BOOLEAN)) {
+		if (filter_var($server['HTTPS'] ?? '', FILTER_VALIDATE_BOOLEAN)) {
 		    $that->scheme = 'https';
 		} else {
 		    $that->scheme = 'http';
@@ -434,26 +447,26 @@ class Request
 		$host = null;
 		$port = null;
 
-		if (isset($_SERVER['HTTP_HOST'])) {
-		    if (str_contains($_SERVER['HTTP_HOST'], ':')) {
-		        [$host, $port] = explode(':', $_SERVER['HTTP_HOST'], 2);
+		if (isset($server['HTTP_HOST'])) {
+		    if (str_contains($server['HTTP_HOST'], ':')) {
+		        [$host, $port] = explode(':', $server['HTTP_HOST'], 2);
 		        $port = (int) $port;
 		    } else {
-		        $host = $_SERVER['HTTP_HOST'];
+		        $host = $server['HTTP_HOST'];
 		        $port = $that->scheme === 'https' ? 443 : 80;
 		    }
 		}
 
-		$that->host = $host ?? $_SERVER['SERVER_NAME'];
-		$that->port = $port ?? (int) $_SERVER['SERVER_PORT'];
-		$that->path = trim(parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '', '/');
+		$that->host = $host ?? $server['SERVER_NAME'] ?? 'localhost';
+		$that->port = (int) ($port ?? $server['SERVER_PORT'] ??  80);
+		$that->path = trim(parse_url($server['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '', '/');
 		$that->parameters = [];
-		$that->query = $_GET ?? [];
+		$that->query = $get ?? $_GET ?? [];
 		$that->headers = function_exists('getallheaders') ? (getallheaders() ?: []) : [];
-		$that->cookies = $_COOKIE ?? [];
-		$that->files = $_FILES ?? [];
+		$that->cookies = $cookie ?? $_COOKIE ?? [];
+		$that->files = $files ?? $_FILES ?? [];
 
-		$that->rawInput = file_get_contents('php://input') ?: '';
+		$that->rawInput = $body ?? file_get_contents('php://input') ?: '';
 
 		$contentType = $that->headers['Content-Type'] ?? '';
 		$mimeType = explode(';', $contentType, 2)[0];
@@ -517,7 +530,7 @@ class Request
 	 */
 	public function input(string $key, mixed $default = null): mixed
 	{
-		if (in_array($this->method, ['GET', 'HEAD', 'OPTIONS', 'TRACE'])) {
+		if (in_array($this->method, ["GET", "HEAD", "OPTIONS", "TRACE"])) {
 		    return $this->query[$key] ?? $default;
 		}
 		return $this->body[$key] ?? $default;
@@ -611,10 +624,10 @@ class Response
 		    foreach ($this->headers as $key => $value) {
 		        if (is_array($value)) {
 		            foreach ($value as $i => $v) {
-		                header("$key: $v", $i === 0);
+		                header(sprintf('%s: %s', $key, $v), $i === 0);
 		            }
 		        } else {
-		            header("$key: $value", true);
+		            header(sprintf('%s: %s', $key, $value), true);
 		        }
 		    }
 
