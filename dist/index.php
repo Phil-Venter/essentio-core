@@ -1025,34 +1025,98 @@ function session(string $key, mixed $value = null): mixed
 }
 
 /**
- * This function attempts to resolve the template as a file based on the Application's base path.
- * If the resolved path is a file, it extracts the provided data, includes the file, and returns the output.
- * Otherwise, if the template string contains placeholder patterns (using curly braces),
- * it processes the string using regex callbacks to replace placeholders with data values.
+ * The render function supports a lightweight templating syntax inspired by Mustache.
+ * It recognizes patterns delimited by double curly braces for variable interpolation and control structures.
+ * For example, using `{{ variable }}` will output the HTML-escaped value of “variable”, while
+ * triple braces `{{{ variable }}}` output the value unescaped.
  *
+ * In addition, the engine supports block constructs:
+ * - **Sections:** `{{# variable }}...{{/ variable }}`:
+ *     Renders the enclosed block if the “variable” is truthy.
+ *     If “variable” is an array, the block is iterated for each element.
+ * - **Inverted Sections:** `{{^ variable }}...{{/ variable }}`
+ *     Renders the block when “variable” evaluates to falsey.
+ * - **Partials/Fallbacks:** `{{> variable }}...{{/ variable }}`
+ *     Attempts to render the content associated with “variable”.
+ *     If not available, it falls back to rendering the inner block.
+ * - **Fragments:** `{{< variable }}...{{/ variable }}`
+ *     Renders only the enclosed block if the “variable” is truthy.
+ *     By default renders it as if the block was never there.
+ *
+ * This approach enables dynamic content insertion, conditional rendering, and looping constructs within templates in a manner reminiscent of Mustache’s syntax.
  * @param string $template
  * @param array  $data
  * @return string
  */
 function render(string $template, array $data = []): string
 {
-	if ($path = Application::fromBase($template)) {
-	    \extract($data);
-	    \ob_start();
-	    include $path;
-	    return \ob_get_clean();
+	if (\preg_match('/^(\/|\.\/|\.\.\/)?[\w\-\/]+\.php$/', $template) === 1) {
+	    $template = \file_get_contents(Application::fromBase($template) ?: "");
 	}
 
-	if (\preg_match('/^(\/|\.\/|\.\.\/)?[\w\-\/]+\.php$/', $template) === 1) {
-	    return "";
+	if (\preg_match_all('/{{<\s*([\w\.]+)\s*}}(.*?){{\/\s*\1\s*}}/s', $template, $extractableMatches, \PREG_SET_ORDER)) {
+	    foreach ($extractableMatches as $match) {
+	        $key = $match[1];
+	        $block = $match[2];
+	        $value = \value(\dot($key, $data));
+	        if ($value) {
+	            return \render($block, $data);
+	        }
+	    }
 	}
 
 	return \preg_replace_callback_array(
 	    [
-	        "/\{\{\{\s*(.*?)\s*\}\}\}/" => fn($matches) => $data[$matches[1]] ?? "",
-	        "/\{\{\s*(.*?)\s*\}\}/" => fn($matches) => isset($data[$matches[1]])
-	            ? \htmlentities($data[$matches[1]])
-	            : "",
+	        '/{{<\s*([\w\.]+)\s*}}(.*?){{\/\s*\1\s*}}/s' => function ($matches) use ($data) {
+	            $block = $matches[2];
+	            return \render($block, $data);
+	        },
+	        '/{{\#\s*([\w\.]+)\s*}}(.*?){{\/\s*\1\s*}}/s' => function ($matches) use ($data) {
+	            $block = $matches[2];
+	            $value = \value(\dot($matches[1], $data));
+	            $rendered = "";
+
+	            if (!$value) {
+	                return "";
+	            }
+
+	            if (\is_array($value) && \array_is_list($value)) {
+	                foreach ($value as $item) {
+	                    $context = \is_array($item) ? $item : ["." => $item];
+	                    $rendered .= \render($block, \array_merge($data, $context));
+	                }
+	            } elseif (\is_array($value)) {
+	                $rendered .= \render($block, \array_merge($data, $value));
+	            } else {
+	                $rendered .= \render($block, $data);
+	            }
+
+	            return $rendered;
+	        },
+	        '/{{^\s*([\w\.]+)\s*}}(.*?){{\/\s*\1\s*}}/s' => function ($matches) use ($data) {
+	            $block = $matches[2];
+	            $value = \value(\dot($matches[1], $data));
+	            if ($value) {
+	                return "";
+	            }
+	            return \render($block, $data);
+	        },
+	        '/{{>\s*([\w\.]+)\s*}}(.*?){{\/\s*\1\s*}}/s' => function ($matches) use ($data) {
+	            $fallback = $matches[2];
+	            $value = \value(\dot($matches[1], $data));
+
+	            if ($value) {
+	                return \render($value, $data);
+	            }
+
+	            return \render($fallback, $data);
+	        },
+	        "/\{\{\{\s*([\w\.]+)\s*\}\}\}/" => function ($matches) use ($data) {
+	            return \value(\dot($matches[1], $data)) ?? "";
+	        },
+	        "/\{\{\s*([\w\.]+)\s*\}\}/" => function ($matches) use ($data) {
+	            return \htmlentities(\value(\dot($matches[1], $data)) ?? "");
+	        },
 	    ],
 	    $template
 	);
@@ -1140,6 +1204,33 @@ function logger(string $level, string $message): void
 	$level = \strtoupper($level);
 	$msg = \sprintf("[%s] [%s]: %s\n", \date("Y-m-d H:i:s"), $level, $message);
 	\file_put_contents(\env(\sprintf("%s_LOG_FILE", $level), "app.log"), $msg, \FILE_APPEND);
+}
+
+/**
+ * Splits a dot-separated key and traverses the provided array or object to return
+ * the corresponding value, or the default if not found.
+ *
+ * @param string $key
+ * @param mixed  $data
+ * @param mixed  $default
+ * @return mixed
+ */
+function dot(string $key, $data, mixed $default = null): mixed
+{
+	$segments = \explode(".", $key);
+	$value = $data;
+
+	foreach ($segments as $segment) {
+	    if (\is_array($value) && \array_key_exists($segment, $value)) {
+	        $value = $value[$segment];
+	    } elseif (\is_object($value) && isset($value->$segment)) {
+	        $value = $value->$segment;
+	    } else {
+	        return $default;
+	    }
+	}
+
+	return $value;
 }
 
 /**
