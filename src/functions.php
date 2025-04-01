@@ -326,33 +326,6 @@ function logger(string $level, string $message): void
 }
 
 /**
- * Splits a dot-separated key and traverses the provided array or object to return
- * the corresponding value, or the default if not found.
- *
- * @param string $key
- * @param mixed  $data
- * @param mixed  $default
- * @return mixed
- */
-function dot(string $key, $data, mixed $default = null): mixed
-{
-    $segments = explode(".", $key);
-    $value = $data;
-
-    foreach ($segments as $segment) {
-        if (is_array($value) && array_key_exists($segment, $value)) {
-            $value = $value[$segment];
-        } elseif (is_object($value) && isset($value->$segment)) {
-            $value = $value->$segment;
-        } else {
-            return $default;
-        }
-    }
-
-    return $value;
-}
-
-/**
  * In CLI mode, the data is dumped using var_dump.
  * In a web environment, the output is wrapped in <pre> tags.
  *
@@ -369,71 +342,6 @@ function dump(...$data): void
     echo "<pre>";
     var_dump(...$data);
     echo "</pre>";
-}
-
-/**
- * This function returns a new callable that passes the result of the first callback to the next callback.
- *
- * @param callable ...$callbacks
- * @return callable
- */
-function pipeline(callable ...$callbacks): callable
-{
-    return function ($argument) use ($callbacks) {
-        foreach ($callbacks as $callback) {
-            $argument = call_user_func($callback, $argument);
-        }
-        return $argument;
-    };
-}
-
-/**
- * Retry the callable passed x amount of times with an optional sleep, if it fails all, throw the last error.
- *
- * @param int $times
- * @param callable $callback
- * @param int $sleep
- * @return mixed
- * @throws \Throwable
- */
-function retry(int $times, callable $callback, int $sleep = 0): mixed
-{
-    beginning:
-    $times--;
-
-    try {
-        return call_user_func($callback);
-    } catch (Throwable $e) {
-        logger("error", $e->getMessage());
-        throw_if($times <= 0, $e);
-
-        if ($sleep) {
-            usleep($sleep * 1000);
-        }
-
-        goto beginning;
-    }
-
-    // shut up intelephense
-    return null;
-}
-
-/**
- * This function attempts to execute the provided callable. If any exception or error is thrown,
- * it logs the error message using the error log mechanism and returns the default value.
- *
- * @param callable $callback
- * @param mixed    $default
- * @return mixed
- */
-function safe(callable $callback, mixed $default = null): mixed
-{
-    try {
-        return call_user_func($callback);
-    } catch (Throwable $e) {
-        logger("error", $e->getMessage());
-        return $default;
-    }
 }
 
 /**

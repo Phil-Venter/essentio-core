@@ -72,6 +72,7 @@ class Request
      */
     public static function init(
         ?array $server = null,
+        ?array $headers = null,
         ?array $get = null,
         ?array $post = null,
         ?array $cookie = null,
@@ -108,7 +109,7 @@ class Request
         $that->path = trim(parse_url($server['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '', '/');
         $that->parameters = [];
         $that->query = $get ?? $_GET ?? [];
-        $that->headers = function_exists('getallheaders') ? (getallheaders() ?: []) : [];
+        $that->headers = $headers ?? (function_exists('getallheaders') ? (getallheaders() ?: []) : []);
         $that->cookies = $cookie ?? $_COOKIE ?? [];
         $that->files = $files ?? $_FILES ?? [];
 
