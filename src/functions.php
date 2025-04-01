@@ -6,6 +6,7 @@ use Essentio\Core\Environment;
 use Essentio\Core\Request;
 use Essentio\Core\Response;
 use Essentio\Core\Router;
+use Essentio\Core\Template;
 
 /**
  * If no identifier is provided, returns the container instance.
@@ -231,101 +232,13 @@ function session(string $key, mixed $value = null): mixed
 }
 
 /**
- * The render function supports a lightweight templating syntax inspired by Mustache.
- * It recognizes patterns delimited by double curly braces for variable interpolation and control structures.
- * For example, using `{{ variable }}` will output the HTML-escaped value of “variable”, while
- * triple braces `{{{ variable }}}` output the value unescaped.
- *
- * In addition, the engine supports block constructs:
- * - **Sections:** `{{# variable }}...{{/ variable }}`:
- *     Renders the enclosed block if the “variable” is truthy.
- *     If “variable” is an array, the block is iterated for each element.
- * - **Inverted Sections:** `{{^ variable }}...{{/ variable }}`
- *     Renders the block when “variable” evaluates to falsey.
- * - **Partials/Fallbacks:** `{{> variable }}...{{/ variable }}`
- *     Attempts to render the content associated with “variable”.
- *     If not available, it falls back to rendering the inner block.
- * - **Fragments:** `{{< variable }}...{{/ variable }}`
- *     Renders only the enclosed block if the “variable” is truthy.
- *     By default renders it as if the block was never there.
- *
- * This approach enables dynamic content insertion, conditional rendering, and looping constructs within templates in a manner reminiscent of Mustache’s syntax.
  * @param string $template
  * @param array  $data
  * @return string
  */
 function render(string $template, array $data = []): string
 {
-    if (preg_match('/^(\/|\.\/|\.\.\/)?[\w\-\/]+\.php$/', $template) === 1) {
-        $template = file_get_contents(Application::fromBase($template) ?: "");
-    }
-
-    if (preg_match_all('/{{<\s*([\w\.]+)\s*}}(.*?){{\/\s*\1\s*}}/s', $template, $extractableMatches, PREG_SET_ORDER)) {
-        foreach ($extractableMatches as $match) {
-            $key = $match[1];
-            $block = $match[2];
-            $value = value(dot($key, $data));
-            if ($value) {
-                return render($block, $data);
-            }
-        }
-    }
-
-    return preg_replace_callback_array(
-        [
-            '/{{<\s*([\w\.]+)\s*}}(.*?){{\/\s*\1\s*}}/s' => function ($matches) use ($data) {
-                $block = $matches[2];
-                return render($block, $data);
-            },
-            '/{{\#\s*([\w\.]+)\s*}}(.*?){{\/\s*\1\s*}}/s' => function ($matches) use ($data) {
-                $block = $matches[2];
-                $value = value(dot($matches[1], $data));
-                $rendered = "";
-
-                if (!$value) {
-                    return "";
-                }
-
-                if (is_array($value) && array_is_list($value)) {
-                    foreach ($value as $item) {
-                        $context = is_array($item) ? $item : ["." => $item];
-                        $rendered .= render($block, array_merge($data, $context));
-                    }
-                } elseif (is_array($value)) {
-                    $rendered .= render($block, array_merge($data, $value));
-                } else {
-                    $rendered .= render($block, $data);
-                }
-
-                return $rendered;
-            },
-            '/{{^\s*([\w\.]+)\s*}}(.*?){{\/\s*\1\s*}}/s' => function ($matches) use ($data) {
-                $block = $matches[2];
-                $value = value(dot($matches[1], $data));
-                if ($value) {
-                    return "";
-                }
-                return render($block, $data);
-            },
-            '/{{>\s*([\w\.]+)\s*}}(.*?){{\/\s*\1\s*}}/s' => function ($matches) use ($data) {
-                $fallback = $matches[2];
-                $value = value(dot($matches[1], $data));
-
-                if ($value) {
-                    return render($value, $data);
-                }
-
-                return render($fallback, $data);
-            },
-            "/\{\{\{\s*([\w\.]+)\s*\}\}\}/" => function ($matches) use ($data) {
-                return value(dot($matches[1], $data)) ?? "";
-            },
-            "/\{\{\s*([\w\.]+)\s*\}\}/" => function ($matches) use ($data) {
-                return htmlentities(value(dot($matches[1], $data)) ?? "");
-            },
-        ],
-        $template
-    );
+    return (new Template($template))->render($data);
 }
 
 /**
