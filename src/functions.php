@@ -202,7 +202,7 @@ function flash(string $key, mixed $value = null): mixed
         return null;
     }
 
-    if ($value !== null) {
+    if (func_num_args() === 2) {
         return $_SESSION["_flash"][$key] = $value;
     }
 
@@ -224,7 +224,7 @@ function session(string $key, mixed $value = null): mixed
         return null;
     }
 
-    if ($value !== null) {
+    if (func_num_args() === 2) {
         return $_SESSION[$key] = $value;
     }
 

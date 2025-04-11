@@ -30,9 +30,9 @@ class Application
 		static::$container = new Container();
 		static::$isWeb = true;
 
-		static::$container->bind(Environment::class, fn() => new Environment())->once = true;
-		static::$container->bind(Request::class, fn() => Request::init())->once = true;
-		static::$container->bind(Router::class, fn() => new Router())->once = true;
+		static::$container->bind(Environment::class, fn() => new Environment())->once();
+		static::$container->bind(Request::class, fn() => Request::init())->once();
+		static::$container->bind(Router::class, fn() => new Router())->once();
 
 		if (session_status() !== PHP_SESSION_ACTIVE) {
 		    session_start();
@@ -53,8 +53,8 @@ class Application
 		static::$container = new Container();
 		static::$isWeb = false;
 
-		static::$container->bind(Environment::class, fn() => new Environment())->once = true;
-		static::$container->bind(Argument::class, fn() => Argument::init())->once = true;
+		static::$container->bind(Environment::class, fn() => new Environment())->once();
+		static::$container->bind(Argument::class, fn() => Argument::init())->once();
 	}
 
 	/**
@@ -69,7 +69,8 @@ class Application
 	 */
 	public static function fromBase(string $path): string|false
 	{
-		return realpath(sprintf("%s/%s", static::$basePath, $path));
+		$path = sprintf("%s/%s", static::$basePath, $path);
+		return realpath($path) ?: $path;
 	}
 
 	/**
@@ -84,7 +85,7 @@ class Application
 	public static function run(): void
 	{
 		if (!static::$isWeb) {
-		    throw new RuntimeException("CLI mode not supported in run()");
+		    return;
 		}
 
 		try {
@@ -250,9 +251,15 @@ class Container
 	 */
 	public function bind(string $id, callable $factory): object
 	{
-		return $this->bindings[$id] = new class ($factory) {
-		    public bool $once = false;
+		return $this->bindings[$id] = new class ($factory)
+		{
+		    public protected(set) bool $once = false;
 		    public function __construct(public $factory) {}
+		    public function once(bool $once = true): self
+		    {
+		        $this->once = $once;
+		        return $this;
+		    }
 		};
 	}
 
@@ -271,6 +278,10 @@ class Container
 	public function get(string $id): object
 	{
 		if (!isset($this->bindings[$id])) {
+		    if (class_exists($id, true)) {
+		        return new $id();
+		    }
+
 		    throw new RuntimeException(sprintf("No binding for %s exists", $id));
 		}
 
@@ -434,16 +445,12 @@ class Request
 	): static
 	{
 		$server ??= $_SERVER ?? [];
+		$post ??= $_POST ?? [];
 
-		$that = new static;
+		$that = new static();
 
-		$that->method = ($post ?? $_POST ?? [])['_method'] ?? $server['REQUEST_METHOD'] ?? 'GET';
-
-		if (filter_var($server['HTTPS'] ?? '', FILTER_VALIDATE_BOOLEAN)) {
-		    $that->scheme = 'https';
-		} else {
-		    $that->scheme = 'http';
-		}
+		$that->method = $post['_method'] ?? $server['REQUEST_METHOD'] ?? 'GET';
+		$that->scheme = filter_var($server['HTTPS'] ?? '', FILTER_VALIDATE_BOOLEAN) ? 'https' : 'http';
 
 		$host = null;
 		$port = null;
@@ -460,6 +467,7 @@ class Request
 
 		$that->host = $host ?? $server['SERVER_NAME'] ?? 'localhost';
 		$that->port = (int) ($port ?? $server['SERVER_PORT'] ??  80);
+
 		$that->path = trim(parse_url($server['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '', '/');
 		$that->parameters = [];
 		$that->query = $get ?? $_GET ?? [];
@@ -478,7 +486,12 @@ class Request
 		        return $result;
 		    })($that->rawInput),
 		    'application/json' => json_decode($that->rawInput, true),
-		    default => [],
+		    'application/xml', 'text/xml' => (function (string $input): array {
+		        libxml_use_internal_errors(true);
+		        $xml = simplexml_load_string($input);
+		        return $xml ? json_decode(json_encode($xml), true) : [];
+		    })($that->rawInput),
+		    default => $post,
 		};
 
 		return $that;
@@ -1073,7 +1086,7 @@ function flash(string $key, mixed $value = null): mixed
 	    return \null;
 	}
 
-	if ($value !== \null) {
+	if (\func_num_args() === 2) {
 	    return $_SESSION["_flash"][$key] = $value;
 	}
 
@@ -1095,7 +1108,7 @@ function session(string $key, mixed $value = null): mixed
 	    return \null;
 	}
 
-	if ($value !== \null) {
+	if (\func_num_args() === 2) {
 	    return $_SESSION[$key] = $value;
 	}
 

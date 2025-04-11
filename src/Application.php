@@ -41,9 +41,9 @@ class Application
         static::$container = new Container();
         static::$isWeb = true;
 
-        static::$container->bind(Environment::class, fn() => new Environment())->once = true;
-        static::$container->bind(Request::class, fn() => Request::init())->once = true;
-        static::$container->bind(Router::class, fn() => new Router())->once = true;
+        static::$container->bind(Environment::class, fn() => new Environment())->once();
+        static::$container->bind(Request::class, fn() => Request::init())->once();
+        static::$container->bind(Router::class, fn() => new Router())->once();
 
         if (session_status() !== PHP_SESSION_ACTIVE) {
             session_start();
@@ -64,8 +64,8 @@ class Application
         static::$container = new Container();
         static::$isWeb = false;
 
-        static::$container->bind(Environment::class, fn() => new Environment())->once = true;
-        static::$container->bind(Argument::class, fn() => Argument::init())->once = true;
+        static::$container->bind(Environment::class, fn() => new Environment())->once();
+        static::$container->bind(Argument::class, fn() => Argument::init())->once();
     }
 
     /**
@@ -80,7 +80,8 @@ class Application
      */
     public static function fromBase(string $path): string|false
     {
-        return realpath(sprintf("%s/%s", static::$basePath, $path));
+        $path = sprintf("%s/%s", static::$basePath, $path);
+        return realpath($path) ?: $path;
     }
 
     /**
@@ -95,7 +96,7 @@ class Application
     public static function run(): void
     {
         if (!static::$isWeb) {
-            throw new RuntimeException("CLI mode not supported in run()");
+            return;
         }
 
         try {

@@ -35,9 +35,15 @@ class Container
      */
     public function bind(string $id, callable $factory): object
     {
-        return $this->bindings[$id] = new class ($factory) {
-            public bool $once = false;
+        return $this->bindings[$id] = new class ($factory)
+        {
+            public protected(set) bool $once = false;
             public function __construct(public $factory) {}
+            public function once(bool $once = true): self
+            {
+                $this->once = $once;
+                return $this;
+            }
         };
     }
 
@@ -56,6 +62,10 @@ class Container
     public function get(string $id): object
     {
         if (!isset($this->bindings[$id])) {
+            if (class_exists($id, true)) {
+                return new $id();
+            }
+
             throw new RuntimeException(sprintf("No binding for %s exists", $id));
         }
 

@@ -80,16 +80,12 @@ class Request
         ?string $body = null
     ): static {
         $server ??= $_SERVER ?? [];
+        $post ??= $_POST ?? [];
 
-        $that = new static;
+        $that = new static();
 
-        $that->method = ($post ?? $_POST ?? [])['_method'] ?? $server['REQUEST_METHOD'] ?? 'GET';
-
-        if (filter_var($server['HTTPS'] ?? '', FILTER_VALIDATE_BOOLEAN)) {
-            $that->scheme = 'https';
-        } else {
-            $that->scheme = 'http';
-        }
+        $that->method = $post['_method'] ?? $server['REQUEST_METHOD'] ?? 'GET';
+        $that->scheme = filter_var($server['HTTPS'] ?? '', FILTER_VALIDATE_BOOLEAN) ? 'https' : 'http';
 
         $host = null;
         $port = null;
@@ -106,6 +102,7 @@ class Request
 
         $that->host = $host ?? $server['SERVER_NAME'] ?? 'localhost';
         $that->port = (int) ($port ?? $server['SERVER_PORT'] ??  80);
+
         $that->path = trim(parse_url($server['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '', '/');
         $that->parameters = [];
         $that->query = $get ?? $_GET ?? [];
@@ -124,7 +121,12 @@ class Request
                 return $result;
             })($that->rawInput),
             'application/json' => json_decode($that->rawInput, true),
-            default => [],
+            'application/xml', 'text/xml' => (function (string $input): array {
+                libxml_use_internal_errors(true);
+                $xml = simplexml_load_string($input);
+                return $xml ? json_decode(json_encode($xml), true) : [];
+            })($that->rawInput),
+            default => $post,
         };
 
         return $that;
