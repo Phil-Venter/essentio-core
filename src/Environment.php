@@ -43,6 +43,10 @@ class Environment
 		        continue;
 		    }
 
+			if (!str_contains($line, '=')) {
+			    continue;
+			}
+
 		    [$name, $value] = explode('=', $line, 2);
 		    $name = trim($name);
 		    $value = trim($value);

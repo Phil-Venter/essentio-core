@@ -275,7 +275,7 @@ class Container
 	 * @return ($id is class-string<T> ? T : object)
 	 * @throws \RuntimeException
 	 */
-	public function get(string $id): object
+	public function resolve(string $id): object
 	{
 		if (!isset($this->bindings[$id])) {
 		    if (class_exists($id, true)) {
@@ -332,6 +332,10 @@ class Environment
 		    if (trim($line)[0] === '#') {
 		        continue;
 		    }
+
+			if (!str_contains($line, '=')) {
+			    continue;
+			}
 
 		    [$name, $value] = explode('=', $line, 2);
 		    $name = trim($name);
@@ -672,11 +676,47 @@ class Router
 	protected const LEAFNODE = "\x00L";
 	protected const WILDCARD = "\x00W";
 
+	protected string $currentPrefix = '';
+	protected array $globalMiddleware = [];
+	protected array $currentMiddleware = [];
+
 	/** @var array<string, array{array<callable>, callable}> */
 	protected array $staticRoutes = [];
 
 	/** @var array<string, array{array<callable>, callable}> */
 	protected array $dynamicRoutes = [];
+
+	/**
+	 * @param callable $middleware
+	 * @return static
+	 */
+	public function use(callable $middleware): static
+	{
+		$this->globalMiddleware[] = $middleware;
+		return $this;
+	}
+
+	/**
+	 * @param string $prefix
+	 * @param callable $handle
+	 * @param list<callable> $middleware
+	 * @return static
+	 */
+	public function group(string $prefix, callable $handle, array $middleware = []): static
+	{
+		$previousPrefix = $this->currentPrefix;
+		$previousMiddleware = $this->currentMiddleware;
+
+		$this->currentPrefix .= $prefix;
+		$this->currentMiddleware = array_merge($this->currentMiddleware, $middleware);
+
+		$handle($this);
+
+		$this->currentPrefix = $previousPrefix;
+		$this->currentMiddleware = $previousMiddleware;
+
+		return $this;
+	}
 
 	/**
 	 * Registers a route with the router.
@@ -693,10 +733,11 @@ class Router
 	 */
 	public function add(string $method, string $path, callable $handle, array $middleware = []): static
 	{
-		$path = trim(preg_replace("/\/+/", "/", $path), "/");
+		$path = trim(preg_replace("/\/+/", "/", $this->currentPrefix . $path), "/");
+		$allMiddleware = array_merge($this->globalMiddleware, $this->currentMiddleware, $middleware);
 
 		if (!str_contains($path, ":")) {
-		    $this->staticRoutes[$path][$method] = [$middleware, $handle];
+		    $this->staticRoutes[$path][$method] = [$allMiddleware, $handle];
 		    return $this;
 		}
 
@@ -712,7 +753,7 @@ class Router
 		    }
 		}
 
-		$node[static::LEAFNODE][$method] = [$params, $middleware, $handle];
+		$node[static::LEAFNODE][$method] = [$params, $allMiddleware, $handle];
 		return $this;
 	}
 
@@ -901,7 +942,7 @@ class Template
  */
 function app(?string $id = null): object
 {
-	return $id ? Application::$container->get($id) : Application::$container;
+	return $id ? Application::$container->resolve($id) : Application::$container;
 }
 
 /**
@@ -986,6 +1027,34 @@ function request(string $key, mixed $default = null): mixed
 function input(string $key, mixed $default = null): mixed
 {
 	return \app(Request::class)->input($key, $default);
+}
+
+/**
+ * @param callable $middleware
+ * @return void
+ */
+function middleware(callable $middleware): void
+{
+	if (!Application::$isWeb) {
+	    return;
+	}
+
+	\app(Router::class)->use($middleware);
+}
+
+/**
+ * @param string $prefix
+ * @param callable $handle
+ * @param array $middleware
+ * @return void
+ */
+function group(string $prefix, callable $handle, array $middleware = []): void
+{
+	if (!Application::$isWeb) {
+	    return;
+	}
+
+	\app(Router::class)->group($prefix, $handle, $middleware);
 }
 
 /**

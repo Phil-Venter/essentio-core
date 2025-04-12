@@ -59,7 +59,7 @@ class Container
      * @return ($id is class-string<T> ? T : object)
      * @throws \RuntimeException
      */
-    public function get(string $id): object
+    public function resolve(string $id): object
     {
         if (!isset($this->bindings[$id])) {
             if (class_exists($id, true)) {

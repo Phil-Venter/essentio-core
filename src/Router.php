@@ -21,11 +21,47 @@ class Router
     protected const LEAFNODE = "\0L";
     protected const WILDCARD = "\0W";
 
+    protected string $currentPrefix = "";
+    protected array $globalMiddleware = [];
+    protected array $currentMiddleware = [];
+
     /** @var array<string, array{array<callable>, callable}> */
     protected array $staticRoutes = [];
 
     /** @var array<string, array{array<callable>, callable}> */
     protected array $dynamicRoutes = [];
+
+    /**
+     * @param callable $middleware
+     * @return static
+     */
+    public function use(callable $middleware): static
+    {
+        $this->globalMiddleware[] = $middleware;
+        return $this;
+    }
+
+    /**
+     * @param string $prefix
+     * @param callable $handle
+     * @param list<callable> $middleware
+     * @return static
+     */
+    public function group(string $prefix, callable $handle, array $middleware = []): static
+    {
+        $previousPrefix = $this->currentPrefix;
+        $previousMiddleware = $this->currentMiddleware;
+
+        $this->currentPrefix .= $prefix;
+        $this->currentMiddleware = array_merge($this->currentMiddleware, $middleware);
+
+        $handle($this);
+
+        $this->currentPrefix = $previousPrefix;
+        $this->currentMiddleware = $previousMiddleware;
+
+        return $this;
+    }
 
     /**
      * Registers a route with the router.
@@ -42,10 +78,11 @@ class Router
      */
     public function add(string $method, string $path, callable $handle, array $middleware = []): static
     {
-        $path = trim(preg_replace("/\/+/", "/", $path), "/");
+        $path = trim(preg_replace("/\/+/", "/", $this->currentPrefix . $path), "/");
+        $allMiddleware = array_merge($this->globalMiddleware, $this->currentMiddleware, $middleware);
 
         if (!str_contains($path, ":")) {
-            $this->staticRoutes[$path][$method] = [$middleware, $handle];
+            $this->staticRoutes[$path][$method] = [$allMiddleware, $handle];
             return $this;
         }
 
@@ -61,7 +98,7 @@ class Router
             }
         }
 
-        $node[static::LEAFNODE][$method] = [$params, $middleware, $handle];
+        $node[static::LEAFNODE][$method] = [$params, $allMiddleware, $handle];
         return $this;
     }
 

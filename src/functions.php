@@ -17,7 +17,7 @@ use Essentio\Core\Template;
  */
 function app(?string $id = null): object
 {
-    return $id ? Application::$container->get($id) : Application::$container;
+    return $id ? Application::$container->resolve($id) : Application::$container;
 }
 
 /**
@@ -102,6 +102,34 @@ function request(string $key, mixed $default = null): mixed
 function input(string $key, mixed $default = null): mixed
 {
     return app(Request::class)->input($key, $default);
+}
+
+/**
+ * @param callable $middleware
+ * @return void
+ */
+function middleware(callable $middleware): void
+{
+    if (!Application::$isWeb) {
+        return;
+    }
+
+    app(Router::class)->use($middleware);
+}
+
+/**
+ * @param string $prefix
+ * @param callable $handle
+ * @param array $middleware
+ * @return void
+ */
+function group(string $prefix, callable $handle, array $middleware = []): void
+{
+    if (!Application::$isWeb) {
+        return;
+    }
+
+    app(Router::class)->group($prefix, $handle, $middleware);
 }
 
 /**
