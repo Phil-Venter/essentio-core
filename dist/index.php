@@ -118,7 +118,7 @@ class Argument
 	/** @var string */
 	public protected(set) string $command = '';
 
-	/** @var array<string, mixed> */
+	/** @var array<string,mixed> */
 	public protected(set) array $named = [];
 
 	/** @var list<mixed> */
@@ -229,12 +229,12 @@ class Argument
  */
 class Container
 {
-	/** @var array<string, object{factory: callable, once: bool}> */
+	/** @var array<string,object{factory:callable,once:bool}> */
 	protected array $bindings = [];
 
 	/**
 	 * @template T of object
-	 * @var array<class-string<T>, T>
+	 * @var array<class-string<T>,T>
 	 */
 	protected array $cache = [];
 
@@ -247,7 +247,7 @@ class Container
 	 * @template T of object
 	 * @param class-string<T>    $id
 	 * @param callable(static):T $factory
-	 * @return object{factory: callable, once: bool}
+	 * @return object{factory:callable,once:bool}
 	 */
 	public function bind(string $id, callable $factory): object
 	{
@@ -273,7 +273,7 @@ class Container
 	 * @template T of object
 	 * @param  class-string<T>|string $id
 	 * @return ($id is class-string<T> ? T : object)
-	 * @throws \RuntimeException
+	 * @throws RuntimeException
 	 */
 	public function resolve(string $id): object
 	{
@@ -307,7 +307,7 @@ class Container
  */
 class Environment
 {
-	/** @var array<string, mixed> */
+	/** @var array<string,mixed> */
 	public protected(set) array $data = [];
 
 	/**
@@ -329,11 +329,7 @@ class Environment
 		$lines = file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
 
 		foreach ($lines as $line) {
-		    if (trim($line)[0] === '#') {
-		        continue;
-		    }
-
-			if (!str_contains($line, '=')) {
+		    if (trim($line)[0] === '#' || !str_contains($line, '=')) {
 			    continue;
 			}
 
@@ -341,7 +337,7 @@ class Environment
 		    $name = trim($name);
 		    $value = trim($value);
 
-		    if (preg_match('/^(["\']).*\1$/', $value)) {
+		    if (preg_match("/^([\"']).*1$/", $value)) {
 		        $value = substr($value, 1, -1);
 		    } else {
 		        $lower = strtolower($value);
@@ -392,12 +388,12 @@ class Request
 {
 	/** @var string */
 	public protected(set) string $method {
-		set => /*(f*/\strtoupper($value);
+		set => /*(f*/strtoupper($value);
 	}
 
 	/** @var string */
 	public protected(set) string $scheme {
-		set => /*(f*/\strtolower($value);
+		set => /*(f*/strtolower($value);
 	}
 
 	/** @var ?string */
@@ -409,25 +405,25 @@ class Request
 	/** @var string */
 	public protected(set) string $path;
 
-	/** @var array<string, mixed> */
+	/** @var array<string,mixed> */
 	public protected(set) array $parameters;
 
-	/** @var array<string, mixed> */
+	/** @var array<string,mixed> */
 	public protected(set) array $query;
 
-	/** @var array<string, mixed> */
+	/** @var array<string,mixed> */
 	public protected(set) array $headers;
 
-	/** @var array<string, mixed> */
+	/** @var array<string,mixed> */
 	public protected(set) array $cookies;
 
-	/** @var array<string, mixed> */
+	/** @var array<string,mixed> */
 	public protected(set) array $files;
 
 	/** @var string */
 	public protected(set) string $rawInput;
 
-	/** @var array<string, mixed> */
+	/** @var array<string,mixed> */
 	public protected(set) array $body;
 
 	/**
@@ -453,44 +449,44 @@ class Request
 
 		$that = new static();
 
-		$that->method = $post['_method'] ?? $server['REQUEST_METHOD'] ?? 'GET';
-		$that->scheme = filter_var($server['HTTPS'] ?? '', FILTER_VALIDATE_BOOLEAN) ? 'https' : 'http';
+		$that->method = $post["_method"] ?? $server["REQUEST_METHOD"] ?? "GET";
+		$that->scheme = filter_var($server["HTTPS"] ?? "", FILTER_VALIDATE_BOOLEAN) ? "https" : "http";
 
 		$host = null;
 		$port = null;
 
-		if (isset($server['HTTP_HOST'])) {
-		    if (str_contains($server['HTTP_HOST'], ':')) {
-		        [$host, $port] = explode(':', $server['HTTP_HOST'], 2);
+		if (isset($server["HTTP_HOST"])) {
+		    if (str_contains($server["HTTP_HOST"], ":")) {
+		        [$host, $port] = explode(":", $server["HTTP_HOST"], 2);
 		        $port = (int) $port;
 		    } else {
-		        $host = $server['HTTP_HOST'];
-		        $port = $that->scheme === 'https' ? 443 : 80;
+		        $host = $server["HTTP_HOST"];
+		        $port = $that->scheme === "https" ? 443 : 80;
 		    }
 		}
 
-		$that->host = $host ?? $server['SERVER_NAME'] ?? 'localhost';
-		$that->port = (int) ($port ?? $server['SERVER_PORT'] ??  80);
+		$that->host = $host ?? $server["SERVER_NAME"] ?? "localhost";
+		$that->port = (int) ($port ?? $server["SERVER_PORT"] ??  80);
 
-		$that->path = trim(parse_url($server['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '', '/');
+		$that->path = trim(parse_url($server["REQUEST_URI"] ?? "", PHP_URL_PATH) ?? "", "/");
 		$that->parameters = [];
 		$that->query = $get ?? $_GET ?? [];
-		$that->headers = $headers ?? (function_exists('getallheaders') ? (getallheaders() ?: []) : []);
+		$that->headers = $headers ?? (function_exists("getallheaders") ? (getallheaders() ?: []) : []);
 		$that->cookies = $cookie ?? $_COOKIE ?? [];
 		$that->files = $files ?? $_FILES ?? [];
 
-		$that->rawInput = $body ?? file_get_contents('php://input') ?: '';
+		$that->rawInput = $body ?? file_get_contents("php://input") ?: "";
 
-		$contentType = $that->headers['Content-Type'] ?? '';
-		$mimeType = explode(';', $contentType, 2)[0];
+		$contentType = $that->headers["Content-Type"] ?? "";
+		$mimeType = explode(";", $contentType, 2)[0];
 
 		$that->body = match ($mimeType) {
-		    'application/x-www-form-urlencoded' => (function (string $input): array {
+		    "application/x-www-form-urlencoded" => (function (string $input): array {
 		        parse_str($input, $result);
 		        return $result;
 		    })($that->rawInput),
-		    'application/json' => json_decode($that->rawInput, true),
-		    'application/xml', 'text/xml' => (function (string $input): array {
+		    "application/json" => json_decode($that->rawInput, true),
+		    "application/xml", "text/xml" => (function (string $input): array {
 		        libxml_use_internal_errors(true);
 		        $xml = simplexml_load_string($input);
 		        return $xml ? json_decode(json_encode($xml), true) : [];
@@ -508,7 +504,7 @@ class Request
 	 * associative array. These parameters can later be used by the get() method
 	 * to retrieve specific request values.
 	 *
-	 * @param array<string, mixed> $parameters
+	 * @param array<string,mixed> $parameters
 	 * @return static
 	 */
 	public function setParameters(array $parameters): static
@@ -564,7 +560,7 @@ class Response
 	/** @var int */
 	public protected(set) int $status = 200;
 
-	/** @var array<string, mixed> */
+	/** @var array<string mixed> */
 	public protected(set) array $headers = [];
 
 	/** @var bool|float|int|string|Stringable|null */
@@ -586,7 +582,7 @@ class Response
 	/**
 	 * Returns a new Response instance with additional headers merged into the existing headers.
 	 *
-	 * @param array<string, mixed> $headers
+	 * @param array<string,mixed> $headers
 	 * @return static
 	 */
 	public function addHeaders(array $headers): static
@@ -599,7 +595,7 @@ class Response
 	/**
 	 * Returns a new Response instance with the headers replaced by the provided array.
 	 *
-	 * @param array<string, mixed> $headers
+	 * @param array<string,mixed> $headers
 	 * @return static
 	 */
 	public function withHeaders(array $headers): static
@@ -642,10 +638,10 @@ class Response
 		    foreach ($this->headers as $key => $value) {
 		        if (is_array($value)) {
 		            foreach ($value as $i => $v) {
-		                header(sprintf('%s: %s', $key, $v), $i === 0);
+		                header(sprintf("%s: %s", $key, $v), $i === 0);
 		            }
 		        } else {
-		            header(sprintf('%s: %s', $key, $value), true);
+		            header(sprintf("%s: %s", $key, $value), true);
 		        }
 		    }
 
@@ -653,7 +649,7 @@ class Response
 
 		    if ($detachResponse) {
 		        session_write_close();
-		        if (function_exists('fastcgi_finish_request')) {
+		        if (function_exists("fastcgi_finish_request")) {
 		            return fastcgi_finish_request();
 		        } else {
 		            flush();
@@ -676,14 +672,19 @@ class Router
 	protected const LEAFNODE = "\x00L";
 	protected const WILDCARD = "\x00W";
 
-	protected string $currentPrefix = '';
+	/** @var list<callable> */
 	protected array $globalMiddleware = [];
+
+	/** @var string */
+	protected string $currentPrefix = '';
+
+	/** @var list<callable> */
 	protected array $currentMiddleware = [];
 
-	/** @var array<string, array{array<callable>, callable}> */
+	/** @var array<string,array{list<callable>,callable}> */
 	protected array $staticRoutes = [];
 
-	/** @var array<string, array{array<callable>, callable}> */
+	/** @var array<string,array{list<callable>,callable}> */
 	protected array $dynamicRoutes = [];
 
 	/**
@@ -850,7 +851,11 @@ class Router
 	 * @param callable $handle
 	 * @return Response
 	 */
-	protected function call(Request $request, array $middleware, callable $handle): Response
+	protected function call(
+		Request $request,
+		array $middleware,
+		callable $handle,
+	): Response
 	{
 		$pipeline = $handle;
 
@@ -869,27 +874,58 @@ class Router
 	}
 }
 
+/**
+ * Template engine class for rendering views with optional layout support.
+ */
 class Template
 {
-	protected $layout = null;
-	protected $stack = [];
-	protected $segments = [];
+	/** @var ?self */
+	protected ?self $layout = null;
+
+	/** @var list<string> */
+	protected array $stack = [];
+
+	/** @var array<string,string> */
+	protected array $segments = [];
 
 	public function __construct(
 		protected ?string $path = null,
 	) {
 	}
 
+	/**
+	 * Sets the layout template to be used for rendering.
+	 *
+	 * @param string $path
+	 * @return void
+	 */
 	protected function layout(string $path): void
 	{
 		$this->layout = new Template($path);
 	}
 
+	/**
+	 * Retrieves the content of a named segment or returns a default string.
+	 *
+	 * @param string $name
+	 * @param string $default
+	 * @return string
+	 */
 	protected function yield(string $name, string $default = ''): string
 	{
 		return $this->segments[$name] ?? $default;
 	}
 
+	/**
+	 * Starts or sets a named content segment.
+	 *
+	 * If a value is provided, the segment is directly set. Otherwise, it initiates output buffering
+	 * to capture content that will be associated with the segment.
+	 *
+	 * @param string      $name
+	 * @param string|null $value
+	 * @return void
+	 */
 	protected function segment(string $name, ?string $value = null): void
 	{
 		if ($value !== null) {
@@ -900,6 +936,12 @@ class Template
 		}
 	}
 
+	/**
+	 * Ends the current output buffer and assigns it to the last opened segment.
+	 *
+	 * @return void
+	 * @throws LogicException if no segment is open
+	 */
 	protected function end(): void
 	{
 		if (empty($this->stack)) {
@@ -910,6 +952,14 @@ class Template
 		$this->segments[$name] = ob_get_clean();
 	}
 
+	/**
+	 * Renders the template and returns the resulting HTML string.
+	 *
+	 * If a layout is defined, the content is passed into the layout recursively.
+	 *
+	 * @param array<string,mixed> $data
+	 * @return string
+	 */
 	public function render(array $data = []): string
 	{
 		if ($this->path && file_exists($this->path)) {
@@ -927,6 +977,12 @@ class Template
 		return $this->segments["content"];
 	}
 
+	/**
+	 * Sets the segment content to be used when rendering the layout.
+	 *
+	 * @param array<string,string> $segments
+	 * @return void
+	 */
 	public function setSegments(array $segments): void
 	{
 		$this->segments = $segments;
@@ -954,7 +1010,7 @@ function app(?string $id = null): object
  */
 function env(string $key, mixed $default = null): mixed
 {
-	return \app(Environment::class)->get($key, $default);
+	return app(Environment::class)->get($key, $default);
 }
 
 /**
@@ -966,7 +1022,7 @@ function env(string $key, mixed $default = null): mixed
  */
 function bind(string $id, callable $factory): object
 {
-	return \app()->bind($id, $factory);
+	return app()->bind($id, $factory);
 }
 
 /**
@@ -978,7 +1034,7 @@ function bind(string $id, callable $factory): object
  */
 function arg(int|string $key, mixed $default = null): string|array|null
 {
-	return \app(Argument::class)->get($key, $default);
+	return app(Argument::class)->get($key, $default);
 }
 
 /**
@@ -994,7 +1050,7 @@ function command(string $name, callable $handle): void
 	    return;
 	}
 
-	$argv = \app(Argument::class);
+	$argv = app(Argument::class);
 
 	if ($argv->command !== $name) {
 	    return;
@@ -1002,7 +1058,7 @@ function command(string $name, callable $handle): void
 
 	$result = $handle($argv);
 
-	exit(\is_int($result) ? $result : 0);
+	exit(is_int($result) ? $result : 0);
 }
 
 /**
@@ -1014,7 +1070,7 @@ function command(string $name, callable $handle): void
  */
 function request(string $key, mixed $default = null): mixed
 {
-	return \app(Request::class)->get($key, $default);
+	return app(Request::class)->get($key, $default);
 }
 
 /**
@@ -1026,7 +1082,7 @@ function request(string $key, mixed $default = null): mixed
  */
 function input(string $key, mixed $default = null): mixed
 {
-	return \app(Request::class)->input($key, $default);
+	return app(Request::class)->input($key, $default);
 }
 
 /**
@@ -1039,7 +1095,7 @@ function middleware(callable $middleware): void
 	    return;
 	}
 
-	\app(Router::class)->use($middleware);
+	app(Router::class)->use($middleware);
 }
 
 /**
@@ -1054,7 +1110,7 @@ function group(string $prefix, callable $handle, array $middleware = []): void
 	    return;
 	}
 
-	\app(Router::class)->group($prefix, $handle, $middleware);
+	app(Router::class)->group($prefix, $handle, $middleware);
 }
 
 /**
@@ -1071,7 +1127,7 @@ function get(string $path, callable $handle, array $middleware = []): void
 	    return;
 	}
 
-	\app(Router::class)->add("GET", $path, $handle, $middleware);
+	app(Router::class)->add("GET", $path, $handle, $middleware);
 }
 
 /**
@@ -1088,7 +1144,7 @@ function post(string $path, callable $handle, array $middleware = []): void
 	    return;
 	}
 
-	\app(Router::class)->add("POST", $path, $handle, $middleware);
+	app(Router::class)->add("POST", $path, $handle, $middleware);
 }
 
 /**
@@ -1105,7 +1161,7 @@ function put(string $path, callable $handle, array $middleware = []): void
 	    return;
 	}
 
-	\app(Router::class)->add("PUT", $path, $handle, $middleware);
+	app(Router::class)->add("PUT", $path, $handle, $middleware);
 }
 
 /**
@@ -1122,7 +1178,7 @@ function patch(string $path, callable $handle, array $middleware = []): void
 	    return;
 	}
 
-	\app(Router::class)->add("PATCH", $path, $handle, $middleware);
+	app(Router::class)->add("PATCH", $path, $handle, $middleware);
 }
 
 /**
@@ -1139,7 +1195,7 @@ function delete(string $path, callable $handle, array $middleware = []): void
 	    return;
 	}
 
-	\app(Router::class)->add("DELETE", $path, $handle, $middleware);
+	app(Router::class)->add("DELETE", $path, $handle, $middleware);
 }
 
 /**
@@ -1151,15 +1207,15 @@ function delete(string $path, callable $handle, array $middleware = []): void
  */
 function flash(string $key, mixed $value = null): mixed
 {
-	if (\session_status() !== \PHP_SESSION_ACTIVE) {
-	    return \null;
+	if (session_status() !== PHP_SESSION_ACTIVE) {
+	    return null;
 	}
 
-	if (\func_num_args() === 2) {
+	if (func_num_args() === 2) {
 	    return $_SESSION["_flash"][$key] = $value;
 	}
 
-	$val = $_SESSION["_flash"][$key] ?? \null;
+	$val = $_SESSION["_flash"][$key] ?? null;
 	unset($_SESSION["_flash"][$key]);
 	return $val;
 }
@@ -1173,15 +1229,15 @@ function flash(string $key, mixed $value = null): mixed
  */
 function session(string $key, mixed $value = null): mixed
 {
-	if (\session_status() !== \PHP_SESSION_ACTIVE) {
-	    return \null;
+	if (session_status() !== PHP_SESSION_ACTIVE) {
+	    return null;
 	}
 
-	if (\func_num_args() === 2) {
+	if (func_num_args() === 2) {
 	    return $_SESSION[$key] = $value;
 	}
 
-	return $_SESSION[$key] ?? \null;
+	return $_SESSION[$key] ?? null;
 }
 
 /**
@@ -1218,7 +1274,7 @@ function json(mixed $data, int $status = 200): Response
 	return (new Response())
 	    ->withStatus($status)
 	    ->withHeaders(["Content-Type" => "application/json"])
-	    ->withBody(\json_encode($data));
+	    ->withBody(json_encode($data));
 }
 
 /**
@@ -1249,7 +1305,7 @@ function view(string $template, array $data = [], int $status = 200): Response
 	return (new Response())
 	    ->withStatus($status)
 	    ->withHeaders(["Content-Type" => "text/html"])
-	    ->withBody(\render($template, $data));
+	    ->withBody(render($template, $data));
 }
 
 /**
@@ -1261,7 +1317,7 @@ function view(string $template, array $data = [], int $status = 200): Response
  */
 function log_cli(string $format, ...$values): void
 {
-	\error_log(\sprintf($format, ...$values));
+	error_log(sprintf($format, ...$values));
 }
 
 /**
@@ -1273,9 +1329,9 @@ function log_cli(string $format, ...$values): void
  */
 function logger(string $level, string $message): void
 {
-	$level = \strtoupper($level);
-	$msg = \sprintf("[%s] [%s]: %s\n", \date("Y-m-d H:i:s"), $level, $message);
-	\file_put_contents(\env(\sprintf("%s_LOG_FILE", $level), "app.log"), $msg, \FILE_APPEND);
+	$level = strtoupper($level);
+	$msg = sprintf("[%s] [%s]: %s" . PHP_EOL, date("Y-m-d H:i:s"), $level, $message);
+	file_put_contents(env(sprintf("%s_LOG_FILE", $level), "app.log"), $msg, FILE_APPEND);
 }
 
 /**
@@ -1288,12 +1344,12 @@ function logger(string $level, string $message): void
 function dump(...$data): void
 {
 	if (!Application::$isWeb) {
-	    \var_dump(...$data);
+	    var_dump(...$data);
 	    return;
 	}
 
 	echo "<pre>";
-	\var_dump(...$data);
+	var_dump(...$data);
 	echo "</pre>";
 }
 
@@ -1319,7 +1375,7 @@ function tap(mixed $value, callable $callback): mixed
  * @return void
  * @throws Throwable
  */
-function throw_if(bool $condition, \Throwable $e): void
+function throw_if(bool $condition, Throwable $e): void
 {
 	if ($condition) {
 	    throw $e;
@@ -1335,8 +1391,8 @@ function throw_if(bool $condition, \Throwable $e): void
  */
 function value(mixed $value): mixed
 {
-	if (\is_callable($value)) {
-	    return \call_user_func($value);
+	if (is_callable($value)) {
+	    return call_user_func($value);
 	}
 
 	return $value;
@@ -1354,8 +1410,8 @@ function value(mixed $value): mixed
 function when(bool $condition, mixed $value): mixed
 {
 	if (!$condition) {
-	    return \null;
+	    return null;
 	}
 
-	return \value($value);
+	return value($value);
 }

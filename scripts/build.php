@@ -3,34 +3,50 @@
 require_once __DIR__ . "/../vendor/autoload.php";
 
 use Nette\PhpGenerator\PhpFile;
+use Nette\PhpGenerator\Printer;
 
-$dir = $argv[1] ?? sprintf("%s/../dist", __DIR__);
-$filepath = sprintf("%s/%s", $dir, $argv[2] ?? "index.php");
+$srcDir = __DIR__ . "/../src";
+$distDir = $argv[1] ?? __DIR__ . "/../dist";
+$outputFile = $argv[2] ?? "index.php";
+$outputPath = $distDir . "/" . $outputFile;
 
-if (!is_dir($dir)) {
-    mkdir($dir, 0755, true);
+if (!is_dir($distDir)) {
+    mkdir($distDir, 0755, true);
 }
 
-$contents = ["<?php\n"];
+$printer = new Printer();
+$outputCode = "<?php\n\n";
+$files = glob($srcDir . "/*.php");
 
-foreach (glob(sprintf("%s/../src/%s", __DIR__, "*.php")) as $file) {
+foreach ($files as $file) {
     if (basename($file) === "functions.php") {
         continue;
     }
 
-    $code = file_get_contents($file);
-    $contents += PhpFile::fromCode($code)->getClasses();
+    $parsed = PhpFile::fromCode(file_get_contents($file));
+    foreach ($parsed->getClasses() as $class) {
+        $outputCode .= $printer->printClass($class) . "\n\n";
+    }
 }
 
-$code = file_get_contents(sprintf("%s/../src/functions.php", __DIR__));
-$contents += PhpFile::fromCode($code)->getFunctions();
-
-foreach ($contents as $key => $content) {
-    $contents[$key] = str_replace(["\\Essentio\\Core\\", "Essentio\\Core\\", "\n\n\n"], ["", "", "\n\n"], $content);
+$functionsFile = $srcDir . "/functions.php";
+if (file_exists($functionsFile)) {
+    $parsed = PhpFile::fromCode(file_get_contents($functionsFile));
+    foreach ($parsed->getFunctions() as $function) {
+        $outputCode .= $printer->printFunction($function) . "\n\n";
+    }
 }
 
-if (is_file($filepath)) {
-    unlink($filepath);
-}
+// UGH
+$normalize = [
+    "\\Essentio\\Core\\" => "",
+    "\\" => "",
+    "[\"']" => "[\\\"']",
+    "[e.]" => "[e\\.]",
+    "//+/" => "/\\/+/",
+    "x00" => "\\x00",
+    "\n\n\n" => "\n\n",
+];
 
-file_put_contents($filepath, implode("\n", $contents));
+$outputCode = str_replace(array_keys($normalize), array_values($normalize), $outputCode);
+file_put_contents($outputPath, trim($outputCode) . PHP_EOL);

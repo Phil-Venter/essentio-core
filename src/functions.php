@@ -349,7 +349,7 @@ function log_cli(string $format, ...$values): void
 function logger(string $level, string $message): void
 {
     $level = strtoupper($level);
-    $msg = sprintf("[%s] [%s]: %s\n", date("Y-m-d H:i:s"), $level, $message);
+    $msg = sprintf("[%s] [%s]: %s" . PHP_EOL, date("Y-m-d H:i:s"), $level, $message);
     file_put_contents(env(sprintf("%s_LOG_FILE", $level), "app.log"), $msg, FILE_APPEND);
 }
 

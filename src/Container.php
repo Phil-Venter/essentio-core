@@ -5,6 +5,7 @@ namespace Essentio\Core;
 use RuntimeException;
 
 use function call_user_func;
+use function class_exists;
 use function sprintf;
 
 /**
@@ -13,12 +14,12 @@ use function sprintf;
  */
 class Container
 {
-    /** @var array<string, object{factory: callable, once: bool}> */
+    /** @var array<string,object{factory:callable,once:bool}> */
     protected array $bindings = [];
 
     /**
      * @template T of object
-     * @var array<class-string<T>, T>
+     * @var array<class-string<T>,T>
      */
     protected array $cache = [];
 
@@ -31,7 +32,7 @@ class Container
      * @template T of object
      * @param class-string<T>    $id
      * @param callable(static):T $factory
-     * @return object{factory: callable, once: bool}
+     * @return object{factory:callable,once:bool}
      */
     public function bind(string $id, callable $factory): object
     {

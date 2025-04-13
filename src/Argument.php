@@ -2,6 +2,7 @@
 
 namespace Essentio\Core;
 
+use function array_merge;
 use function array_shift;
 use function explode;
 use function is_int;
@@ -18,7 +19,7 @@ class Argument
     /** @var string */
     public protected(set) string $command = '';
 
-    /** @var array<string, mixed> */
+    /** @var array<string,mixed> */
     public protected(set) array $named = [];
 
     /** @var list<mixed> */

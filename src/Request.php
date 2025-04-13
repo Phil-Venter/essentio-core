@@ -7,9 +7,13 @@ use function file_get_contents;
 use function filter_var;
 use function function_exists;
 use function getallheaders;
+use function in_array;
 use function json_decode;
+use function json_encode;
+use function libxml_use_internal_errors;
 use function parse_str;
 use function parse_url;
+use function simplexml_load_string;
 use function str_contains;
 use function strtolower;
 use function strtoupper;
@@ -41,25 +45,25 @@ class Request
     /** @var string */
     public protected(set) string $path;
 
-    /** @var array<string, mixed> */
+    /** @var array<string,mixed> */
     public protected(set) array $parameters;
 
-    /** @var array<string, mixed> */
+    /** @var array<string,mixed> */
     public protected(set) array $query;
 
-    /** @var array<string, mixed> */
+    /** @var array<string,mixed> */
     public protected(set) array $headers;
 
-    /** @var array<string, mixed> */
+    /** @var array<string,mixed> */
     public protected(set) array $cookies;
 
-    /** @var array<string, mixed> */
+    /** @var array<string,mixed> */
     public protected(set) array $files;
 
     /** @var string */
     public protected(set) string $rawInput;
 
-    /** @var array<string, mixed> */
+    /** @var array<string,mixed> */
     public protected(set) array $body;
 
     /**
@@ -84,44 +88,44 @@ class Request
 
         $that = new static();
 
-        $that->method = $post['_method'] ?? $server['REQUEST_METHOD'] ?? 'GET';
-        $that->scheme = filter_var($server['HTTPS'] ?? '', FILTER_VALIDATE_BOOLEAN) ? 'https' : 'http';
+        $that->method = $post["_method"] ?? $server["REQUEST_METHOD"] ?? "GET";
+        $that->scheme = filter_var($server["HTTPS"] ?? "", FILTER_VALIDATE_BOOLEAN) ? "https" : "http";
 
         $host = null;
         $port = null;
 
-        if (isset($server['HTTP_HOST'])) {
-            if (str_contains($server['HTTP_HOST'], ':')) {
-                [$host, $port] = explode(':', $server['HTTP_HOST'], 2);
+        if (isset($server["HTTP_HOST"])) {
+            if (str_contains($server["HTTP_HOST"], ":")) {
+                [$host, $port] = explode(":", $server["HTTP_HOST"], 2);
                 $port = (int) $port;
             } else {
-                $host = $server['HTTP_HOST'];
-                $port = $that->scheme === 'https' ? 443 : 80;
+                $host = $server["HTTP_HOST"];
+                $port = $that->scheme === "https" ? 443 : 80;
             }
         }
 
-        $that->host = $host ?? $server['SERVER_NAME'] ?? 'localhost';
-        $that->port = (int) ($port ?? $server['SERVER_PORT'] ??  80);
+        $that->host = $host ?? $server["SERVER_NAME"] ?? "localhost";
+        $that->port = (int) ($port ?? $server["SERVER_PORT"] ??  80);
 
-        $that->path = trim(parse_url($server['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '', '/');
+        $that->path = trim(parse_url($server["REQUEST_URI"] ?? "", PHP_URL_PATH) ?? "", "/");
         $that->parameters = [];
         $that->query = $get ?? $_GET ?? [];
-        $that->headers = $headers ?? (function_exists('getallheaders') ? (getallheaders() ?: []) : []);
+        $that->headers = $headers ?? (function_exists("getallheaders") ? (getallheaders() ?: []) : []);
         $that->cookies = $cookie ?? $_COOKIE ?? [];
         $that->files = $files ?? $_FILES ?? [];
 
-        $that->rawInput = $body ?? file_get_contents('php://input') ?: '';
+        $that->rawInput = $body ?? file_get_contents("php://input") ?: "";
 
-        $contentType = $that->headers['Content-Type'] ?? '';
-        $mimeType = explode(';', $contentType, 2)[0];
+        $contentType = $that->headers["Content-Type"] ?? "";
+        $mimeType = explode(";", $contentType, 2)[0];
 
         $that->body = match ($mimeType) {
-            'application/x-www-form-urlencoded' => (function (string $input): array {
+            "application/x-www-form-urlencoded" => (function (string $input): array {
                 parse_str($input, $result);
                 return $result;
             })($that->rawInput),
-            'application/json' => json_decode($that->rawInput, true),
-            'application/xml', 'text/xml' => (function (string $input): array {
+            "application/json" => json_decode($that->rawInput, true),
+            "application/xml", "text/xml" => (function (string $input): array {
                 libxml_use_internal_errors(true);
                 $xml = simplexml_load_string($input);
                 return $xml ? json_decode(json_encode($xml), true) : [];
@@ -139,7 +143,7 @@ class Request
      * associative array. These parameters can later be used by the get() method
      * to retrieve specific request values.
      *
-     * @param array<string, mixed> $parameters
+     * @param array<string,mixed> $parameters
      * @return static
      */
     public function setParameters(array $parameters): static

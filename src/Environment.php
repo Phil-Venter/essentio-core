@@ -6,6 +6,8 @@ use function explode;
 use function file;
 use function file_exists;
 use function is_numeric;
+use function preg_match;
+use function str_contains;
 use function strtolower;
 use function substr;
 use function trim;
@@ -17,7 +19,7 @@ use function trim;
  */
 class Environment
 {
-    /** @var array<string, mixed> */
+    /** @var array<string,mixed> */
     public protected(set) array $data = [];
 
     /**
@@ -39,11 +41,7 @@ class Environment
 		$lines = file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
 
 		foreach ($lines as $line) {
-		    if (trim($line)[0] === '#') {
-		        continue;
-		    }
-
-			if (!str_contains($line, '=')) {
+		    if (trim($line)[0] === '#' || !str_contains($line, '=')) {
 			    continue;
 			}
 
@@ -51,7 +49,7 @@ class Environment
 		    $name = trim($name);
 		    $value = trim($value);
 
-		    if (preg_match('/^(["\']).*\1$/', $value)) {
+		    if (preg_match("/^([\"']).*\1$/", $value)) {
 		        $value = substr($value, 1, -1);
 		    } else {
 		        $lower = strtolower($value);

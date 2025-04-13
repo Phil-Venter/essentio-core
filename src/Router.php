@@ -2,6 +2,8 @@
 
 namespace Essentio\Core;
 
+use function array_combine;
+use function array_merge;
 use function array_reverse;
 use function array_shift;
 use function call_user_func;
@@ -21,14 +23,19 @@ class Router
     protected const LEAFNODE = "\0L";
     protected const WILDCARD = "\0W";
 
-    protected string $currentPrefix = "";
+    /** @var list<callable> */
     protected array $globalMiddleware = [];
+
+    /** @var string */
+    protected string $currentPrefix = "";
+
+    /** @var list<callable> */
     protected array $currentMiddleware = [];
 
-    /** @var array<string, array{array<callable>, callable}> */
+    /** @var array<string,array{list<callable>,callable}> */
     protected array $staticRoutes = [];
 
-    /** @var array<string, array{array<callable>, callable}> */
+    /** @var array<string,array{list<callable>,callable}> */
     protected array $dynamicRoutes = [];
 
     /**

@@ -7,10 +7,13 @@ use Throwable;
 
 use function array_merge;
 use function flush;
+use function function_exists;
 use function header;
 use function headers_sent;
 use function http_response_code;
 use function is_array;
+use function session_write_close;
+use function sprintf;
 
 /**
  * Represents an HTTP response that encapsulates the status code, headers,
@@ -21,7 +24,7 @@ class Response
     /** @var int */
     public protected(set) int $status = 200;
 
-    /** @var array<string, mixed> */
+    /** @var array<string mixed> */
     public protected(set) array $headers = [];
 
     /** @var bool|float|int|string|Stringable|null */
@@ -43,7 +46,7 @@ class Response
     /**
      * Returns a new Response instance with additional headers merged into the existing headers.
      *
-     * @param array<string, mixed> $headers
+     * @param array<string,mixed> $headers
      * @return static
      */
     public function addHeaders(array $headers): static
@@ -56,7 +59,7 @@ class Response
     /**
      * Returns a new Response instance with the headers replaced by the provided array.
      *
-     * @param array<string, mixed> $headers
+     * @param array<string,mixed> $headers
      * @return static
      */
     public function withHeaders(array $headers): static
@@ -99,10 +102,10 @@ class Response
             foreach ($this->headers as $key => $value) {
                 if (is_array($value)) {
                     foreach ($value as $i => $v) {
-                        header(sprintf('%s: %s', $key, $v), $i === 0);
+                        header(sprintf("%s: %s", $key, $v), $i === 0);
                     }
                 } else {
-                    header(sprintf('%s: %s', $key, $value), true);
+                    header(sprintf("%s: %s", $key, $value), true);
                 }
             }
 
@@ -110,7 +113,7 @@ class Response
 
             if ($detachResponse) {
                 session_write_close();
-                if (function_exists('fastcgi_finish_request')) {
+                if (function_exists("fastcgi_finish_request")) {
                     return fastcgi_finish_request();
                 } else {
                     flush();
