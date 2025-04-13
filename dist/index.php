@@ -337,7 +337,7 @@ class Environment
 		    $name = trim($name);
 		    $value = trim($value);
 
-		    if (preg_match("/^([\"']).*1$/", $value)) {
+		    if (preg_match("/^([\"']).*\1$/", $value)) {
 		        $value = substr($value, 1, -1);
 		    } else {
 		        $lower = strtolower($value);
@@ -963,18 +963,21 @@ class Template
 	public function render(array $data = []): string
 	{
 		if ($this->path && file_exists($this->path)) {
-		    extract($data);
-		    ob_start();
-		    include $this->path;
-		    $this->segments["content"] = ob_get_clean();
+		    $content = (function (array $data) {
+		        ob_start();
+		        extract($data);
+		        include $this->path;
+		        return ob_get_clean();
+		    })($data);
 		}
 
 		if ($this->layout) {
+		    $this->segments["content"] = $content ?? "";
 		    $this->layout->setSegments($this->segments);
 		    return $this->layout->render($data);
 		}
 
-		return $this->segments["content"];
+		return $content ?? "";
 	}
 
 	/**
