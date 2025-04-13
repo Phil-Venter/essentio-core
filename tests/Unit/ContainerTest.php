@@ -6,7 +6,7 @@ describe(Container::class, function () {
     it("binds and retrieves a service instance", function () {
         $container = new Container();
         $container->bind("stdClass", fn() => new stdClass());
-        $instance = $container->get("stdClass");
+        $instance = $container->resolve("stdClass");
 
         expect($instance)->toBeInstanceOf(stdClass::class);
     });
@@ -14,7 +14,7 @@ describe(Container::class, function () {
     it("throws an exception when retrieving an unbound service", function () {
         $container = new Container();
 
-        expect(fn() => $container->get("nonexistent"))->toThrow(
+        expect(fn() => $container->resolve("nonexistent"))->toThrow(
             RuntimeException::class,
             "No binding for nonexistent exists"
         );
@@ -23,10 +23,10 @@ describe(Container::class, function () {
     it("returns the same instance when the binding is marked as once (singleton)", function () {
         $container = new Container();
         $binding = $container->bind("singleton", fn() => new stdClass());
-        $binding->once = true;
+        $binding->once();
 
-        $instance1 = $container->get("singleton");
-        $instance2 = $container->get("singleton");
+        $instance1 = $container->resolve("singleton");
+        $instance2 = $container->resolve("singleton");
 
         expect($instance1)->toBe($instance2);
     });
@@ -35,8 +35,8 @@ describe(Container::class, function () {
         $container = new Container();
         $container->bind("prototype", fn() => new stdClass());
 
-        $instance1 = $container->get("prototype");
-        $instance2 = $container->get("prototype");
+        $instance1 = $container->resolve("prototype");
+        $instance2 = $container->resolve("prototype");
 
         expect($instance1)->not->toBe($instance2);
     });
@@ -47,7 +47,7 @@ describe(Container::class, function () {
             return $c;
         });
 
-        expect($container->get("self"))->toBe($container);
+        expect($container->resolve("self"))->toBe($container);
     });
 
     it("can bind and retrieve multiple services independently", function () {
@@ -60,8 +60,8 @@ describe(Container::class, function () {
             }
         );
 
-        $instanceA = $container->get("serviceA");
-        $instanceB = $container->get("serviceB");
+        $instanceA = $container->resolve("serviceA");
+        $instanceB = $container->resolve("serviceB");
 
         expect($instanceA)->toBeInstanceOf(stdClass::class);
         expect($instanceB)->toBeInstanceOf(get_class($instanceB));
