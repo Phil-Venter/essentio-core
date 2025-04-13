@@ -90,7 +90,6 @@ class Router
 
         if (!str_contains($path, ":")) {
             $this->staticRoutes[$path][$method] = [$allMiddleware, $handle];
-            return $this;
         }
 
         $node = &$this->dynamicRoutes;
@@ -137,13 +136,13 @@ class Router
         $result = $this->search($this->dynamicRoutes, explode("/", $request->path));
 
         if ($result === null) {
-            throw new HttpException("Route not found", 404);
+            throw HttpException::make(404);
         }
 
         [$values, $methods] = $result;
 
         if (!isset($methods[$request->method])) {
-            throw new HttpException("Method not allowed", 405);
+            throw HttpException::make(405);
         }
 
         [$params, $middleware, $handle] = $methods[$request->method];

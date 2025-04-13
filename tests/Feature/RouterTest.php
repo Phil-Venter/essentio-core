@@ -42,12 +42,12 @@ describe(Router::class, function () {
             "REQUEST_URI" => "/nonexistent",
         ];
         $request = Request::init($server);
-        expect(fn() => $router->dispatch($request))->toThrow(HttpException::class, "Route not found");
+        expect(fn() => $router->dispatch($request))->toThrow(HttpException::class, "Not Found");
     });
 
     it("throws a 405 HttpException when the method is not allowed", function () {
         $router = new Router();
-        $router->add("GET", ":about", function ($req, $res) {
+        $router->add("GET", "about", function ($req, $res) {
             return $res->withBody("About");
         });
         $server = [
@@ -55,7 +55,7 @@ describe(Router::class, function () {
             "REQUEST_URI" => "/about",
         ];
         $request = Request::init($server);
-        expect(fn() => $router->dispatch($request))->toThrow(HttpException::class, "Method not allowed");
+        expect(fn() => $router->dispatch($request))->toThrow(HttpException::class, "Method Not Allowed");
     });
 
     it("executes middleware pipeline correctly for a static route", function () {
