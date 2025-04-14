@@ -90,8 +90,8 @@ class Application
 
 		try {
 		    static::$container
-		        ->get(Router::class)
-		        ->dispatch(static::$container->get(Request::class))
+		        ->resolve(Router::class)
+		        ->dispatch(static::$container->resolve(Request::class))
 		        ->send();
 		} catch (HttpException $e) {
 		    (new Response())
