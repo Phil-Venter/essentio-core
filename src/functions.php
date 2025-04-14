@@ -21,6 +21,18 @@ function app(?string $id = null): object
 }
 
 /**
+ * Attempt to resolve path from base as passed to Application factory.
+ *
+ * @param string $key
+ * @param mixed $default
+ * @return mixed
+ */
+function base_path(string $path = ""): string
+{
+    return Application::fromBase($path);
+}
+
+/**
  * This function fetches an environment variable from the Environment instance.
  *
  * @param string $key
