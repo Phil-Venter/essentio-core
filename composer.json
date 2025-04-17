@@ -1,5 +1,6 @@
 {
     "name": "essentio/core",
+    "description": "A minimalist PHP micro-framework for people who prefer simple structure and full control—without the bloat, dogma, or dependency hell.",
     "license": "MIT",
     "type": "library",
     "autoload": {
