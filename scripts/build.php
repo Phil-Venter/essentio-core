@@ -5,6 +5,38 @@ require_once __DIR__ . "/../vendor/autoload.php";
 use Nette\PhpGenerator\PhpFile;
 use Nette\PhpGenerator\Printer;
 
+function stripNamespaceAndUse(string $filePath): string
+{
+    $lines = file($filePath, FILE_IGNORE_NEW_LINES);
+
+    $filteredLines = array_filter($lines, function ($line) {
+        return !preg_match("/^\s*(namespace|use)\b/", $line);
+    });
+
+    return implode(PHP_EOL, $filteredLines);
+}
+
+function stripSlashesOutsideQuotes(string $code): string
+{
+    $tokens = token_get_all($code);
+    $output = "";
+
+    foreach ($tokens as $token) {
+        if (is_array($token)) {
+            [$id, $text] = $token;
+            if ($id === T_CONSTANT_ENCAPSED_STRING || $id === T_ENCAPSED_AND_WHITESPACE) {
+                $output .= $text;
+            } else {
+                $output .= str_replace("\\", "", $text);
+            }
+        } else {
+            $output .= $token === "\\" ? "" : $token;
+        }
+    }
+
+    return $output;
+}
+
 $srcDir = __DIR__ . "/../src";
 $distDir = $argv[1] ?? __DIR__ . "/../dist";
 $outputFile = $argv[2] ?? "index.php";
@@ -23,7 +55,7 @@ foreach ($files as $file) {
         continue;
     }
 
-    $parsed = PhpFile::fromCode(file_get_contents($file));
+    $parsed = PhpFile::fromCode(stripNamespaceAndUse($file));
     foreach ($parsed->getClasses() as $class) {
         $outputCode .= $printer->printClass($class) . "\n\n";
     }
@@ -31,24 +63,10 @@ foreach ($files as $file) {
 
 $functionsFile = $srcDir . "/functions.php";
 if (file_exists($functionsFile)) {
-    $parsed = PhpFile::fromCode(file_get_contents($functionsFile));
+    $parsed = PhpFile::fromCode(stripNamespaceAndUse($functionsFile));
     foreach ($parsed->getFunctions() as $function) {
         $outputCode .= $printer->printFunction($function) . "\n\n";
     }
 }
 
-// UGH
-$normalize = [
-    "\\Essentio\\Core\\" => "",
-    "\\" => "",
-    "[\"']" => "[\"\\']",
-    "[e.]" => "[e\\.]",
-    "//+/" => "/\\/+/",
-    "x00" => "\\x00",
-    "*1$" => "*\\1$",
-    "I'm" => "I\\'m",
-    "\n\n\n" => "\n\n",
-];
-
-$outputCode = str_replace(array_keys($normalize), array_values($normalize), $outputCode);
-file_put_contents($outputPath, trim($outputCode) . PHP_EOL);
+file_put_contents($outputPath, str_replace("\n\n\n", "\n\n", trim(stripSlashesOutsideQuotes($outputCode))) . PHP_EOL);

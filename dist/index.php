@@ -757,11 +757,7 @@ class Router
 	 * @param callable $handle
 	 * @return Response
 	 */
-	protected function call(
-		Request $request,
-		array $middleware,
-		callable $handle,
-	): Response
+	protected function call(Request $request, array $middleware, callable $handle): Response
 	{
 		$pipeline = $handle;
 
