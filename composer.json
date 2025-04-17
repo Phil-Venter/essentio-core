@@ -20,7 +20,8 @@
     },
     "minimum-stability": "dev",
     "scripts": {
-        "build": "php scripts/build.php"
+        "build": "php scripts/build.php",
+        "test": "./vendor/bin/pest"
     },
     "config": {
         "allow-plugins": {
