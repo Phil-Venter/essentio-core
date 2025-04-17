@@ -36,16 +36,8 @@ class Container
      */
     public function bind(string $id, callable $factory): object
     {
-        return $this->bindings[$id] = new class ($factory)
-        {
-            public protected(set) bool $once = false;
-            public function __construct(public $factory) {}
-            public function once(bool $once = true): self
-            {
-                $this->once = $once;
-                return $this;
-            }
-        };
+        $once = false;
+        return $this->bindings[$id] = (object) compact("factory", "once");
     }
 
     /**

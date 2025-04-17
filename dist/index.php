@@ -30,9 +30,9 @@ class Application
 		static::$container = new Container();
 		static::$isWeb = true;
 
-		static::$container->bind(Environment::class, fn() => new Environment())->once();
-		static::$container->bind(Request::class, fn() => Request::init())->once();
-		static::$container->bind(Router::class, fn() => new Router())->once();
+		static::$container->bind(Environment::class, fn() => new Environment())->once = true;
+		static::$container->bind(Request::class, fn() => Request::init())->once = true;
+		static::$container->bind(Router::class, fn() => new Router())->once = true;
 
 		if (session_status() !== PHP_SESSION_ACTIVE) {
 		    session_start();
@@ -53,8 +53,8 @@ class Application
 		static::$container = new Container();
 		static::$isWeb = false;
 
-		static::$container->bind(Environment::class, fn() => new Environment())->once();
-		static::$container->bind(Argument::class, fn() => Argument::init())->once();
+		static::$container->bind(Environment::class, fn() => new Environment())->once = true;
+		static::$container->bind(Argument::class, fn() => Argument::init())->once = true;
 	}
 
 	/**
@@ -69,8 +69,7 @@ class Application
 	 */
 	public static function fromBase(string $path): string|false
 	{
-		$path = sprintf("%s/%s", static::$basePath, $path);
-		return realpath($path) ?: $path;
+		return sprintf("%s/%s", static::$basePath, $path);
 	}
 
 	/**
@@ -251,16 +250,8 @@ class Container
 	 */
 	public function bind(string $id, callable $factory): object
 	{
-		return $this->bindings[$id] = new class ($factory)
-		{
-		    public protected(set) bool $once = false;
-		    public function __construct(public $factory) {}
-		    public function once(bool $once = true): self
-		    {
-		        $this->once = $once;
-		        return $this;
-		    }
-		};
+		$once = false;
+		return $this->bindings[$id] = (object) compact("factory", "once");
 	}
 
 	/**
@@ -345,7 +336,7 @@ class Environment
 		            $lower === "true"  => true,
 		            $lower === "false" => false,
 		            $lower === "null"  => null,
-		            is_numeric($value) => preg_match("/[e\.]/", $value) ? (float)$value : (int)$value,
+		            is_numeric($value) => preg_match("/[e\.]/", $value) ? (float) $value : (int) $value,
 		            default            => $value,
 		        };
 		    }

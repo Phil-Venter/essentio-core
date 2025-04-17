@@ -57,7 +57,7 @@ class Environment
 		            $lower === "true"  => true,
 		            $lower === "false" => false,
 		            $lower === "null"  => null,
-		            is_numeric($value) => preg_match("/[e\.]/", $value) ? (float)$value : (int)$value,
+		            is_numeric($value) => preg_match("/[e\.]/", $value) ? (float) $value : (int) $value,
 		            default            => $value,
 		        };
 		    }

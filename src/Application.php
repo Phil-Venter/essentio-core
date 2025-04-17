@@ -4,7 +4,6 @@ namespace Essentio\Core;
 
 use Throwable;
 
-use function realpath;
 use function rtrim;
 use function session_start;
 use function session_status;
@@ -40,9 +39,9 @@ class Application
         static::$container = new Container();
         static::$isWeb = true;
 
-        static::$container->bind(Environment::class, fn() => new Environment())->once();
-        static::$container->bind(Request::class, fn() => Request::init())->once();
-        static::$container->bind(Router::class, fn() => new Router())->once();
+        static::$container->bind(Environment::class, fn() => new Environment())->once = true;
+        static::$container->bind(Request::class, fn() => Request::init())->once = true;
+        static::$container->bind(Router::class, fn() => new Router())->once = true;
 
         if (session_status() !== PHP_SESSION_ACTIVE) {
             session_start();
@@ -63,8 +62,8 @@ class Application
         static::$container = new Container();
         static::$isWeb = false;
 
-        static::$container->bind(Environment::class, fn() => new Environment())->once();
-        static::$container->bind(Argument::class, fn() => Argument::init())->once();
+        static::$container->bind(Environment::class, fn() => new Environment())->once = true;
+        static::$container->bind(Argument::class, fn() => Argument::init())->once = true;
     }
 
     /**
@@ -79,8 +78,7 @@ class Application
      */
     public static function fromBase(string $path): string|false
     {
-        $path = sprintf("%s/%s", static::$basePath, $path);
-        return realpath($path) ?: $path;
+        return sprintf("%s/%s", static::$basePath, $path);
     }
 
     /**
