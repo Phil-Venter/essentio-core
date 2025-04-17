@@ -61,9 +61,9 @@ class Application
      * Resolve an absolute path based on the application's base directory.
      *
      * @param string $path
-     * @return string|false
+     * @return string
      */
-    public static function fromBase(string $path): string|false
+    public static function fromBase(string $path): string
     {
         return sprintf("%s/%s", static::$basePath, $path);
     }

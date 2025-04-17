@@ -23,9 +23,8 @@ function app(?string $id = null): object
 /**
  * Attempt to resolve path from base as passed to Application factory.
  *
- * @param string $key
- * @param mixed $default
- * @return mixed
+ * @param string $path
+ * @return string
  */
 function base_path(string $path = ""): string
 {
