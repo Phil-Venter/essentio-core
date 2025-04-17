@@ -355,8 +355,9 @@ function view(string $template, array $data = [], int $status = 200): Response
 function logger(string $level, string $message): void
 {
     $level = strtoupper($level);
-    $msg = sprintf("[%s] [%s]: %s" . PHP_EOL, date("Y-m-d H:i:s"), $level, $message);
-    file_put_contents(env(sprintf("%s_LOG_FILE", $level), "app.log"), $msg, FILE_APPEND);
+    $file = base_path(env(sprintf("%s_LOG_FILE", $level), "app.log"));
+    $line = sprintf("[%s] [%s]: %s" . PHP_EOL, date("Y-m-d H:i:s"), $level, $message);
+    file_put_contents($file, $line, FILE_APPEND);
 }
 
 /**
@@ -379,6 +380,7 @@ function dump(...$data): void
 
 /**
  * This function allows you to perform an operation on the value and then return the original value.
+ * [Keeping it around to see if this is framework or implementation detail.]
  *
  * @param mixed    $value
  * @param callable $callback
@@ -392,6 +394,7 @@ function tap(mixed $value, callable $callback): mixed
 
 /**
  * Evaluates the provided condition, and if it is true, throws the specified exception.
+ * [Keeping it around to see if this is framework or implementation detail.]
  *
  * @param bool $condition
  * @param Throwable $e
@@ -407,6 +410,7 @@ function throw_if(bool $condition, Throwable $e): void
 
 /**
  * If the value is callable, it executes the callback and returns its result. Otherwise, it returns the value as is.
+ * [Keeping it around to see if this is framework or implementation detail.]
  *
  * @param mixed $value
  * @return mixed
@@ -422,8 +426,8 @@ function value(mixed $value): mixed
 
 /**
  * If the condition is false, the function returns null.
- * If the condition is true and the callback is callable, it executes the callback and returns its result;
- * otherwise, it returns the provided value directly.
+ * If the condition is true and the callback is callable, it executes the callback and returns its result; otherwise, it returns the provided value directly.
+ * [Keeping it around to see if this is framework or implementation detail.]
  *
  * @param bool  $condition
  * @param mixed $callback
