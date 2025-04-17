@@ -23,7 +23,7 @@ describe(Container::class, function () {
     it("returns the same instance when the binding is marked as once (singleton)", function () {
         $container = new Container();
         $binding = $container->bind("singleton", fn() => new stdClass());
-        $binding->once();
+        $binding->once = true;
 
         $instance1 = $container->resolve("singleton");
         $instance2 = $container->resolve("singleton");
