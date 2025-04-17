@@ -19,22 +19,13 @@ use function strtolower;
 use function strtoupper;
 use function trim;
 
-/**
- * Encapsulates an HTTP request by extracting data from PHP superglobals.
- * Provides methods to initialize request properties such as method, scheme,
- * host, port, path, parameters, headers, cookies, files, and body content.
- */
 class Request
 {
     /** @var string */
-    public protected(set) string $method {
-        set => strtoupper($value);
-    }
+    public protected(set) string $method { set => strtoupper($value); }
 
     /** @var string */
-    public protected(set) string $scheme {
-        set => strtolower($value);
-    }
+    public protected(set) string $scheme { set => strtolower($value); }
 
     /** @var ?string */
     public protected(set) ?string $host;
@@ -69,9 +60,13 @@ class Request
     /**
      * Initializes and returns a new Request instance using PHP superglobals.
      *
-     * This method sets the HTTP method, scheme, host, port, path, headers,
-     * cookies, files, and body based on the current request environment.
-     *
+     * @param array<string, mixed>|null $server
+     * @param array<string, mixed>|null $headers
+     * @param array<string, mixed>|null $get
+     * @param array<string, mixed>|null $post
+     * @param array<string, mixed>|null $cookie
+     * @param array<string, mixed>|null $files
+     * @param string|null               $body
      * @return static
      */
     public static function init(
@@ -139,11 +134,7 @@ class Request
     /**
      * Sets custom parameters for the request.
      *
-     * This method allows you to override the request parameters with a custom
-     * associative array. These parameters can later be used by the get() method
-     * to retrieve specific request values.
-     *
-     * @param array<string,mixed> $parameters
+     * @param array<string, mixed> $parameters
      * @return static
      */
     public function setParameters(array $parameters): static
@@ -154,9 +145,6 @@ class Request
 
     /**
      * Retrieve a value from the request parameters.
-     *
-     * Checks the custom parameters, then the query parameters.
-     * If the key is not found, returns the provided default.
      *
      * @param string $key
      * @param mixed  $default
@@ -171,11 +159,6 @@ class Request
 
     /**
      * Extracts a specific parameter from the incoming request data.
-     *
-     * This function dynamically selects the data source based on the HTTP method used. For methods typically devoid
-     * of a payload (e.g., GET, HEAD, OPTIONS, TRACE), it pulls the value from the query string. For methods expected
-     * to contain a body (such as POST, PUT, or PATCH), it retrieves the value from the request payload.
-     * If the parameter is absent in the relevant dataset, the function returns the specified fallback.
      *
      * @param string $key
      * @param mixed  $default

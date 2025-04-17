@@ -5,97 +5,77 @@ namespace Essentio\Core;
 use function array_merge;
 use function array_shift;
 use function explode;
-use function is_int;
 use function str_contains;
 use function str_starts_with;
 use function substr;
 
-/**
- * Parses and holds command-line arguments including the command,
- * named parameters, and positional parameters.
- */
 class Argument
 {
     /** @var string */
     public protected(set) string $command = '';
 
-    /** @var array<string,mixed> */
-    public protected(set) array $named = [];
-
-    /** @var list<mixed> */
-    public protected(set) array $positional = [];
+    /** @var array<int|string, string|int|bool|null> */
+    public protected(set) array $arguments = [];
 
     /**
      * Initializes and parses the command-line arguments.
      *
-     * This method extracts the command, named, and positional arguments
-     * from the $_SERVER['argv'] array. It supports both long (--name)
-     * and short (-n) argument formats.
-     *
+     * @param list<string>|null $argv
      * @return static
      */
     public static function init(?array $argv = null): static
     {
         $argv ??= $_SERVER['argv'] ?? [];
-
         $that = new static;
+        array_shift($argv);
 
         if (empty($argv)) {
             return $that;
         }
 
-        array_shift($argv);
-
         while ($arg = array_shift($argv)) {
             if ($arg === '--') {
-                $that->positional = array_merge($that->positional, $argv);
+                $that->arguments = array_merge($that->arguments, $argv);
                 break;
             }
 
             if (str_starts_with($arg, '--')) {
-                $name = substr($arg, 2);
+                $option = substr($arg, 2);
 
-                if (str_contains($name, '=')) {
-                    [$key, $value] = explode('=', $name, 2);
-                    $that->named[$key] = $value;
-                    continue;
+                if (str_contains($option, '=')) {
+                    [$key, $value] = explode('=', $option, 2);
+                } elseif (isset($argv[0]) && $argv[0][0] !== '-') {
+                    $key = $option;
+                    $value = array_shift($argv);
+                } else {
+                    $key = $option;
+                    $value = true;
                 }
 
-                if (isset($argv[0]) && $argv[0][0] !== '-') {
-                    $that->named[$name] = array_shift($argv);
-                    continue;
-                }
-
-                $that->named[$name] = true;
+                $that->arguments[$key] = $value;
                 continue;
             }
 
             if ($arg[0] === '-') {
-                $name = substr($arg, 1, 1);
+                $key = $arg[1];
                 $value = substr($arg, 2);
 
-                if (str_contains($value, '=')) {
-                    break;
+                if (empty($value)) {
+                    if (isset($argv[0]) && $argv[0][0] !== '-') {
+                        $value = array_shift($argv);
+                    } else {
+                        $value = true;
+                    }
                 }
 
-                if (!empty($value)) {
-                    $that->named[$name] = $value;
-                    continue;
-                }
-
-                if (isset($argv[0]) && $argv[0][0] !== '-') {
-                    $that->named[$name] = array_shift($argv);
-                    continue;
-                }
-
-                $that->named[$name] = true;
+                $that->arguments[$key] = $value;
                 continue;
             }
 
-            if ($that->command === '') {
+            if (empty($that->command)) {
                 $that->command = $arg;
             } else {
-                $that->positional[] = $arg;
+                $that->arguments[] = $arg;
             }
         }
 
@@ -105,21 +85,12 @@ class Argument
     /**
      * Retrieves a specific argument value.
      *
-     * Depending on the type of key provided, this method returns
-     * either a positional argument (if an integer is provided) or
-     * a named argument (if a string is provided). If the argument
-     * is not found, the default value is returned.
-     *
      * @param int|string $key
      * @param mixed      $default
      * @return mixed
      */
     public function get(int|string $key, mixed $default = null): mixed
     {
-        if (is_int($key)) {
-            return $this->positional[$key] ?? $default;
-        }
-
-        return $this->named[$key] ?? $default;
+        return $this->arguments[$key] ?? $default;
     }
 }

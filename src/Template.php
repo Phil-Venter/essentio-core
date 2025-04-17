@@ -10,9 +10,6 @@ use function file_exists;
 use function ob_get_clean;
 use function ob_start;
 
-/**
- * Template engine class for rendering views with optional layout support.
- */
 class Template
 {
     /** @var ?self */
@@ -52,9 +49,6 @@ class Template
     /**
      * Starts or sets a named content segment.
      *
-     * If a value is provided, the segment is directly set. Otherwise, it initiates output buffering
-     * to capture content that will be associated with the segment.
-     *
      * @param string      $name
      * @param string|null $value
      * @return void
@@ -88,8 +82,6 @@ class Template
     /**
      * Renders the template and returns the resulting HTML string.
      *
-     * If a layout is defined, the content is passed into the layout recursively.
-     *
      * @param array<string,mixed> $data
      * @return string
      */
@@ -118,6 +110,7 @@ class Template
      *
      * @param array<string,string> $segments
      * @return void
+     * @internal
      */
     public function setSegments(array $segments): void
     {

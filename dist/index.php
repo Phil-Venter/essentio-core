@@ -1,9 +1,5 @@
 <?php
 
-/**
- * Handles the initialization and execution of the application for both
- * web and CLI environments.
- */
 class Application
 {
 	/** @var string */
@@ -17,9 +13,6 @@ class Application
 
 	/**
 	 * Initialize the application for HTTP requests.
-	 *
-	 * Sets up the container bindings for web-specific components,
-	 * and ensures that session handling is configured.
 	 *
 	 * @param string $basePath
 	 * @return void
@@ -42,8 +35,6 @@ class Application
 	/**
 	 * Initialize the application for CLI commands.
 	 *
-	 * Sets up the container bindings for CLI-specific components.
-	 *
 	 * @param string $basePath
 	 * @return void
 	 */
@@ -60,10 +51,6 @@ class Application
 	/**
 	 * Resolve an absolute path based on the application's base directory.
 	 *
-	 * This method concatenates the stored base path with the provided relative path,
-	 * then uses `realpath()` to return the absolute path. If the path cannot be resolved,
-	 * it returns false.
-	 *
 	 * @param string $path
 	 * @return string|false
 	 */
@@ -73,11 +60,7 @@ class Application
 	}
 
 	/**
-	 * Run the application.
-	 *
-	 * For web applications, it processes the request using the Router and
-	 * sends the corresponding response. In case of an exception, a 500 error
-	 * is returned.
+	 * Run the application, not required for cli.
 	 *
 	 * @return void
 	 */
@@ -108,92 +91,73 @@ class Application
 	}
 }
 
-/**
- * Parses and holds command-line arguments including the command,
- * named parameters, and positional parameters.
- */
 class Argument
 {
 	/** @var string */
 	public protected(set) string $command = '';
 
-	/** @var array<string,mixed> */
-	public protected(set) array $named = [];
-
-	/** @var list<mixed> */
-	public protected(set) array $positional = [];
+	/** @var array<int|string, string|int|bool|null> */
+	public protected(set) array $arguments = [];
 
 	/**
 	 * Initializes and parses the command-line arguments.
 	 *
-	 * This method extracts the command, named, and positional arguments
-	 * from the $_SERVER['argv'] array. It supports both long (--name)
-	 * and short (-n) argument formats.
-	 *
+	 * @param list<string>|null $argv
 	 * @return static
 	 */
 	public static function init(?array $argv = null): static
 	{
 		$argv ??= $_SERVER['argv'] ?? [];
-
 		$that = new static;
+		array_shift($argv);
 
 		if (empty($argv)) {
 		    return $that;
 		}
 
-		array_shift($argv);
-
 		while ($arg = array_shift($argv)) {
 		    if ($arg === '--') {
-		        $that->positional = array_merge($that->positional, $argv);
+		        $that->arguments = array_merge($that->arguments, $argv);
 		        break;
 		    }
 
 		    if (str_starts_with($arg, '--')) {
-		        $name = substr($arg, 2);
+		        $option = substr($arg, 2);
 
-		        if (str_contains($name, '=')) {
-		            [$key, $value] = explode('=', $name, 2);
-		            $that->named[$key] = $value;
-		            continue;
+		        if (str_contains($option, '=')) {
+		            [$key, $value] = explode('=', $option, 2);
+		        } elseif (isset($argv[0]) && $argv[0][0] !== '-') {
+		            $key = $option;
+		            $value = array_shift($argv);
+		        } else {
+		            $key = $option;
+		            $value = true;
 		        }
 
-		        if (isset($argv[0]) && $argv[0][0] !== '-') {
-		            $that->named[$name] = array_shift($argv);
-		            continue;
-		        }
-
-		        $that->named[$name] = true;
+		        $that->arguments[$key] = $value;
 		        continue;
 		    }
 
 		    if ($arg[0] === '-') {
-		        $name = substr($arg, 1, 1);
+		        $key = $arg[1];
 		        $value = substr($arg, 2);
 
-		        if (str_contains($value, '=')) {
-		            break;
+		        if (empty($value)) {
+		            if (isset($argv[0]) && $argv[0][0] !== '-') {
+		                $value = array_shift($argv);
+		            } else {
+		                $value = true;
+		            }
 		        }
 
-		        if (!empty($value)) {
-		            $that->named[$name] = $value;
-		            continue;
-		        }
-
-		        if (isset($argv[0]) && $argv[0][0] !== '-') {
-		            $that->named[$name] = array_shift($argv);
-		            continue;
-		        }
-
-		        $that->named[$name] = true;
+		        $that->arguments[$key] = $value;
 		        continue;
 		    }
 
-		    if ($that->command === '') {
+		    if (empty($that->command)) {
 		        $that->command = $arg;
 		    } else {
-		        $that->positional[] = $arg;
+		        $that->arguments[] = $arg;
 		    }
 		}
 
@@ -203,50 +167,34 @@ class Argument
 	/**
 	 * Retrieves a specific argument value.
 	 *
-	 * Depending on the type of key provided, this method returns
-	 * either a positional argument (if an integer is provided) or
-	 * a named argument (if a string is provided). If the argument
-	 * is not found, the default value is returned.
-	 *
 	 * @param int|string $key
 	 * @param mixed      $default
 	 * @return mixed
 	 */
 	public function get(int|string $key, mixed $default = null): mixed
 	{
-		if (is_int($key)) {
-		    return $this->positional[$key] ?? $default;
-		}
-
-		return $this->named[$key] ?? $default;
+		return $this->arguments[$key] ?? $default;
 	}
 }
 
-/**
- * A simple dependency injection container that allows binding of
- * factories to service identifiers and resolves them when needed.
- */
 class Container
 {
-	/** @var array<string,object{factory:callable,once:bool}> */
+	/** @var array<string, object{factory:callable, once:bool}> */
 	protected array $bindings = [];
 
 	/**
 	 * @template T of object
-	 * @var array<class-string<T>,T>
+	 * @var array<class-string<T>, T>
 	 */
 	protected array $cache = [];
 
 	/**
 	 * Bind a service to the container.
 	 *
-	 * Registers a service with a unique identifier and a factory callable
-	 * responsible for creating the service instance.
-	 *
 	 * @template T of object
-	 * @param class-string<T>    $id
+	 * @param class-string<T> $id
 	 * @param callable(static):T $factory
-	 * @return object{factory:callable,once:bool}
+	 * @return object{factory:callable, once:bool}
 	 */
 	public function bind(string $id, callable $factory): object
 	{
@@ -256,10 +204,6 @@ class Container
 
 	/**
 	 * Retrieve a service from the container.
-	 *
-	 * Resolves and returns a service based on its identifier. If the service
-	 * has been previously resolved and marked as a singleton (via the 'once' flag),
-	 * the cached instance is returned.
 	 *
 	 * @template T of object
 	 * @param  class-string<T>|string $id
@@ -291,11 +235,6 @@ class Container
 	}
 }
 
-/**
- * Handles the loading and retrieval of environment variables from a file.
- * The file is parsed line-by-line, skipping comments and empty lines, while
- * converting the configuration into an associative array.
- */
 class Environment
 {
 	/** @var array<string,mixed> */
@@ -303,10 +242,6 @@ class Environment
 
 	/**
 	 * Loads environment variables from a file.
-	 *
-	 * Reads a file line-by-line, ignoring lines that are empty or start with a '#'.
-	 * Each valid line is parsed into a key-value pair. Values are trimmed, unquoted if necessary,
-	 * and typecasted to boolean, null, or numeric values when applicable.
 	 *
 	 * @param string $file
 	 * @return static
@@ -350,9 +285,6 @@ class Environment
 	/**
 	 * Retrieves an environment variable.
 	 *
-	 * Returns the value of the specified environment variable from the loaded data.
-	 * If the variable is not found, the method returns the provided default value.
-	 *
 	 * @param string $key
 	 * @param mixed  $default
 	 * @return mixed
@@ -363,9 +295,6 @@ class Environment
 	}
 }
 
-/**
- * Basic HTTP exception class with essential success, redirection, client, and server error codes.
- */
 class HttpException extends Exception
 {
 	public const HTTP_STATUS = [
@@ -389,9 +318,6 @@ class HttpException extends Exception
 	/**
 	 * Factory method to create a new HttpException instance.
 	 *
-	 * If no message is provided, the method will use the predefined status message.
-	 * If the status code is not in the predefined list, "Unknown Error" is used.
-	 *
 	 * @param int $status HTTP status code (e.g., 404, 500).
 	 * @param string|null $message Optional custom error message.
 	 * @param Throwable|null $previous Optional previous exception for chaining.
@@ -403,11 +329,6 @@ class HttpException extends Exception
 	}
 }
 
-/**
- * Encapsulates an HTTP request by extracting data from PHP superglobals.
- * Provides methods to initialize request properties such as method, scheme,
- * host, port, path, parameters, headers, cookies, files, and body content.
- */
 class Request
 {
 	/** @var string */
@@ -453,9 +374,13 @@ class Request
 	/**
 	 * Initializes and returns a new Request instance using PHP superglobals.
 	 *
-	 * This method sets the HTTP method, scheme, host, port, path, headers,
-	 * cookies, files, and body based on the current request environment.
-	 *
+	 * @param array<string, mixed>|null $server
+	 * @param array<string, mixed>|null $headers
+	 * @param array<string, mixed>|null $get
+	 * @param array<string, mixed>|null $post
+	 * @param array<string, mixed>|null $cookie
+	 * @param array<string, mixed>|null $files
+	 * @param string|null               $body
 	 * @return static
 	 */
 	public static function init(
@@ -524,11 +449,7 @@ class Request
 	/**
 	 * Sets custom parameters for the request.
 	 *
-	 * This method allows you to override the request parameters with a custom
-	 * associative array. These parameters can later be used by the get() method
-	 * to retrieve specific request values.
-	 *
-	 * @param array<string,mixed> $parameters
+	 * @param array<string, mixed> $parameters
 	 * @return static
 	 */
 	public function setParameters(array $parameters): static
@@ -539,9 +460,6 @@ class Request
 
 	/**
 	 * Retrieve a value from the request parameters.
-	 *
-	 * Checks the custom parameters, then the query parameters.
-	 * If the key is not found, returns the provided default.
 	 *
 	 * @param string $key
 	 * @param mixed  $default
@@ -557,11 +475,6 @@ class Request
 	/**
 	 * Extracts a specific parameter from the incoming request data.
 	 *
-	 * This function dynamically selects the data source based on the HTTP method used. For methods typically devoid
-	 * of a payload (e.g., GET, HEAD, OPTIONS, TRACE), it pulls the value from the query string. For methods expected
-	 * to contain a body (such as POST, PUT, or PATCH), it retrieves the value from the request payload.
-	 * If the parameter is absent in the relevant dataset, the function returns the specified fallback.
-	 *
 	 * @param string $key
 	 * @param mixed  $default
 	 * @return mixed
@@ -575,16 +488,12 @@ class Request
 	}
 }
 
-/**
- * Represents an HTTP response that encapsulates the status code, headers,
- * and body. Provides methods to modify the response immutably and send it.
- */
 class Response
 {
 	/** @var int */
 	public protected(set) int $status = 200;
 
-	/** @var array<string mixed> */
+	/** @var array<string, mixed> */
 	public protected(set) array $headers = [];
 
 	/** @var bool|float|int|string|Stringable|null */
@@ -606,7 +515,7 @@ class Response
 	/**
 	 * Returns a new Response instance with additional headers merged into the existing headers.
 	 *
-	 * @param array<string,mixed> $headers
+	 * @param array<string, mixed> $headers
 	 * @return static
 	 */
 	public function addHeaders(array $headers): static
@@ -619,7 +528,7 @@ class Response
 	/**
 	 * Returns a new Response instance with the headers replaced by the provided array.
 	 *
-	 * @param array<string,mixed> $headers
+	 * @param array<string, mixed> $headers
 	 * @return static
 	 */
 	public function withHeaders(array $headers): static
@@ -643,9 +552,7 @@ class Response
 	}
 
 	/**
-	 * Sends the HTTP response to the client. Optionally you can run it immediatly in detached mode, meaning it get's
-	 * sent to the user and you can continue a long running task.
-	 * NOTE: session data cannot be modified after response is sent in detached mode.
+	 * Sends the HTTP response to the client.
 	 *
 	 * @param bool $detachResponse
 	 * @return bool
@@ -687,10 +594,6 @@ class Response
 	}
 }
 
-/**
- * Handles the registration and execution of routes for HTTP requests.
- * Supports both static and dynamic routes with middleware pipelines.
- */
 class Router
 {
 	protected const LEAFNODE = "\x00L";
@@ -705,13 +608,15 @@ class Router
 	/** @var list<callable> */
 	protected array $currentMiddleware = [];
 
-	/** @var array<string,array{list<callable>,callable}> */
+	/** @var array<string, array{list<callable>, callable}> */
 	protected array $staticRoutes = [];
 
-	/** @var array<string,array{list<callable>,callable}> */
+	/** @var array<string, array{list<callable>, callable}> */
 	protected array $dynamicRoutes = [];
 
 	/**
+	 * Add middleware that will be applied globally
+	 *
 	 * @param callable $middleware
 	 * @return static
 	 */
@@ -722,6 +627,8 @@ class Router
 	}
 
 	/**
+	 * Groups routes under a shared prefix and middleware stack for scoped handling.
+	 *
 	 * @param string $prefix
 	 * @param callable $handle
 	 * @param list<callable> $middleware
@@ -745,10 +652,6 @@ class Router
 
 	/**
 	 * Registers a route with the router.
-	 *
-	 * This method accepts an HTTP method, a route path, a handler callable,
-	 * and an optional array of middleware. It processes the path to support
-	 * dynamic segments and stores the route in the appropriate routes array.
 	 *
 	 * @param string         $method
 	 * @param string         $path
@@ -784,19 +687,8 @@ class Router
 	/**
 	 * Dispatches the incoming HTTP request and executes the corresponding route.
 	 *
-	 * This method first checks for a matching static route based on the request path and HTTP method.
-	 * If a static match is found, its middleware pipeline and handler are executed.
-	 * If no static route is found, it searches for a matching dynamic route using an internal trie structure.
-	 *
-	 * For dynamic routes, if a match is found, the extracted parameters are merged into the request,
-	 * and the associated middleware and handler are executed.
-	 *
-	 * If no matching route is found, a HttpException with a 404 status code is thrown.
-	 * If a matching route is found but does not support the request method, a HttpException with a 405 status code is thrown.
-	 *
 	 * @param Request $request
 	 * @return Response
-	 *
 	 * @throws HttpException
 	 */
 	public function dispatch(Request $request): Response
@@ -826,11 +718,6 @@ class Router
 
 	/**
 	 * Recursively searches the route trie for a matching route.
-	 *
-	 * Traverses the trie using the provided path segments to determine if a route exists.
-	 * If a segment matches a literal or wildcard, the function recursively proceeds.
-	 * When all segments have been processed, if a leaf node is found, it returns an array
-	 * containing the dynamic parameters extracted from the path and the associated methods mapping.
 	 *
 	 * @param array $trie
 	 * @param array $segments
@@ -865,10 +752,6 @@ class Router
 	/**
 	 * Executes the route handler within a middleware pipeline.
 	 *
-	 * This method constructs a pipeline where each middleware wraps around the handler.
-	 * The request and a new Response instance are passed through the pipeline.
-	 * The final Response is then returned.
-	 *
 	 * @param Request  $request
 	 * @param array    $middleware
 	 * @param callable $handle
@@ -897,9 +780,6 @@ class Router
 	}
 }
 
-/**
- * Template engine class for rendering views with optional layout support.
- */
 class Template
 {
 	/** @var ?self */
@@ -942,9 +822,6 @@ class Template
 	/**
 	 * Starts or sets a named content segment.
 	 *
-	 * If a value is provided, the segment is directly set. Otherwise, it initiates output buffering
-	 * to capture content that will be associated with the segment.
-	 *
 	 * @param string      $name
 	 * @param string|null $value
 	 * @return void
@@ -978,8 +855,6 @@ class Template
 	/**
 	 * Renders the template and returns the resulting HTML string.
 	 *
-	 * If a layout is defined, the content is passed into the layout recursively.
-	 *
 	 * @param array<string,mixed> $data
 	 * @return string
 	 */
@@ -1008,6 +883,7 @@ class Template
 	 *
 	 * @param array<string,string> $segments
 	 * @return void
+	 * @internal
 	 */
 	public function setSegments(array $segments): void
 	{
@@ -1124,6 +1000,8 @@ function input(string $key, mixed $default = null): mixed
 }
 
 /**
+ * Add middleware that will be applied globally.
+ *
  * @param callable $middleware
  * @return void
  */
@@ -1137,6 +1015,8 @@ function middleware(callable $middleware): void
 }
 
 /**
+ * Groups routes under a shared prefix and middleware stack for scoped handling.
+ *
  * @param string $prefix
  * @param callable $handle
  * @param array $middleware
@@ -1279,6 +1159,8 @@ function session(string $key, mixed $value = null): mixed
 }
 
 /**
+ * Renders a template with the provided data.
+ *
  * @param string $template
  * @param array  $data
  * @return string
@@ -1347,18 +1229,6 @@ function view(string $template, array $data = [], int $status = 200): Response
 }
 
 /**
- * This function logs a message using PHP's error_log function.
- *
- * @param string $format
- * @param mixed ...$values
- * @return void
- */
-function log_cli(string $format, ...$values): void
-{
-	error_log(sprintf($format, ...$values));
-}
-
-/**
  * Logs a message at a given log level to a file specified in the configuration.
  *
  * @param string $level
@@ -1373,8 +1243,7 @@ function logger(string $level, string $message): void
 }
 
 /**
- * In CLI mode, the data is dumped using var_dump.
- * In a web environment, the output is wrapped in <pre> tags.
+ * In CLI mode, the data is dumped using var_dump. In a web environment, the output is wrapped in <pre> tags.
  *
  * @param mixed ...$data
  * @return void
@@ -1392,8 +1261,7 @@ function dump(...$data): void
 }
 
 /**
- * This function allows you to perform an operation on the value and then
- * return the original value.
+ * This function allows you to perform an operation on the value and then return the original value.
  *
  * @param mixed    $value
  * @param callable $callback
@@ -1421,8 +1289,7 @@ function throw_if(bool $condition, Throwable $e): void
 }
 
 /**
- * If the value is callable, it executes the callback and returns its result.
- * Otherwise, it returns the value as is.
+ * If the value is callable, it executes the callback and returns its result. Otherwise, it returns the value as is.
  *
  * @param mixed $value
  * @return mixed

@@ -15,16 +15,12 @@ use function is_array;
 use function session_write_close;
 use function sprintf;
 
-/**
- * Represents an HTTP response that encapsulates the status code, headers,
- * and body. Provides methods to modify the response immutably and send it.
- */
 class Response
 {
     /** @var int */
     public protected(set) int $status = 200;
 
-    /** @var array<string mixed> */
+    /** @var array<string, mixed> */
     public protected(set) array $headers = [];
 
     /** @var bool|float|int|string|Stringable|null */
@@ -46,7 +42,7 @@ class Response
     /**
      * Returns a new Response instance with additional headers merged into the existing headers.
      *
-     * @param array<string,mixed> $headers
+     * @param array<string, mixed> $headers
      * @return static
      */
     public function addHeaders(array $headers): static
@@ -59,7 +55,7 @@ class Response
     /**
      * Returns a new Response instance with the headers replaced by the provided array.
      *
-     * @param array<string,mixed> $headers
+     * @param array<string, mixed> $headers
      * @return static
      */
     public function withHeaders(array $headers): static
@@ -83,9 +79,7 @@ class Response
     }
 
     /**
-     * Sends the HTTP response to the client. Optionally you can run it immediatly in detached mode, meaning it get's
-     * sent to the user and you can continue a long running task.
-     * NOTE: session data cannot be modified after response is sent in detached mode.
+     * Sends the HTTP response to the client.
      *
      * @param bool $detachResponse
      * @return bool

@@ -14,10 +14,6 @@ use function str_starts_with;
 use function substr;
 use function trim;
 
-/**
- * Handles the registration and execution of routes for HTTP requests.
- * Supports both static and dynamic routes with middleware pipelines.
- */
 class Router
 {
     protected const LEAFNODE = "\0L";
@@ -32,13 +28,15 @@ class Router
     /** @var list<callable> */
     protected array $currentMiddleware = [];
 
-    /** @var array<string,array{list<callable>,callable}> */
+    /** @var array<string, array{list<callable>, callable}> */
     protected array $staticRoutes = [];
 
-    /** @var array<string,array{list<callable>,callable}> */
+    /** @var array<string, array{list<callable>, callable}> */
     protected array $dynamicRoutes = [];
 
     /**
+     * Add middleware that will be applied globally
+     *
      * @param callable $middleware
      * @return static
      */
@@ -49,6 +47,8 @@ class Router
     }
 
     /**
+     * Groups routes under a shared prefix and middleware stack for scoped handling.
+     *
      * @param string $prefix
      * @param callable $handle
      * @param list<callable> $middleware
@@ -72,10 +72,6 @@ class Router
 
     /**
      * Registers a route with the router.
-     *
-     * This method accepts an HTTP method, a route path, a handler callable,
-     * and an optional array of middleware. It processes the path to support
-     * dynamic segments and stores the route in the appropriate routes array.
      *
      * @param string         $method
      * @param string         $path
@@ -111,19 +107,8 @@ class Router
     /**
      * Dispatches the incoming HTTP request and executes the corresponding route.
      *
-     * This method first checks for a matching static route based on the request path and HTTP method.
-     * If a static match is found, its middleware pipeline and handler are executed.
-     * If no static route is found, it searches for a matching dynamic route using an internal trie structure.
-     *
-     * For dynamic routes, if a match is found, the extracted parameters are merged into the request,
-     * and the associated middleware and handler are executed.
-     *
-     * If no matching route is found, a HttpException with a 404 status code is thrown.
-     * If a matching route is found but does not support the request method, a HttpException with a 405 status code is thrown.
-     *
      * @param Request $request
      * @return Response
-     *
      * @throws HttpException
      */
     public function dispatch(Request $request): Response
@@ -153,11 +138,6 @@ class Router
 
     /**
      * Recursively searches the route trie for a matching route.
-     *
-     * Traverses the trie using the provided path segments to determine if a route exists.
-     * If a segment matches a literal or wildcard, the function recursively proceeds.
-     * When all segments have been processed, if a leaf node is found, it returns an array
-     * containing the dynamic parameters extracted from the path and the associated methods mapping.
      *
      * @param array $trie
      * @param array $segments
@@ -191,10 +171,6 @@ class Router
 
     /**
      * Executes the route handler within a middleware pipeline.
-     *
-     * This method constructs a pipeline where each middleware wraps around the handler.
-     * The request and a new Response instance are passed through the pipeline.
-     * The final Response is then returned.
      *
      * @param Request  $request
      * @param array    $middleware

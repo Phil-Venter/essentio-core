@@ -5,9 +5,6 @@ namespace Essentio\Core;
 use Exception;
 use Throwable;
 
-/**
- * Basic HTTP exception class with essential success, redirection, client, and server error codes.
- */
 class HttpException extends Exception
 {
     public const HTTP_STATUS = [
@@ -37,9 +34,6 @@ class HttpException extends Exception
 
     /**
      * Factory method to create a new HttpException instance.
-     *
-     * If no message is provided, the method will use the predefined status message.
-     * If the status code is not in the predefined list, "Unknown Error" is used.
      *
      * @param int $status HTTP status code (e.g., 404, 500).
      * @param string|null $message Optional custom error message.

@@ -8,31 +8,24 @@ use function call_user_func;
 use function class_exists;
 use function sprintf;
 
-/**
- * A simple dependency injection container that allows binding of
- * factories to service identifiers and resolves them when needed.
- */
 class Container
 {
-    /** @var array<string,object{factory:callable,once:bool}> */
+    /** @var array<string, object{factory:callable, once:bool}> */
     protected array $bindings = [];
 
     /**
      * @template T of object
-     * @var array<class-string<T>,T>
+     * @var array<class-string<T>, T>
      */
     protected array $cache = [];
 
     /**
      * Bind a service to the container.
      *
-     * Registers a service with a unique identifier and a factory callable
-     * responsible for creating the service instance.
-     *
      * @template T of object
-     * @param class-string<T>    $id
+     * @param class-string<T> $id
      * @param callable(static):T $factory
-     * @return object{factory:callable,once:bool}
+     * @return object{factory:callable, once:bool}
      */
     public function bind(string $id, callable $factory): object
     {
@@ -43,14 +36,10 @@ class Container
     /**
      * Retrieve a service from the container.
      *
-     * Resolves and returns a service based on its identifier. If the service
-     * has been previously resolved and marked as a singleton (via the 'once' flag),
-     * the cached instance is returned.
-     *
      * @template T of object
      * @param  class-string<T>|string $id
      * @return ($id is class-string<T> ? T : object)
-     * @throws \RuntimeException
+     * @throws RuntimeException
      */
     public function resolve(string $id): object
     {

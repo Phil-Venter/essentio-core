@@ -12,11 +12,6 @@ use function strtolower;
 use function substr;
 use function trim;
 
-/**
- * Handles the loading and retrieval of environment variables from a file.
- * The file is parsed line-by-line, skipping comments and empty lines, while
- * converting the configuration into an associative array.
- */
 class Environment
 {
     /** @var array<string,mixed> */
@@ -24,10 +19,6 @@ class Environment
 
     /**
      * Loads environment variables from a file.
-     *
-     * Reads a file line-by-line, ignoring lines that are empty or start with a '#'.
-     * Each valid line is parsed into a key-value pair. Values are trimmed, unquoted if necessary,
-     * and typecasted to boolean, null, or numeric values when applicable.
      *
      * @param string $file
      * @return static
@@ -70,9 +61,6 @@ class Environment
 
     /**
      * Retrieves an environment variable.
-     *
-     * Returns the value of the specified environment variable from the loaded data.
-     * If the variable is not found, the method returns the provided default value.
      *
      * @param string $key
      * @param mixed  $default

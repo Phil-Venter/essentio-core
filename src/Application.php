@@ -9,10 +9,6 @@ use function session_start;
 use function session_status;
 use function sprintf;
 
-/**
- * Handles the initialization and execution of the application for both
- * web and CLI environments.
- */
 class Application
 {
     /** @var string */
@@ -26,9 +22,6 @@ class Application
 
     /**
      * Initialize the application for HTTP requests.
-     *
-     * Sets up the container bindings for web-specific components,
-     * and ensures that session handling is configured.
      *
      * @param string $basePath
      * @return void
@@ -51,8 +44,6 @@ class Application
     /**
      * Initialize the application for CLI commands.
      *
-     * Sets up the container bindings for CLI-specific components.
-     *
      * @param string $basePath
      * @return void
      */
@@ -69,10 +60,6 @@ class Application
     /**
      * Resolve an absolute path based on the application's base directory.
      *
-     * This method concatenates the stored base path with the provided relative path,
-     * then uses `realpath()` to return the absolute path. If the path cannot be resolved,
-     * it returns false.
-     *
      * @param string $path
      * @return string|false
      */
@@ -82,11 +69,7 @@ class Application
     }
 
     /**
-     * Run the application.
-     *
-     * For web applications, it processes the request using the Router and
-     * sends the corresponding response. In case of an exception, a 500 error
-     * is returned.
+     * Run the application, not required for cli.
      *
      * @return void
      */

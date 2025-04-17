@@ -117,6 +117,8 @@ function input(string $key, mixed $default = null): mixed
 }
 
 /**
+ * Add middleware that will be applied globally.
+ *
  * @param callable $middleware
  * @return void
  */
@@ -130,6 +132,8 @@ function middleware(callable $middleware): void
 }
 
 /**
+ * Groups routes under a shared prefix and middleware stack for scoped handling.
+ *
  * @param string $prefix
  * @param callable $handle
  * @param array $middleware
@@ -272,6 +276,8 @@ function session(string $key, mixed $value = null): mixed
 }
 
 /**
+ * Renders a template with the provided data.
+ *
  * @param string $template
  * @param array  $data
  * @return string
@@ -340,18 +346,6 @@ function view(string $template, array $data = [], int $status = 200): Response
 }
 
 /**
- * This function logs a message using PHP's error_log function.
- *
- * @param string $format
- * @param mixed ...$values
- * @return void
- */
-function log_cli(string $format, ...$values): void
-{
-    error_log(sprintf($format, ...$values));
-}
-
-/**
  * Logs a message at a given log level to a file specified in the configuration.
  *
  * @param string $level
@@ -366,8 +360,7 @@ function logger(string $level, string $message): void
 }
 
 /**
- * In CLI mode, the data is dumped using var_dump.
- * In a web environment, the output is wrapped in <pre> tags.
+ * In CLI mode, the data is dumped using var_dump. In a web environment, the output is wrapped in <pre> tags.
  *
  * @param mixed ...$data
  * @return void
@@ -385,8 +378,7 @@ function dump(...$data): void
 }
 
 /**
- * This function allows you to perform an operation on the value and then
- * return the original value.
+ * This function allows you to perform an operation on the value and then return the original value.
  *
  * @param mixed    $value
  * @param callable $callback
@@ -414,8 +406,7 @@ function throw_if(bool $condition, Throwable $e): void
 }
 
 /**
- * If the value is callable, it executes the callback and returns its result.
- * Otherwise, it returns the value as is.
+ * If the value is callable, it executes the callback and returns its result. Otherwise, it returns the value as is.
  *
  * @param mixed $value
  * @return mixed
