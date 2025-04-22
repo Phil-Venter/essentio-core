@@ -468,7 +468,13 @@ class Request
 	public function get(array|string $key, mixed $default = null): mixed
 	{
 		if (is_array($key)) {
-		    return array_map(fn($k) => $this->get($k, $default), $key);
+		    $result = [];
+
+		    foreach ($key as $k) {
+		        $result[$k] = $this->get($k, $default);
+		    }
+
+		    return $result;
 		}
 
 		return $this->parameters[$key]
@@ -486,7 +492,13 @@ class Request
 	public function input(array|string $key, mixed $default = null): mixed
 	{
 		if (is_array($key)) {
-		    return array_map(fn($k) => $this->input($k, $default), $key);
+		    $result = [];
+
+		    foreach ($key as $k) {
+		        $result[$k] = $this->input($k, $default);
+		    }
+
+		    return $result;
 		}
 
 		if (in_array($this->method, ["GET", "HEAD", "OPTIONS", "TRACE"])) {
@@ -1135,7 +1147,13 @@ function flash(array|string $key, mixed $value = null): mixed
 
 	if (is_array($key)) {
 	    if (array_is_list($key)) {
-	        return array_map(fn($k) => flash($k), $key);
+	        $result = [];
+
+	        foreach ($key as $k) {
+	            $result[$k] = flash($k);
+	        }
+
+	        return $result;
 	    }
 
 	    foreach ($key as $k => $v) {
@@ -1169,7 +1187,13 @@ function session(array|string $key, mixed $value = null): mixed
 
 	if (is_array($key)) {
 	    if (array_is_list($key)) {
-	        return array_map(fn($k) => session($k), $key);
+	        $result = [];
+
+	        foreach ($key as $k) {
+	            $result[$k] = session($k);
+	        }
+
+	        return $result;
 	    }
 
 	    foreach ($key as $k => $v) {

@@ -154,7 +154,13 @@ class Request
     public function get(array|string $key, mixed $default = null): mixed
     {
         if (is_array($key)) {
-            return array_map(fn($k) => $this->get($k, $default), $key);
+            $result = [];
+
+            foreach ($key as $k) {
+                $result[$k] = $this->get($k, $default);
+            }
+
+            return $result;
         }
 
         return $this->parameters[$key]
@@ -172,7 +178,13 @@ class Request
     public function input(array|string $key, mixed $default = null): mixed
     {
         if (is_array($key)) {
-            return array_map(fn($k) => $this->input($k, $default), $key);
+            $result = [];
+
+            foreach ($key as $k) {
+                $result[$k] = $this->input($k, $default);
+            }
+
+            return $result;
         }
 
         if (in_array($this->method, ["GET", "HEAD", "OPTIONS", "TRACE"])) {

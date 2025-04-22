@@ -247,7 +247,13 @@ function flash(array|string $key, mixed $value = null): mixed
 
     if (is_array($key)) {
         if (array_is_list($key)) {
-            return array_map(fn($k) => flash($k), $key);
+            $result = [];
+
+            foreach ($key as $k) {
+                $result[$k] = flash($k);
+            }
+
+            return $result;
         }
 
         foreach ($key as $k => $v) {
@@ -281,7 +287,13 @@ function session(array|string $key, mixed $value = null): mixed
 
     if (is_array($key)) {
         if (array_is_list($key)) {
-            return array_map(fn($k) => session($k), $key);
+            $result = [];
+
+            foreach ($key as $k) {
+                $result[$k] = session($k);
+            }
+
+            return $result;
         }
 
         foreach ($key as $k => $v) {
