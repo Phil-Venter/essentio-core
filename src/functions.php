@@ -299,6 +299,21 @@ function redirect(string $uri, int $status = 302): Response
 }
 
 /**
+ * Returns a Response instance configured to send HTML content with the specified status code.
+ *
+ * @param string $html
+ * @param int    $status
+ * @return Response
+ */
+function html(string $html, int $status = 200): Response
+{
+    return (new Response())
+        ->withStatus($status)
+        ->withHeaders(["Content-Type" => "text/html"])
+        ->withBody($html);
+}
+
+/**
  * Returns a Response instance configured to send JSON data with the specified status code.
  *
  * @param mixed $data
@@ -338,10 +353,7 @@ function text(string $text, int $status = 200): Response
  */
 function view(string $template, array $data = [], int $status = 200): Response
 {
-    return (new Response())
-        ->withStatus($status)
-        ->withHeaders(["Content-Type" => "text/html"])
-        ->withBody(render($template, $data));
+    return html(render($template, $data), $status);
 }
 
 /**
