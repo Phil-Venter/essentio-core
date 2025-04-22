@@ -2,6 +2,7 @@
 
 namespace Essentio\Core;
 
+use function array_map;
 use function explode;
 use function file_get_contents;
 use function filter_var;
@@ -146,12 +147,16 @@ class Request
     /**
      * Retrieve a value from the request parameters.
      *
-     * @param string $key
-     * @param mixed  $default
+     * @param array|string $key
+     * @param mixed        $default
      * @return mixed
      */
-    public function get(string $key, mixed $default = null): mixed
+    public function get(array|string $key, mixed $default = null): mixed
     {
+        if (is_array($key)) {
+            return array_map(fn($k) => $this->get($k, $default), $key);
+        }
+
         return $this->parameters[$key]
             ?? $this->query[$key]
             ?? $default;
@@ -160,15 +165,20 @@ class Request
     /**
      * Extracts a specific parameter from the incoming request data.
      *
-     * @param string $key
-     * @param mixed  $default
+     * @param array|string $key
+     * @param mixed        $default
      * @return mixed
      */
-    public function input(string $key, mixed $default = null): mixed
+    public function input(array|string $key, mixed $default = null): mixed
     {
+        if (is_array($key)) {
+            return array_map(fn($k) => $this->input($k, $default), $key);
+        }
+
         if (in_array($this->method, ["GET", "HEAD", "OPTIONS", "TRACE"])) {
             return $this->query[$key] ?? $default;
         }
+
         return $this->body[$key] ?? $default;
     }
 }

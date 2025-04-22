@@ -59,7 +59,7 @@ function bind(string $id, callable $factory): object
  * This function retrieves a command-line argument using the specified key.
  *
  * @param int|string $key
- * @param mixed $default
+ * @param mixed      $default
  * @return string|array|null
  */
 function arg(int|string $key, mixed $default = null): string|array|null
@@ -70,7 +70,7 @@ function arg(int|string $key, mixed $default = null): string|array|null
 /**
  * Executes the provided command handler if the current command matches the specified name.
  *
- * @param string $name
+ * @param string   $name
  * @param callable $handle
  * @return void
  */
@@ -94,11 +94,11 @@ function command(string $name, callable $handle): void
 /**
  * Fetches a value from the current Request instance using the specified key.
  *
- * @param string $key
- * @param mixed  $default
+ * @param array|string $key
+ * @param mixed        $default
  * @return mixed
  */
-function request(string $key, mixed $default = null): mixed
+function request(array|string $key, mixed $default = null): mixed
 {
     return app(Request::class)->get($key, $default);
 }
@@ -106,11 +106,11 @@ function request(string $key, mixed $default = null): mixed
 /**
  * Fetches a value from the current Request instance body using the specified key.
  *
- * @param string $key
- * @param mixed  $default
+ * @param array|string $key
+ * @param mixed        $default
  * @return mixed
  */
-function input(string $key, mixed $default = null): mixed
+function input(array|string $key, mixed $default = null): mixed
 {
     return app(Request::class)->input($key, $default);
 }
@@ -235,13 +235,25 @@ function delete(string $path, callable $handle, array $middleware = []): void
 /**
  * Sets flash data if a value is provided, or retrieves and removes flash data for the given key.
  *
- * @param string $key
- * @param mixed  $value
+ * @param array|string $key
+ * @param mixed        $value
  * @return mixed
  */
-function flash(string $key, mixed $value = null): mixed
+function flash(array|string $key, mixed $value = null): mixed
 {
     if (session_status() !== PHP_SESSION_ACTIVE) {
+        return null;
+    }
+
+    if (is_array($key)) {
+        if (array_is_list($key)) {
+            return array_map(fn($k) => flash($k), $key);
+        }
+
+        foreach ($key as $k => $v) {
+            flash($k, $v);
+        }
+
         return null;
     }
 
@@ -257,13 +269,25 @@ function flash(string $key, mixed $value = null): mixed
 /**
  * Sets session data if a value is provided, or retrieves session data for the given key.
  *
- * @param string $key
- * @param mixed  $value
+ * @param array|string $key
+ * @param mixed        $value
  * @return mixed
  */
-function session(string $key, mixed $value = null): mixed
+function session(array|string $key, mixed $value = null): mixed
 {
     if (session_status() !== PHP_SESSION_ACTIVE) {
+        return null;
+    }
+
+    if (is_array($key)) {
+        if (array_is_list($key)) {
+            return array_map(fn($k) => session($k), $key);
+        }
+
+        foreach ($key as $k => $v) {
+            session($k, $v);
+        }
+
         return null;
     }
 
