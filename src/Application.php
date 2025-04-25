@@ -9,6 +9,9 @@ use function session_start;
 use function session_status;
 use function sprintf;
 
+/**
+ * Class Essentio\Core\Application
+ */
 class Application
 {
     /** @var string */
@@ -85,13 +88,13 @@ class Application
                 ->dispatch(static::$container->resolve(Request::class))
                 ->send();
         } catch (HttpException $e) {
-            (new Response())
+            new Response()
                 ->withStatus($e->getCode())
                 ->withHeaders(["Content-Type" => "text/html"])
                 ->withBody($e->getMessage())
                 ->send();
-        } catch (Throwable $e) {
-            (new Response())
+        } catch (Throwable) {
+            new Response()
                 ->withStatus(500)
                 ->withHeaders(["Content-Type" => "text/plain"])
                 ->withBody("Something went wrong. Please try again later.")

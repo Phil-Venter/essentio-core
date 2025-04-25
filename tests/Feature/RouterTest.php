@@ -4,8 +4,8 @@ use Essentio\Core\HttpException;
 use Essentio\Core\Request;
 use Essentio\Core\Router;
 
-describe(Router::class, function () {
-    it("dispatches a static route successfully", function () {
+describe(Router::class, function (): void {
+    it("dispatches a static route successfully", function (): void {
         $router = new Router();
         $router->add("GET", "home", function ($req, $res) {
             return $res->withBody("Welcome Home");
@@ -20,7 +20,7 @@ describe(Router::class, function () {
         expect($response->body)->toBe("Welcome Home");
     });
 
-    it("dispatches a dynamic route and extracts parameters", function () {
+    it("dispatches a dynamic route and extracts parameters", function (): void {
         $router = new Router();
         $router->add("GET", "user/:id", function ($req, $res) {
             return $res->withBody("User " . $req->get("id"));
@@ -35,7 +35,7 @@ describe(Router::class, function () {
         expect($response->body)->toBe("User 42");
     });
 
-    it("throws a 404 HttpException for a non-existent route", function () {
+    it("throws a 404 HttpException for a non-existent route", function (): void {
         $router = new Router();
         $server = [
             "REQUEST_METHOD" => "GET",
@@ -45,7 +45,7 @@ describe(Router::class, function () {
         expect(fn() => $router->dispatch($request))->toThrow(HttpException::class, "Not Found");
     });
 
-    it("throws a 405 HttpException when the method is not allowed", function () {
+    it("throws a 405 HttpException when the method is not allowed", function (): void {
         $router = new Router();
         $router->add("GET", "about", function ($req, $res) {
             return $res->withBody("About");
@@ -58,7 +58,7 @@ describe(Router::class, function () {
         expect(fn() => $router->dispatch($request))->toThrow(HttpException::class, "Method Not Allowed");
     });
 
-    it("executes middleware pipeline correctly for a static route", function () {
+    it("executes middleware pipeline correctly for a static route", function (): void {
         $router = new Router();
         $middleware = function ($req, $res, $next) {
             $res = $next($req, $res);
@@ -82,7 +82,7 @@ describe(Router::class, function () {
         expect($response->body)->toBe("Base with middleware");
     });
 
-    it("dispatches a dynamic route with multiple parameters", function () {
+    it("dispatches a dynamic route with multiple parameters", function (): void {
         $router = new Router();
         $router->add("GET", "post/:postId/comment/:commentId", function ($req, $res) {
             return $res->withBody("Post " . $req->get("postId") . ", Comment " . $req->get("commentId"));
@@ -97,7 +97,7 @@ describe(Router::class, function () {
         expect($response->body)->toBe("Post 10, Comment 99");
     });
 
-    it("executes multiple middleware in the correct order", function () {
+    it("executes multiple middleware in the correct order", function (): void {
         $router = new Router();
         $middleware1 = function ($req, $res, $next) {
             $res = $next($req, $res);

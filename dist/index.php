@@ -1,5 +1,8 @@
 <?php
 
+/**
+ * Class EssentioCoreApplication
+ */
 class Application
 {
 	/** @var string */
@@ -76,13 +79,13 @@ class Application
 		        ->dispatch(static::$container->resolve(Request::class))
 		        ->send();
 		} catch (HttpException $e) {
-		    (new Response())
+		    new Response()
 		        ->withStatus($e->getCode())
 		        ->withHeaders(["Content-Type" => "text/html"])
 		        ->withBody($e->getMessage())
 		        ->send();
-		} catch (Throwable $e) {
-		    (new Response())
+		} catch (Throwable) {
+		    new Response()
 		        ->withStatus(500)
 		        ->withHeaders(["Content-Type" => "text/plain"])
 		        ->withBody("Something went wrong. Please try again later.")
@@ -121,8 +124,8 @@ class Argument
 		        break;
 		    }
 
-		    if (str_starts_with($arg, '--')) {
-		        $option = substr($arg, 2);
+		    if (str_starts_with((string) $arg, '--')) {
+		        $option = substr((string) $arg, 2);
 
 		        if (str_contains($option, '=')) {
 		            [$key, $value] = explode('=', $option, 2);
@@ -140,7 +143,7 @@ class Argument
 
 		    if ($arg[0] === '-') {
 		        $key = $arg[1];
-		        $value = substr($arg, 2);
+		        $value = substr((string) $arg, 2);
 
 		        if (empty($value)) {
 		            if (isset($argv[0]) && $argv[0][0] !== '-') {
@@ -323,7 +326,7 @@ class HttpException extends Exception
 	 * @param Throwable|null $previous Optional previous exception for chaining.
 	 * @return static A new instance of the HttpException class.
 	 */
-	public static function make(int $status, ?string $message = null, ?Throwable $previous = null): static
+	public static function new(int $status, ?string $message = null, ?Throwable $previous = null): static
 	{
 		return new static($message ?? (static::HTTP_STATUS[$status] ?? "Unknown Error"), $status, $previous);
 	}
@@ -342,10 +345,10 @@ class Request
 	}
 
 	/** @var ?string */
-	public protected(set) ?string $host;
+	public protected(set) ?string $host = null;
 
 	/** @var ?int */
-	public protected(set) ?int $port;
+	public protected(set) ?int $port = null;
 
 	/** @var string */
 	public protected(set) string $path;
@@ -682,7 +685,7 @@ class Router
 	 */
 	public function add(string $method, string $path, callable $handle, array $middleware = []): static
 	{
-		$path = trim(preg_replace("/\/+/", "/", $this->currentPrefix . $path), "/");
+		$path = trim((string) preg_replace("/\/+/", "/", $this->currentPrefix . $path), "/");
 		$allMiddleware = array_merge($this->globalMiddleware, $this->currentMiddleware, $middleware);
 
 		if (!str_contains($path, ":")) {
@@ -722,13 +725,13 @@ class Router
 		$result = $this->search($this->dynamicRoutes, explode("/", $request->path));
 
 		if ($result === null) {
-		    throw HttpException::make(404);
+		    throw HttpException::new(404);
 		}
 
 		[$values, $methods] = $result;
 
 		if (!isset($methods[$request->method])) {
-		    throw HttpException::make(405);
+		    throw HttpException::new(405);
 		}
 
 		[$params, $middleware, $handle] = $methods[$request->method];
@@ -808,6 +811,9 @@ class Template
 	/** @var array<string,string> */
 	protected array $segments = [];
 
+	/**
+	 * @param mixed $path
+	 */
 	public function __construct(
 		protected ?string $path = null,
 	) {
@@ -886,7 +892,7 @@ class Template
 		    })($data);
 		}
 
-		if ($this->layout) {
+		if ($this->layout !== null) {
 		    $this->segments["content"] = $content ?? "";
 		    $this->layout->setSegments($this->segments);
 		    return $this->layout->render($data);
@@ -980,13 +986,13 @@ function command(string $name, callable $handle): void
 	    return;
 	}
 
-	$argv = app(Argument::class);
+	$argument = app(Argument::class);
 
-	if ($argv->command !== $name) {
+	if ($argument->command !== $name) {
 	    return;
 	}
 
-	$result = $handle($argv);
+	$result = $handle($argument);
 
 	exit(is_int($result) ? $result : 0);
 }
@@ -1219,7 +1225,7 @@ function session(array|string $key, mixed $value = null): mixed
  */
 function render(string $template, array $data = []): string
 {
-	return (new Template($template))->render($data);
+	return new Template($template)->render($data);
 }
 
 /**
@@ -1231,7 +1237,7 @@ function render(string $template, array $data = []): string
  */
 function redirect(string $uri, int $status = 302): Response
 {
-	return (new Response())->withStatus($status)->withHeaders(["Location" => $uri]);
+	return new Response()->withStatus($status)->withHeaders(["Location" => $uri]);
 }
 
 /**
@@ -1243,7 +1249,7 @@ function redirect(string $uri, int $status = 302): Response
  */
 function html(string $html, int $status = 200): Response
 {
-	return (new Response())
+	return new Response()
 	    ->withStatus($status)
 	    ->withHeaders(["Content-Type" => "text/html"])
 	    ->withBody($html);
@@ -1258,7 +1264,7 @@ function html(string $html, int $status = 200): Response
  */
 function json(mixed $data, int $status = 200): Response
 {
-	return (new Response())
+	return new Response()
 	    ->withStatus($status)
 	    ->withHeaders(["Content-Type" => "application/json"])
 	    ->withBody(json_encode($data));
@@ -1273,7 +1279,7 @@ function json(mixed $data, int $status = 200): Response
  */
 function text(string $text, int $status = 200): Response
 {
-	return (new Response())
+	return new Response()
 	    ->withStatus($status)
 	    ->withHeaders(["Content-Type" => "text/plain"])
 	    ->withBody($text);

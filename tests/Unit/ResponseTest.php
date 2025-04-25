@@ -2,8 +2,8 @@
 
 use Essentio\Core\Response;
 
-describe(Response::class, function () {
-    it("withStatus returns a new instance with updated status", function () {
+describe(Response::class, function (): void {
+    it("withStatus returns a new instance with updated status", function (): void {
         $response = new Response();
         $newResponse = $response->withStatus(404);
 
@@ -12,7 +12,7 @@ describe(Response::class, function () {
         expect($response->status)->toBe(200);
     });
 
-    it("withBody returns a new instance with updated body", function () {
+    it("withBody returns a new instance with updated body", function (): void {
         $response = new Response();
         $newResponse = $response->withBody("Hello, world!");
 
@@ -21,7 +21,7 @@ describe(Response::class, function () {
         expect($response->body)->toBeNull();
     });
 
-    it("withHeaders replaces headers entirely", function () {
+    it("withHeaders replaces headers entirely", function (): void {
         $response = new Response();
         $newResponse = $response->withHeaders(["Content-Type" => "text/html"]);
 
@@ -30,7 +30,7 @@ describe(Response::class, function () {
         expect($response->headers)->toBe([]);
     });
 
-    it("addHeaders merges headers with existing ones", function () {
+    it("addHeaders merges headers with existing ones", function (): void {
         $response = new Response();
         // Set some initial headers.
         $responseWithHeaders = $response->withHeaders(["Content-Type" => "text/html"]);
@@ -44,7 +44,7 @@ describe(Response::class, function () {
         expect($mergedResponse->headers)->toBe(["Content-Type" => "application/json"]);
     });
 
-    it("chains response modifications immutably", function () {
+    it("chains response modifications immutably", function (): void {
         $response = new Response();
         $newResponse = $response
             ->withStatus(404)
@@ -62,7 +62,7 @@ describe(Response::class, function () {
         expect($response->headers)->toBe([]);
     });
 
-    it("send outputs the body and returns true", function () {
+    it("send outputs the body and returns true", function (): void {
         $response = new Response();
         $response = $response->withBody("Test Body");
 
@@ -75,7 +75,7 @@ describe(Response::class, function () {
         expect($output)->toBe("Test Body");
     });
 
-    it("send with detachResponse outputs the body and returns true", function () {
+    it("send with detachResponse outputs the body and returns true", function (): void {
         $response = new Response();
         $response = $response->withBody("Detached Body");
 

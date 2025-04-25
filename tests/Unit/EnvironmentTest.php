@@ -2,14 +2,14 @@
 
 use Essentio\Core\Environment;
 
-describe(Environment::class, function () {
-    it("returns empty data when file does not exist", function () {
+describe(Environment::class, function (): void {
+    it("returns empty data when file does not exist", function (): void {
         $env = new Environment();
         $env->load("/non/existent/file/path");
         expect($env->get("ANY_KEY"))->toBeNull();
     });
 
-    it("parses simple unquoted values correctly", function () {
+    it("parses simple unquoted values correctly", function (): void {
         $content = <<<EOL
 APP_ENV=production
 PORT=3000
@@ -32,7 +32,7 @@ EOL;
         unlink($file);
     });
 
-    it("parses quoted values and preserves inner whitespace", function () {
+    it("parses quoted values and preserves inner whitespace", function (): void {
         // The quotes will be stripped, but inner whitespace remains.
         $content = <<<EOL
 DB_HOST=" localhost "
@@ -48,7 +48,7 @@ EOL;
         unlink($file);
     });
 
-    it("skips comment and empty lines", function () {
+    it("skips comment and empty lines", function (): void {
         $content = <<<EOL
 # This is a comment
 APP_ENV=development
@@ -70,7 +70,7 @@ EOL;
         unlink($file);
     });
 
-    it("parses floating point and scientific numbers correctly", function () {
+    it("parses floating point and scientific numbers correctly", function (): void {
         $content = <<<EOL
 RATE=1.5
 SCALE=2e3
@@ -87,7 +87,7 @@ EOL;
         unlink($file);
     });
 
-    it("returns the default value for missing keys", function () {
+    it("returns the default value for missing keys", function (): void {
         $content = "KEY=value";
         $file = tempnam(sys_get_temp_dir(), "env");
         file_put_contents($file, $content);

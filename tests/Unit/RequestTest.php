@@ -2,8 +2,8 @@
 
 use Essentio\Core\Request;
 
-describe(Request::class, function () {
-    it("initializes with minimal parameters for a GET request", function () {
+describe(Request::class, function (): void {
+    it("initializes with minimal parameters for a GET request", function (): void {
         $server = [
             "REQUEST_METHOD" => "get",
             "SERVER_NAME" => "example.com",
@@ -30,7 +30,7 @@ describe(Request::class, function () {
         expect($request->body)->toBe([]);
     });
 
-    it("uses _method override from POST data", function () {
+    it("uses _method override from POST data", function (): void {
         $server = [
             "REQUEST_METHOD" => "POST",
             "SERVER_NAME" => "example.com",
@@ -44,7 +44,7 @@ describe(Request::class, function () {
         expect($request->method)->toBe("PATCH");
     });
 
-    it("detects HTTPS scheme and sets default port accordingly", function () {
+    it("detects HTTPS scheme and sets default port accordingly", function (): void {
         $server = [
             "HTTPS" => "on",
             "HTTP_HOST" => "secure.example.com",
@@ -59,7 +59,7 @@ describe(Request::class, function () {
         expect($request->port)->toBe(443);
     });
 
-    it("parses HTTP_HOST with port correctly", function () {
+    it("parses HTTP_HOST with port correctly", function (): void {
         $server = [
             "HTTP_HOST" => "example.com:3000",
             "REQUEST_URI" => "/test",
@@ -73,7 +73,7 @@ describe(Request::class, function () {
         expect($request->port)->toBe(3000);
     });
 
-    it("setParameters overrides query parameters in get() method", function () {
+    it("setParameters overrides query parameters in get() method", function (): void {
         $server = [
             "REQUEST_METHOD" => "GET",
             "REQUEST_URI" => "/data",
@@ -90,7 +90,7 @@ describe(Request::class, function () {
         expect($request->get("nonexistent", "default"))->toBe("default");
     });
 
-    it("input() returns query parameter for GET requests", function () {
+    it("input() returns query parameter for GET requests", function (): void {
         $server = [
             "REQUEST_METHOD" => "GET",
             "REQUEST_URI" => "/search",
@@ -104,7 +104,7 @@ describe(Request::class, function () {
         expect($request->input("missing", "default"))->toBe("default");
     });
 
-    it("input() returns body parameter for non-GET requests with JSON", function () {
+    it("input() returns body parameter for non-GET requests with JSON", function (): void {
         $server = [
             "REQUEST_METHOD" => "POST",
             "REQUEST_URI" => "/submit",
@@ -119,7 +119,7 @@ describe(Request::class, function () {
         expect($request->input("missing", "default"))->toBe("default");
     });
 
-    it("input() returns body parameter for non-GET requests with form data", function () {
+    it("input() returns body parameter for non-GET requests with form data", function (): void {
         $server = [
             "REQUEST_METHOD" => "POST",
             "REQUEST_URI" => "/submit-form",

@@ -40,7 +40,7 @@ class HttpException extends Exception
      * @param Throwable|null $previous Optional previous exception for chaining.
      * @return static A new instance of the HttpException class.
      */
-    public static function make(int $status, ?string $message = null, ?Throwable $previous = null): static
+    public static function new(int $status, ?string $message = null, ?Throwable $previous = null): static
     {
         return new static($message ?? (static::HTTP_STATUS[$status] ?? "Unknown Error"), $status, $previous);
     }

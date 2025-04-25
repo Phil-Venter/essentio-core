@@ -80,13 +80,13 @@ function command(string $name, callable $handle): void
         return;
     }
 
-    $argv = app(Argument::class);
+    $argument = app(Argument::class);
 
-    if ($argv->command !== $name) {
+    if ($argument->command !== $name) {
         return;
     }
 
-    $result = $handle($argv);
+    $result = $handle($argument);
 
     exit(is_int($result) ? $result : 0);
 }
@@ -319,7 +319,7 @@ function session(array|string $key, mixed $value = null): mixed
  */
 function render(string $template, array $data = []): string
 {
-    return (new Template($template))->render($data);
+    return new Template($template)->render($data);
 }
 
 /**
@@ -331,7 +331,7 @@ function render(string $template, array $data = []): string
  */
 function redirect(string $uri, int $status = 302): Response
 {
-    return (new Response())->withStatus($status)->withHeaders(["Location" => $uri]);
+    return new Response()->withStatus($status)->withHeaders(["Location" => $uri]);
 }
 
 /**
@@ -343,7 +343,7 @@ function redirect(string $uri, int $status = 302): Response
  */
 function html(string $html, int $status = 200): Response
 {
-    return (new Response())
+    return new Response()
         ->withStatus($status)
         ->withHeaders(["Content-Type" => "text/html"])
         ->withBody($html);
@@ -358,7 +358,7 @@ function html(string $html, int $status = 200): Response
  */
 function json(mixed $data, int $status = 200): Response
 {
-    return (new Response())
+    return new Response()
         ->withStatus($status)
         ->withHeaders(["Content-Type" => "application/json"])
         ->withBody(json_encode($data));
@@ -373,7 +373,7 @@ function json(mixed $data, int $status = 200): Response
  */
 function text(string $text, int $status = 200): Response
 {
-    return (new Response())
+    return new Response()
         ->withStatus($status)
         ->withHeaders(["Content-Type" => "text/plain"])
         ->withBody($text);

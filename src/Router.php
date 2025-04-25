@@ -17,6 +17,7 @@ use function trim;
 class Router
 {
     protected const LEAFNODE = "\0L";
+
     protected const WILDCARD = "\0W";
 
     /** @var list<callable> */
@@ -81,7 +82,7 @@ class Router
      */
     public function add(string $method, string $path, callable $handle, array $middleware = []): static
     {
-        $path = trim(preg_replace("/\/+/", "/", $this->currentPrefix . $path), "/");
+        $path = trim((string) preg_replace("/\/+/", "/", $this->currentPrefix . $path), "/");
         $allMiddleware = array_merge($this->globalMiddleware, $this->currentMiddleware, $middleware);
 
         if (!str_contains($path, ":")) {
@@ -121,13 +122,13 @@ class Router
         $result = $this->search($this->dynamicRoutes, explode("/", $request->path));
 
         if ($result === null) {
-            throw HttpException::make(404);
+            throw HttpException::new(404);
         }
 
         [$values, $methods] = $result;
 
         if (!isset($methods[$request->method])) {
-            throw HttpException::make(405);
+            throw HttpException::new(405);
         }
 
         [$params, $middleware, $handle] = $methods[$request->method];

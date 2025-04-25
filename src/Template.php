@@ -21,6 +21,9 @@ class Template
     /** @var array<string,string> */
     protected array $segments = [];
 
+    /**
+     * @param mixed $path
+     */
     public function __construct(protected ?string $path = null) {}
 
     /**
@@ -96,7 +99,7 @@ class Template
             })($data);
         }
 
-        if ($this->layout) {
+        if ($this->layout !== null) {
             $this->segments["content"] = $content ?? "";
             $this->layout->setSegments($this->segments);
             return $this->layout->render($data);

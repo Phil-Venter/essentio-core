@@ -17,9 +17,10 @@
     "require-dev": {
         "nette/php-generator": "^4.1",
         "nikic/php-parser": "^5.4",
-        "pestphp/pest": "3.x-dev"
+        "pestphp/pest": "^3.8",
+        "rector/rector": "^2.0"
     },
-    "minimum-stability": "dev",
+    "minimum-stability": "stable",
     "scripts": {
         "build": "php scripts/build.php",
         "test": "./vendor/bin/pest"

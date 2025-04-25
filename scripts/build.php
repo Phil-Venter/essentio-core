@@ -9,9 +9,7 @@ function stripNamespaceAndUse(string $filePath): string
 {
     $lines = file($filePath, FILE_IGNORE_NEW_LINES);
 
-    $filteredLines = array_filter($lines, function ($line) {
-        return !preg_match("/^\s*(namespace|use)\b/", $line);
-    });
+    $filteredLines = array_filter($lines, fn($line) => !preg_match("/^\s*(namespace|use)\b/", (string) $line));
 
     return implode(PHP_EOL, $filteredLines);
 }

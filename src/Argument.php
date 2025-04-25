@@ -39,8 +39,8 @@ class Argument
                 break;
             }
 
-            if (str_starts_with($arg, '--')) {
-                $option = substr($arg, 2);
+            if (str_starts_with((string) $arg, '--')) {
+                $option = substr((string) $arg, 2);
 
                 if (str_contains($option, '=')) {
                     [$key, $value] = explode('=', $option, 2);
@@ -58,7 +58,7 @@ class Argument
 
             if ($arg[0] === '-') {
                 $key = $arg[1];
-                $value = substr($arg, 2);
+                $value = substr((string) $arg, 2);
 
                 if (empty($value)) {
                     if (isset($argv[0]) && $argv[0][0] !== '-') {

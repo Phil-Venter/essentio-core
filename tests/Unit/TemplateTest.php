@@ -22,19 +22,19 @@ class TestableTemplate extends Template
     }
 }
 
-describe(Template::class, function () {
-    it("yield returns default when segment is not set", function () {
+describe(Template::class, function (): void {
+    it("yield returns default when segment is not set", function (): void {
         $template = new TestableTemplate();
         expect($template->exposeYield("nonexistent", "default"))->toBe("default");
     });
 
-    it("sets a segment directly when a value is provided", function () {
+    it("sets a segment directly when a value is provided", function (): void {
         $template = new TestableTemplate();
         $template->exposeSegment("title", "Test Title");
         expect($template->exposeYield("title"))->toBe("Test Title");
     });
 
-    it("captures buffered output in a segment", function () {
+    it("captures buffered output in a segment", function (): void {
         $template = new TestableTemplate();
         $template->exposeSegment("content");
         echo "Buffered Content";
@@ -42,12 +42,12 @@ describe(Template::class, function () {
         expect($template->exposeYield("content"))->toBe("Buffered Content");
     });
 
-    it("throws exception if end() is called without an open segment", function () {
+    it("throws exception if end() is called without an open segment", function (): void {
         $template = new TestableTemplate();
         expect(fn() => $template->exposeEnd())->toThrow(LogicException::class, "No segment is currently open.");
     });
 
-    it("renders a template file without layout", function () {
+    it("renders a template file without layout", function (): void {
         $file = tempnam(sys_get_temp_dir(), "tmpl");
         file_put_contents($file, '<?php echo "Hello, " . $name . "!";');
 
@@ -59,7 +59,7 @@ describe(Template::class, function () {
         expect($output)->toBe("Hello, World!");
     });
 
-    it("renders a template with a layout", function () {
+    it("renders a template with a layout", function (): void {
         $childFile = tempnam(sys_get_temp_dir(), "child");
         file_put_contents($childFile, '<?php echo "Child Content";');
 

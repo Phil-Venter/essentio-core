@@ -29,10 +29,10 @@ class Request
     public protected(set) string $scheme { set => strtolower($value); }
 
     /** @var ?string */
-    public protected(set) ?string $host;
+    public protected(set) ?string $host = null;
 
     /** @var ?int */
-    public protected(set) ?int $port;
+    public protected(set) ?int $port = null;
 
     /** @var string */
     public protected(set) string $path;
