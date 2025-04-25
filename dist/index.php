@@ -23,10 +23,10 @@ class Application
 		static::$container = new Container();
 		static::$isWeb = true;
 
-		static::$container->bind(Environment::class, fn(): EssentioCoreEnvironment => new Environment())->once = true;
-		static::$container->bind(Session::class, fn(): EssentioCoreSession => new Session())->once = true;
-		static::$container->bind(Request::class, fn(): EssentioCoreRequest => Request::init())->once = true;
-		static::$container->bind(Router::class, fn(): EssentioCoreRouter => new Router())->once = true;
+		static::$container->bind(Environment::class, fn(): Environment => new Environment())->once = true;
+		static::$container->bind(Session::class, fn(): Session => new Session())->once = true;
+		static::$container->bind(Request::class, fn(): Request => Request::init())->once = true;
+		static::$container->bind(Router::class, fn(): Router => new Router())->once = true;
 	}
 
 	/**
@@ -41,8 +41,8 @@ class Application
 		static::$container = new Container();
 		static::$isWeb = false;
 
-		static::$container->bind(Environment::class, fn(): EssentioCoreEnvironment => new Environment())->once = true;
-		static::$container->bind(Argument::class, fn(): EssentioCoreArgument => Argument::init())->once = true;
+		static::$container->bind(Environment::class, fn(): Environment => new Environment())->once = true;
+		static::$container->bind(Argument::class, fn(): Argument => Argument::init())->once = true;
 	}
 
 	/**
