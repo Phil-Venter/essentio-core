@@ -9,9 +9,6 @@ use function session_start;
 use function session_status;
 use function sprintf;
 
-/**
- * Class Essentio\Core\Application
- */
 class Application
 {
     /** @var string */

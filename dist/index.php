@@ -1,8 +1,5 @@
 <?php
 
-/**
- * Class EssentioCoreApplication
- */
 class Application
 {
 	/** @var string */
@@ -621,6 +618,7 @@ class Response
 class Router
 {
 	protected const LEAFNODE = "\x00L";
+
 	protected const WILDCARD = "\x00W";
 
 	/** @var list<callable> */
