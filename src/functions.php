@@ -6,6 +6,7 @@ use Essentio\Core\Environment;
 use Essentio\Core\Request;
 use Essentio\Core\Response;
 use Essentio\Core\Router;
+use Essentio\Core\Session;
 use Essentio\Core\Template;
 
 /**
@@ -235,79 +236,43 @@ function delete(string $path, callable $handle, array $middleware = []): void
 /**
  * Sets flash data if a value is provided, or retrieves and removes flash data for the given key.
  *
- * @param array|string $key
- * @param mixed        $value
+ * @param string $key
+ * @param mixed  $value
  * @return mixed
  */
-function flash(array|string $key, mixed $value = null): mixed
+function flash(string $key, mixed $value = null): mixed
 {
-    if (session_status() !== PHP_SESSION_ACTIVE) {
+    if (!Application::$isWeb) {
         return null;
     }
 
-    if (is_array($key)) {
-        if (array_is_list($key)) {
-            $result = [];
-
-            foreach ($key as $k) {
-                $result[$k] = flash($k);
-            }
-
-            return $result;
-        }
-
-        foreach ($key as $k => $v) {
-            flash($k, $v);
-        }
-
-        return null;
+    if (func_num_args() === 1) {
+        return app(Session::class)->get($key);
     }
 
-    if (func_num_args() === 2) {
-        return $_SESSION["_flash"][$key] = $value;
-    }
-
-    $val = $_SESSION["_flash"][$key] ?? null;
-    unset($_SESSION["_flash"][$key]);
-    return $val;
+    app(Session::class)->flash($key, $value);
+    return null;
 }
 
 /**
  * Sets session data if a value is provided, or retrieves session data for the given key.
  *
- * @param array|string $key
- * @param mixed        $value
+ * @param string $key
+ * @param mixed  $value
  * @return mixed
  */
-function session(array|string $key, mixed $value = null): mixed
+function session(string $key, mixed $value = null): mixed
 {
-    if (session_status() !== PHP_SESSION_ACTIVE) {
+    if (!Application::$isWeb) {
         return null;
     }
 
-    if (is_array($key)) {
-        if (array_is_list($key)) {
-            $result = [];
-
-            foreach ($key as $k) {
-                $result[$k] = session($k);
-            }
-
-            return $result;
-        }
-
-        foreach ($key as $k => $v) {
-            session($k, $v);
-        }
-
-        return null;
+    if (func_num_args() === 1) {
+        return app(Session::class)->get($key);
     }
 
-    if (func_num_args() === 2) {
-        return $_SESSION[$key] = $value;
-    }
-
-    return $_SESSION[$key] ?? null;
+    app(Session::class)->set($key, $value);
+    return null;
 }
 
 /**

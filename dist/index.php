@@ -23,13 +23,10 @@ class Application
 		static::$container = new Container();
 		static::$isWeb = true;
 
-		static::$container->bind(Environment::class, fn() => new Environment())->once = true;
-		static::$container->bind(Request::class, fn() => Request::init())->once = true;
-		static::$container->bind(Router::class, fn() => new Router())->once = true;
-
-		if (session_status() !== PHP_SESSION_ACTIVE) {
-		    session_start();
-		}
+		static::$container->bind(Environment::class, fn(): EssentioCoreEnvironment => new Environment())->once = true;
+		static::$container->bind(Session::class, fn(): EssentioCoreSession => new Session())->once = true;
+		static::$container->bind(Request::class, fn(): EssentioCoreRequest => Request::init())->once = true;
+		static::$container->bind(Router::class, fn(): EssentioCoreRouter => new Router())->once = true;
 	}
 
 	/**
@@ -44,8 +41,8 @@ class Application
 		static::$container = new Container();
 		static::$isWeb = false;
 
-		static::$container->bind(Environment::class, fn() => new Environment())->once = true;
-		static::$container->bind(Argument::class, fn() => Argument::init())->once = true;
+		static::$container->bind(Environment::class, fn(): EssentioCoreEnvironment => new Environment())->once = true;
+		static::$container->bind(Argument::class, fn(): EssentioCoreArgument => Argument::init())->once = true;
 	}
 
 	/**
@@ -618,7 +615,6 @@ class Response
 class Router
 {
 	protected const LEAFNODE = "\x00L";
-
 	protected const WILDCARD = "\x00W";
 
 	/** @var list<callable> */
@@ -784,7 +780,7 @@ class Router
 		$pipeline = $handle;
 
 		foreach (array_reverse($middleware) as $m) {
-		    $pipeline = fn($req, $res) => call_user_func($m, $req, $res, $pipeline);
+		    $pipeline = fn($req, $res): mixed => call_user_func($m, $req, $res, $pipeline);
 		}
 
 		$response = new Response();
@@ -795,6 +791,52 @@ class Router
 		}
 
 		return $response;
+	}
+}
+
+class Session
+{
+	public function __construct()
+	{
+		if (session_status() !== PHP_SESSION_ACTIVE) {
+		    session_start();
+		}
+
+		$_SESSION["_flash"]["old"] = $_SESSION["_flash"]["new"] ?? [];
+		$_SESSION["_flash"]["new"] = [];
+	}
+
+	/**
+	 * Stores a value in the session under the specified key.
+	 *
+	 * @param string $key
+	 * @param mixed $value
+	 */
+	public function set(string $key, mixed $value): void
+	{
+		$_SESSION[$key] = $value;
+	}
+
+	/**
+	 * Stores a temporary flash value in the session under the specified key.
+	 *
+	 * @param string $key
+	 * @param mixed $value
+	 */
+	public function flash(string $key, mixed $value): void
+	{
+		$_SESSION["_flash"]["new"][$key] = $value;
+	}
+
+	/**
+	 * Retrieves a value from the flash (old) session or regular session by key.
+	 *
+	 * @param string $key
+	 * @return mixed
+	 */
+	public function get(string $key): mixed
+	{
+		return $_SESSION["_flash"]["old"][$key] ?? ($_SESSION[$key] ?? null);
 	}
 }
 
@@ -1139,79 +1181,43 @@ function delete(string $path, callable $handle, array $middleware = []): void
 /**
  * Sets flash data if a value is provided, or retrieves and removes flash data for the given key.
  *
- * @param array|string $key
- * @param mixed        $value
+ * @param string $key
+ * @param mixed  $value
  * @return mixed
  */
-function flash(array|string $key, mixed $value = null): mixed
+function flash(string $key, mixed $value = null): mixed
 {
-	if (session_status() !== PHP_SESSION_ACTIVE) {
+	if (!Application::$isWeb) {
 	    return null;
 	}
 
-	if (is_array($key)) {
-	    if (array_is_list($key)) {
-	        $result = [];
-
-	        foreach ($key as $k) {
-	            $result[$k] = flash($k);
-	        }
-
-	        return $result;
-	    }
-
-	    foreach ($key as $k => $v) {
-	        flash($k, $v);
-	    }
-
-	    return null;
+	if (func_num_args() === 1) {
+	    return app(Session::class)->get($key);
 	}
 
-	if (func_num_args() === 2) {
-	    return $_SESSION["_flash"][$key] = $value;
-	}
-
-	$val = $_SESSION["_flash"][$key] ?? null;
-	unset($_SESSION["_flash"][$key]);
-	return $val;
+	app(Session::class)->flash($key, $value);
+	return null;
 }
 
 /**
  * Sets session data if a value is provided, or retrieves session data for the given key.
  *
- * @param array|string $key
- * @param mixed        $value
+ * @param string $key
+ * @param mixed  $value
  * @return mixed
  */
-function session(array|string $key, mixed $value = null): mixed
+function session(string $key, mixed $value = null): mixed
 {
-	if (session_status() !== PHP_SESSION_ACTIVE) {
+	if (!Application::$isWeb) {
 	    return null;
 	}
 
-	if (is_array($key)) {
-	    if (array_is_list($key)) {
-	        $result = [];
-
-	        foreach ($key as $k) {
-	            $result[$k] = session($k);
-	        }
-
-	        return $result;
-	    }
-
-	    foreach ($key as $k => $v) {
-	        session($k, $v);
-	    }
-
-	    return null;
+	if (func_num_args() === 1) {
+	    return app(Session::class)->get($key);
 	}
 
-	if (func_num_args() === 2) {
-	    return $_SESSION[$key] = $value;
-	}
-
-	return $_SESSION[$key] ?? null;
+	app(Session::class)->set($key, $value);
+	return null;
 }
 
 /**

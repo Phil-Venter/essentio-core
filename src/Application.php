@@ -5,8 +5,6 @@ namespace Essentio\Core;
 use Throwable;
 
 use function rtrim;
-use function session_start;
-use function session_status;
 use function sprintf;
 
 class Application
@@ -32,13 +30,10 @@ class Application
         static::$container = new Container();
         static::$isWeb = true;
 
-        static::$container->bind(Environment::class, fn() => new Environment())->once = true;
-        static::$container->bind(Request::class, fn() => Request::init())->once = true;
-        static::$container->bind(Router::class, fn() => new Router())->once = true;
-
-        if (session_status() !== PHP_SESSION_ACTIVE) {
-            session_start();
-        }
+        static::$container->bind(Environment::class, fn(): Environment => new Environment())->once = true;
+        static::$container->bind(Session::class, fn(): Session => new Session())->once = true;
+        static::$container->bind(Request::class, fn(): Request => Request::init())->once = true;
+        static::$container->bind(Router::class, fn(): Router => new Router())->once = true;
     }
 
     /**
@@ -53,8 +48,8 @@ class Application
         static::$container = new Container();
         static::$isWeb = false;
 
-        static::$container->bind(Environment::class, fn() => new Environment())->once = true;
-        static::$container->bind(Argument::class, fn() => Argument::init())->once = true;
+        static::$container->bind(Environment::class, fn(): Environment => new Environment())->once = true;
+        static::$container->bind(Argument::class, fn(): Argument => Argument::init())->once = true;
     }
 
     /**
