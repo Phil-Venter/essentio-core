@@ -1,6 +1,6 @@
 <?php
 
-use Essentio\Core\Template;
+use Essentio\Core\Extra\Template;
 
 class TestableTemplate extends Template
 {
