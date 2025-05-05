@@ -2,6 +2,9 @@
 
 namespace Essentio\Core;
 
+use function session_start;
+use function session_status;
+
 class Session
 {
     public function __construct()

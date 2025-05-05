@@ -4,6 +4,7 @@ namespace Essentio\Core;
 
 use Throwable;
 
+use function error_log;
 use function rtrim;
 use function sprintf;
 
@@ -85,7 +86,9 @@ class Application
                 ->withHeaders(["Content-Type" => "text/html"])
                 ->withBody($e->getMessage())
                 ->send();
-        } catch (Throwable) {
+        } catch (Throwable $e) {
+            error_log("[{$e->getMessage()}]\n{$e->getTraceAsString()}");
+
             new Response()
                 ->withStatus(500)
                 ->withHeaders(["Content-Type" => "text/plain"])

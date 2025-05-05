@@ -1,8 +1,9 @@
 <?php
 
-namespace Essentio\Core;
+namespace Essentio\Core\Extra;
 
 use LogicException;
+use RuntimeException;
 
 use function array_pop;
 use function extract;
@@ -90,22 +91,24 @@ class Template
      */
     public function render(array $data = []): string
     {
-        if ($this->path && file_exists($this->path)) {
-            $content = (function (array $data) {
-                ob_start();
-                extract($data);
-                include $this->path;
-                return ob_get_clean();
-            })($data);
+        if (!$this->path || !file_exists($this->path)) {
+            throw new RuntimeException(sprintf("Template [%s] does not exist.", $this->path));
         }
 
+        $content = (function (array $data) {
+            ob_start();
+            extract($data);
+            include $this->path;
+            return ob_get_clean();
+        })($data);
+
         if ($this->layout !== null) {
-            $this->segments["content"] = $content ?? "";
+            $this->segments["content"] = $content;
             $this->layout->setSegments($this->segments);
             return $this->layout->render($data);
         }
 
-        return $content ?? "";
+        return $content;
     }
 
     /**

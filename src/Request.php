@@ -2,7 +2,6 @@
 
 namespace Essentio\Core;
 
-use function array_map;
 use function explode;
 use function file_get_contents;
 use function filter_var;

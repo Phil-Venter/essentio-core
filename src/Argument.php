@@ -12,7 +12,7 @@ use function substr;
 class Argument
 {
     /** @var string */
-    public protected(set) string $command = '';
+    public protected(set) string $command = "";
 
     /** @var array<int|string, string|int|bool|null> */
     public protected(set) array $arguments = [];
@@ -25,7 +25,7 @@ class Argument
      */
     public static function init(?array $argv = null): static
     {
-        $argv ??= $_SERVER['argv'] ?? [];
+        $argv ??= $_SERVER["argv"] ?? [];
         $that = new static;
         array_shift($argv);
 
@@ -34,17 +34,17 @@ class Argument
         }
 
         while ($arg = array_shift($argv)) {
-            if ($arg === '--') {
+            if ($arg === "--") {
                 $that->arguments = array_merge($that->arguments, $argv);
                 break;
             }
 
-            if (str_starts_with((string) $arg, '--')) {
+            if (str_starts_with((string) $arg, "--")) {
                 $option = substr((string) $arg, 2);
 
-                if (str_contains($option, '=')) {
-                    [$key, $value] = explode('=', $option, 2);
-                } elseif (isset($argv[0]) && $argv[0][0] !== '-') {
+                if (str_contains($option, "=")) {
+                    [$key, $value] = explode("=", $option, 2);
+                } elseif (isset($argv[0]) && $argv[0][0] !== "-") {
                     $key = $option;
                     $value = array_shift($argv);
                 } else {
@@ -56,12 +56,12 @@ class Argument
                 continue;
             }
 
-            if ($arg[0] === '-') {
+            if ($arg[0] === "-") {
                 $key = $arg[1];
                 $value = substr((string) $arg, 2);
 
                 if (empty($value)) {
-                    if (isset($argv[0]) && $argv[0][0] !== '-') {
+                    if (isset($argv[0]) && $argv[0][0] !== "-") {
                         $value = array_shift($argv);
                     } else {
                         $value = true;

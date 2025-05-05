@@ -78,7 +78,9 @@ class Application
 		        ->withHeaders(["Content-Type" => "text/html"])
 		        ->withBody($e->getMessage())
 		        ->send();
-		} catch (Throwable) {
+		} catch (Throwable $e) {
+		    error_log("[{$e->getMessage()}]\n{$e->getTraceAsString()}");
+
 		    new Response()
 		        ->withStatus(500)
 		        ->withHeaders(["Content-Type" => "text/plain"])
@@ -104,7 +106,7 @@ class Argument
 	 */
 	public static function init(?array $argv = null): static
 	{
-		$argv ??= $_SERVER['argv'] ?? [];
+		$argv ??= $_SERVER["argv"] ?? [];
 		$that = new static;
 		array_shift($argv);
 
@@ -113,17 +115,17 @@ class Argument
 		}
 
 		while ($arg = array_shift($argv)) {
-		    if ($arg === '--') {
+		    if ($arg === "--") {
 		        $that->arguments = array_merge($that->arguments, $argv);
 		        break;
 		    }
 
-		    if (str_starts_with((string) $arg, '--')) {
+		    if (str_starts_with((string) $arg, "--")) {
 		        $option = substr((string) $arg, 2);
 
-		        if (str_contains($option, '=')) {
-		            [$key, $value] = explode('=', $option, 2);
-		        } elseif (isset($argv[0]) && $argv[0][0] !== '-') {
+		        if (str_contains($option, "=")) {
+		            [$key, $value] = explode("=", $option, 2);
+		        } elseif (isset($argv[0]) && $argv[0][0] !== "-") {
 		            $key = $option;
 		            $value = array_shift($argv);
 		        } else {
@@ -135,12 +137,12 @@ class Argument
 		        continue;
 		    }
 
-		    if ($arg[0] === '-') {
+		    if ($arg[0] === "-") {
 		        $key = $arg[1];
 		        $value = substr((string) $arg, 2);
 
 		        if (empty($value)) {
-		            if (isset($argv[0]) && $argv[0][0] !== '-') {
+		            if (isset($argv[0]) && $argv[0][0] !== "-") {
 		                $value = array_shift($argv);
 		            } else {
 		                $value = true;
@@ -315,8 +317,8 @@ class HttpException extends Exception
 	/**
 	 * Factory method to create a new HttpException instance.
 	 *
-	 * @param int $status HTTP status code (e.g., 404, 500).
-	 * @param string|null $message Optional custom error message.
+	 * @param int            $status HTTP status code (e.g., 404, 500).
+	 * @param string|null    $message Optional custom error message.
 	 * @param Throwable|null $previous Optional previous exception for chaining.
 	 * @return static A new instance of the HttpException class.
 	 */
@@ -621,10 +623,10 @@ class Router
 	protected array $globalMiddleware = [];
 
 	/** @var string */
-	protected string $currentPrefix = '';
+	protected string $prefix = '';
 
 	/** @var list<callable> */
-	protected array $currentMiddleware = [];
+	protected array $middleware = [];
 
 	/** @var array<string, array{list<callable>, callable}> */
 	protected array $staticRoutes = [];
@@ -654,16 +656,16 @@ class Router
 	 */
 	public function group(string $prefix, callable $handle, array $middleware = []): static
 	{
-		$previousPrefix = $this->currentPrefix;
-		$previousMiddleware = $this->currentMiddleware;
+		$previousPrefix = $this->prefix;
+		$previousMiddleware = $this->middleware;
 
-		$this->currentPrefix .= $prefix;
-		$this->currentMiddleware = array_merge($this->currentMiddleware, $middleware);
+		$this->prefix .= $prefix;
+		$this->middleware = array_merge($this->middleware, $middleware);
 
 		$handle($this);
 
-		$this->currentPrefix = $previousPrefix;
-		$this->currentMiddleware = $previousMiddleware;
+		$this->prefix = $previousPrefix;
+		$this->middleware = $previousMiddleware;
 
 		return $this;
 	}
@@ -679,8 +681,8 @@ class Router
 	 */
 	public function add(string $method, string $path, callable $handle, array $middleware = []): static
 	{
-		$path = trim((string) preg_replace("/\/+/", "/", $this->currentPrefix . $path), "/");
-		$allMiddleware = array_merge($this->globalMiddleware, $this->currentMiddleware, $middleware);
+		$path = trim((string) preg_replace("/\/+/", "/", $this->prefix . $path), "/");
+		$allMiddleware = array_merge($this->globalMiddleware, $this->middleware, $middleware);
 
 		if (!str_contains($path, ":")) {
 		    $this->staticRoutes[$path][$method] = [$allMiddleware, $handle];
@@ -840,120 +842,6 @@ class Session
 	}
 }
 
-class Template
-{
-	/** @var ?self */
-	protected ?self $layout = null;
-
-	/** @var list<string> */
-	protected array $stack = [];
-
-	/** @var array<string,string> */
-	protected array $segments = [];
-
-	/**
-	 * @param mixed $path
-	 */
-	public function __construct(
-		protected ?string $path = null,
-	) {
-	}
-
-	/**
-	 * Sets the layout template to be used for rendering.
-	 *
-	 * @param string $path
-	 * @return void
-	 */
-	protected function layout(string $path): void
-	{
-		$this->layout = new Template($path);
-	}
-
-	/**
-	 * Retrieves the content of a named segment or returns a default string.
-	 *
-	 * @param string $name
-	 * @param string $default
-	 * @return string
-	 */
-	protected function yield(string $name, string $default = ''): string
-	{
-		return $this->segments[$name] ?? $default;
-	}
-
-	/**
-	 * Starts or sets a named content segment.
-	 *
-	 * @param string      $name
-	 * @param string|null $value
-	 * @return void
-	 */
-	protected function segment(string $name, ?string $value = null): void
-	{
-		if ($value !== null) {
-		    $this->segments[$name] = $value;
-		} else {
-		    $this->stack[] = $name;
-		    ob_start();
-		}
-	}
-
-	/**
-	 * Ends the current output buffer and assigns it to the last opened segment.
-	 *
-	 * @return void
-	 * @throws LogicException if no segment is open
-	 */
-	protected function end(): void
-	{
-		if (empty($this->stack)) {
-		    throw new LogicException("No segment is currently open.");
-		}
-
-		$name = array_pop($this->stack);
-		$this->segments[$name] = ob_get_clean();
-	}
-
-	/**
-	 * Renders the template and returns the resulting HTML string.
-	 *
-	 * @param array<string,mixed> $data
-	 * @return string
-	 */
-	public function render(array $data = []): string
-	{
-		if ($this->path && file_exists($this->path)) {
-		    $content = (function (array $data) {
-		        ob_start();
-		        extract($data);
-		        include $this->path;
-		        return ob_get_clean();
-		    })($data);
-		}
-
-		if ($this->layout !== null) {
-		    $this->segments["content"] = $content ?? "";
-		    $this->layout->setSegments($this->segments);
-		    return $this->layout->render($data);
-		}
-
-		return $content ?? "";
-	}
-
-	/**
-	 * Sets the segment content to be used when rendering the layout.
-	 *
-	 * @param array<string,string> $segments
-	 * @return void
-	 * @internal
-	 */
-	public function setSegments(array $segments): void
-	{
-		$this->segments = $segments;
-	}
-}
-
 /**
  * If no identifier is provided, returns the container instance.
  *
@@ -992,7 +880,7 @@ function env(string $key, mixed $default = null): mixed
 /**
  * This function binds a service to the container using the specified identifier and factory.
  *
- * @param string $id
+ * @param string   $id
  * @param callable $factory
  * @return object
  */
@@ -1079,9 +967,9 @@ function middleware(callable $middleware): void
 /**
  * Groups routes under a shared prefix and middleware stack for scoped handling.
  *
- * @param string $prefix
+ * @param string   $prefix
  * @param callable $handle
- * @param array $middleware
+ * @param array    $middleware
  * @return void
  */
 function group(string $prefix, callable $handle, array $middleware = []): void
@@ -1229,7 +1117,13 @@ function session(string $key, mixed $value = null): mixed
  */
 function render(string $template, array $data = []): string
 {
-	return new Template($template)->render($data);
+	$class = "\Essentio\Core\Extra\Template";
+
+	if (class_exists($class)) {
+	    return new $class($template)->render($data);
+	}
+
+	return sprintf($template, ...$data);
 }
 
 /**
@@ -1333,68 +1227,4 @@ function dump(...$data): void
 	echo "<pre>";
 	var_dump(...$data);
 	echo "</pre>";
-}
-
-/**
- * This function allows you to perform an operation on the value and then return the original value.
- * [Keeping it around to see if this is framework or implementation detail.]
- *
- * @param mixed    $value
- * @param callable $callback
- * @return mixed
- */
-function tap(mixed $value, callable $callback): mixed
-{
-	$callback($value);
-	return $value;
-}
-
-/**
- * Evaluates the provided condition, and if it is true, throws the specified exception.
- * [Keeping it around to see if this is framework or implementation detail.]
- *
- * @param bool $condition
- * @param Throwable $e
- * @return void
- * @throws Throwable
- */
-function throw_if(bool $condition, Throwable $e): void
-{
-	if ($condition) {
-	    throw $e;
-	}
-}
-
-/**
- * If the value is callable, it executes the callback and returns its result. Otherwise, it returns the value as is.
- * [Keeping it around to see if this is framework or implementation detail.]
- *
- * @param mixed $value
- * @return mixed
- */
-function value(mixed $value): mixed
-{
-	if (is_callable($value)) {
-	    return call_user_func($value);
-	}
-
-	return $value;
-}
-
-/**
- * If the condition is false, the function returns null.
- * If the condition is true and the callback is callable, it executes the callback and returns its result; otherwise, it returns the provided value directly.
- * [Keeping it around to see if this is framework or implementation detail.]
- *
- * @param bool  $condition
- * @param mixed $callback
- * @return mixed
- */
-function when(bool $condition, mixed $value): mixed
-{
-	if (!$condition) {
-	    return null;
-	}
-
-	return value($value);
 }

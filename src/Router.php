@@ -24,10 +24,10 @@ class Router
     protected array $globalMiddleware = [];
 
     /** @var string */
-    protected string $currentPrefix = "";
+    protected string $prefix = "";
 
     /** @var list<callable> */
-    protected array $currentMiddleware = [];
+    protected array $middleware = [];
 
     /** @var array<string, array{list<callable>, callable}> */
     protected array $staticRoutes = [];
@@ -57,16 +57,16 @@ class Router
      */
     public function group(string $prefix, callable $handle, array $middleware = []): static
     {
-        $previousPrefix = $this->currentPrefix;
-        $previousMiddleware = $this->currentMiddleware;
+        $previousPrefix = $this->prefix;
+        $previousMiddleware = $this->middleware;
 
-        $this->currentPrefix .= $prefix;
-        $this->currentMiddleware = array_merge($this->currentMiddleware, $middleware);
+        $this->prefix .= $prefix;
+        $this->middleware = array_merge($this->middleware, $middleware);
 
         $handle($this);
 
-        $this->currentPrefix = $previousPrefix;
-        $this->currentMiddleware = $previousMiddleware;
+        $this->prefix = $previousPrefix;
+        $this->middleware = $previousMiddleware;
 
         return $this;
     }
@@ -82,8 +82,8 @@ class Router
      */
     public function add(string $method, string $path, callable $handle, array $middleware = []): static
     {
-        $path = trim((string) preg_replace("/\/+/", "/", $this->currentPrefix . $path), "/");
-        $allMiddleware = array_merge($this->globalMiddleware, $this->currentMiddleware, $middleware);
+        $path = trim((string) preg_replace("/\/+/", "/", $this->prefix . $path), "/");
+        $allMiddleware = array_merge($this->globalMiddleware, $this->middleware, $middleware);
 
         if (!str_contains($path, ":")) {
             $this->staticRoutes[$path][$method] = [$allMiddleware, $handle];

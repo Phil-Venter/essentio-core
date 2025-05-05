@@ -7,7 +7,6 @@ use Essentio\Core\Request;
 use Essentio\Core\Response;
 use Essentio\Core\Router;
 use Essentio\Core\Session;
-use Essentio\Core\Template;
 
 /**
  * If no identifier is provided, returns the container instance.
@@ -47,7 +46,7 @@ function env(string $key, mixed $default = null): mixed
 /**
  * This function binds a service to the container using the specified identifier and factory.
  *
- * @param string $id
+ * @param string   $id
  * @param callable $factory
  * @return object
  */
@@ -134,9 +133,9 @@ function middleware(callable $middleware): void
 /**
  * Groups routes under a shared prefix and middleware stack for scoped handling.
  *
- * @param string $prefix
+ * @param string   $prefix
  * @param callable $handle
- * @param array $middleware
+ * @param array    $middleware
  * @return void
  */
 function group(string $prefix, callable $handle, array $middleware = []): void
@@ -282,9 +281,16 @@ function session(string $key, mixed $value = null): mixed
  * @param array  $data
  * @return string
  */
+
 function render(string $template, array $data = []): string
 {
-    return new Template($template)->render($data);
+    $class = "\Essentio\Core\Extra\Template";
+
+	if (class_exists($class)) {
+	    return new $class($template)->render($data);
+	}
+
+	return sprintf($template, ...$data);
 }
 
 /**
@@ -388,68 +394,4 @@ function dump(...$data): void
     echo "<pre>";
     var_dump(...$data);
     echo "</pre>";
-}
-
-/**
- * This function allows you to perform an operation on the value and then return the original value.
- * [Keeping it around to see if this is framework or implementation detail.]
- *
- * @param mixed    $value
- * @param callable $callback
- * @return mixed
- */
-function tap(mixed $value, callable $callback): mixed
-{
-    $callback($value);
-    return $value;
-}
-
-/**
- * Evaluates the provided condition, and if it is true, throws the specified exception.
- * [Keeping it around to see if this is framework or implementation detail.]
- *
- * @param bool $condition
- * @param Throwable $e
- * @return void
- * @throws Throwable
- */
-function throw_if(bool $condition, Throwable $e): void
-{
-    if ($condition) {
-        throw $e;
-    }
-}
-
-/**
- * If the value is callable, it executes the callback and returns its result. Otherwise, it returns the value as is.
- * [Keeping it around to see if this is framework or implementation detail.]
- *
- * @param mixed $value
- * @return mixed
- */
-function value(mixed $value): mixed
-{
-    if (is_callable($value)) {
-        return call_user_func($value);
-    }
-
-    return $value;
-}
-
-/**
- * If the condition is false, the function returns null.
- * If the condition is true and the callback is callable, it executes the callback and returns its result; otherwise, it returns the provided value directly.
- * [Keeping it around to see if this is framework or implementation detail.]
- *
- * @param bool  $condition
- * @param mixed $callback
- * @return mixed
- */
-function when(bool $condition, mixed $value): mixed
-{
-    if (!$condition) {
-        return null;
-    }
-
-    return value($value);
 }
