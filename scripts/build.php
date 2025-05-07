@@ -78,4 +78,7 @@ if (file_exists($functionsFile)) {
     }
 }
 
-file_put_contents($outputPath, str_replace("\n\n\n", "\n\n", trim(stripSlashesOutsideQuotes($outputCode))) . PHP_EOL);
+file_put_contents(
+    $outputPath,
+    str_replace(["\n\n\n", "\t"], ["\n\n", "    "], trim(stripSlashesOutsideQuotes($outputCode))) . PHP_EOL
+);

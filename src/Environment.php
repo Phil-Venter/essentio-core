@@ -24,40 +24,40 @@ class Environment
      * @return static
      */
      public function load(string $file): static
-	{
-		if (!file_exists($file)) {
-		    return $this;
-		}
+    {
+        if (!file_exists($file)) {
+            return $this;
+        }
 
-		$lines = file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+        $lines = file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
 
-		foreach ($lines as $line) {
-		    if (trim($line)[0] === "#" || !str_contains($line, "=")) {
-			    continue;
-			}
+        foreach ($lines as $line) {
+            if (trim($line)[0] === "#" || !str_contains($line, "=")) {
+                continue;
+            }
 
-		    [$name, $value] = explode("=", $line, 2);
-		    $name = trim($name);
-		    $value = trim($value);
+            [$name, $value] = explode("=", $line, 2);
+            $name = trim($name);
+            $value = trim($value);
 
-		    if (preg_match('/^(["\']).*\1$/', $value)) {
-		        $value = substr($value, 1, -1);
-		    } else {
-		        $lower = strtolower($value);
-		        $value = match (true) {
-		            $lower === "true"  => true,
-		            $lower === "false" => false,
-		            $lower === "null"  => null,
-		            is_numeric($value) => preg_match("/[e\.]/", $value) ? (float) $value : (int) $value,
-		            default            => $value,
-		        };
-		    }
+            if (preg_match('/^(["\']).*\1$/', $value)) {
+                $value = substr($value, 1, -1);
+            } else {
+                $lower = strtolower($value);
+                $value = match (true) {
+                    $lower === "true"  => true,
+                    $lower === "false" => false,
+                    $lower === "null"  => null,
+                    is_numeric($value) => preg_match("/[e\.]/", $value) ? (float) $value : (int) $value,
+                    default            => $value,
+                };
+            }
 
-		    $this->data[$name] = $value;
-		}
+            $this->data[$name] = $value;
+        }
 
-		return $this;
-	}
+        return $this;
+    }
 
     /**
      * Retrieves an environment variable.

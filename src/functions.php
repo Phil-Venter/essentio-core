@@ -286,11 +286,11 @@ function render(string $template, array $data = []): string
 {
     $class = \Essentio\Core\Extra\Template::class;
 
-	if (class_exists($class)) {
-	    return new $class($template)->render($data);
-	}
+    if (class_exists($class)) {
+        return new $class($template)->render($data);
+    }
 
-	return preg_replace_callback("/{{\s*(\w+)\s*}}/", fn ($m) => $data[$m[1]] ?? $m[0], $template);
+    return preg_replace_callback("/{{\s*(\w+)\s*}}/", fn ($m) => $data[$m[1]] ?? $m[0], $template);
 }
 
 /**

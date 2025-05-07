@@ -2,844 +2,844 @@
 
 class Application
 {
-	/** @var string */
-	protected static string $basePath;
+    /** @var string */
+    protected static string $basePath;
 
-	/** @var Container */
-	public static Container $container;
+    /** @var Container */
+    public static Container $container;
 
-	/** @var bool */
-	public static bool $isWeb;
+    /** @var bool */
+    public static bool $isWeb;
 
-	/**
-	 * Initialize the application for HTTP requests.
-	 *
-	 * @param string $basePath
-	 * @return void
-	 */
-	public static function http(string $basePath): void
-	{
-		static::$basePath = rtrim($basePath, "/");
-		static::$container = new Container();
-		static::$isWeb = true;
+    /**
+     * Initialize the application for HTTP requests.
+     *
+     * @param string $basePath
+     * @return void
+     */
+    public static function http(string $basePath): void
+    {
+        static::$basePath = rtrim($basePath, "/");
+        static::$container = new Container();
+        static::$isWeb = true;
 
-		static::$container->bind(Environment::class, fn(): Environment => new Environment())->once = true;
-		static::$container->bind(Session::class, fn(): Session => new Session())->once = true;
-		static::$container->bind(Request::class, fn(): Request => Request::init())->once = true;
-		static::$container->bind(Router::class, fn(): Router => new Router())->once = true;
-	}
+        static::$container->bind(Environment::class, fn(): Environment => new Environment())->once = true;
+        static::$container->bind(Session::class, fn(): Session => new Session())->once = true;
+        static::$container->bind(Request::class, fn(): Request => Request::init())->once = true;
+        static::$container->bind(Router::class, fn(): Router => new Router())->once = true;
+    }
 
-	/**
-	 * Initialize the application for CLI commands.
-	 *
-	 * @param string $basePath
-	 * @return void
-	 */
-	public static function cli(string $basePath): void
-	{
-		static::$basePath = rtrim($basePath, "/");
-		static::$container = new Container();
-		static::$isWeb = false;
+    /**
+     * Initialize the application for CLI commands.
+     *
+     * @param string $basePath
+     * @return void
+     */
+    public static function cli(string $basePath): void
+    {
+        static::$basePath = rtrim($basePath, "/");
+        static::$container = new Container();
+        static::$isWeb = false;
 
-		static::$container->bind(Environment::class, fn(): Environment => new Environment())->once = true;
-		static::$container->bind(Argument::class, fn(): Argument => Argument::init())->once = true;
-	}
+        static::$container->bind(Environment::class, fn(): Environment => new Environment())->once = true;
+        static::$container->bind(Argument::class, fn(): Argument => Argument::init())->once = true;
+    }
 
-	/**
-	 * Resolve an absolute path based on the application's base directory.
-	 *
-	 * @param string $path
-	 * @return string
-	 */
-	public static function fromBase(string $path): string
-	{
-		return sprintf("%s/%s", static::$basePath, $path);
-	}
+    /**
+     * Resolve an absolute path based on the application's base directory.
+     *
+     * @param string $path
+     * @return string
+     */
+    public static function fromBase(string $path): string
+    {
+        return sprintf("%s/%s", static::$basePath, $path);
+    }
 
-	/**
-	 * Run the application, not required for cli.
-	 *
-	 * @return void
-	 */
-	public static function run(): void
-	{
-		if (!static::$isWeb) {
-		    return;
-		}
+    /**
+     * Run the application, not required for cli.
+     *
+     * @return void
+     */
+    public static function run(): void
+    {
+        if (!static::$isWeb) {
+            return;
+        }
 
-		try {
-		    static::$container
-		        ->resolve(Router::class)
-		        ->dispatch(static::$container->resolve(Request::class))
-		        ->send();
-		} catch (HttpException $e) {
-		    new Response()
-		        ->withStatus($e->getCode())
-		        ->withHeaders(["Content-Type" => "text/html"])
-		        ->withBody($e->getMessage())
-		        ->send();
-		} catch (Throwable $e) {
-		    error_log(sprintf("[%s]\n%s", $e->getMessage(), $e->getTraceAsString()));
+        try {
+            static::$container
+                ->resolve(Router::class)
+                ->dispatch(static::$container->resolve(Request::class))
+                ->send();
+        } catch (HttpException $e) {
+            new Response()
+                ->withStatus($e->getCode())
+                ->withHeaders(["Content-Type" => "text/html"])
+                ->withBody($e->getMessage())
+                ->send();
+        } catch (Throwable $e) {
+            error_log(sprintf("[%s]\n%s", $e->getMessage(), $e->getTraceAsString()));
 
-		    new Response()
-		        ->withStatus(500)
-		        ->withHeaders(["Content-Type" => "text/plain"])
-		        ->withBody("Something went wrong. Please try again later.")
-		        ->send();
-		}
-	}
+            new Response()
+                ->withStatus(500)
+                ->withHeaders(["Content-Type" => "text/plain"])
+                ->withBody("Something went wrong. Please try again later.")
+                ->send();
+        }
+    }
 }
 
 class Argument
 {
-	/** @var string */
-	public protected(set) string $command = '';
+    /** @var string */
+    public protected(set) string $command = '';
 
-	/** @var array<int|string, string|int|bool|null> */
-	public protected(set) array $arguments = [];
+    /** @var array<int|string, string|int|bool|null> */
+    public protected(set) array $arguments = [];
 
-	/**
-	 * Initializes and parses the command-line arguments.
-	 *
-	 * @param list<string>|null $argv
-	 * @return static
-	 */
-	public static function init(?array $argv = null): static
-	{
-		$argv ??= $_SERVER["argv"] ?? [];
-		$that = new static;
-		array_shift($argv);
+    /**
+     * Initializes and parses the command-line arguments.
+     *
+     * @param list<string>|null $argv
+     * @return static
+     */
+    public static function init(?array $argv = null): static
+    {
+        $argv ??= $_SERVER["argv"] ?? [];
+        $that = new static;
+        array_shift($argv);
 
-		if (empty($argv)) {
-		    return $that;
-		}
+        if (empty($argv)) {
+            return $that;
+        }
 
-		while ($arg = array_shift($argv)) {
-		    if ($arg === "--") {
-		        $that->arguments = array_merge($that->arguments, $argv);
-		        break;
-		    }
+        while ($arg = array_shift($argv)) {
+            if ($arg === "--") {
+                $that->arguments = array_merge($that->arguments, $argv);
+                break;
+            }
 
-		    if (str_starts_with((string) $arg, "--")) {
-		        $option = substr((string) $arg, 2);
+            if (str_starts_with((string) $arg, "--")) {
+                $option = substr((string) $arg, 2);
 
-		        if (str_contains($option, "=")) {
-		            [$key, $value] = explode("=", $option, 2);
-		        } elseif (isset($argv[0]) && $argv[0][0] !== "-") {
-		            $key = $option;
-		            $value = array_shift($argv);
-		        } else {
-		            $key = $option;
-		            $value = true;
-		        }
+                if (str_contains($option, "=")) {
+                    [$key, $value] = explode("=", $option, 2);
+                } elseif (isset($argv[0]) && $argv[0][0] !== "-") {
+                    $key = $option;
+                    $value = array_shift($argv);
+                } else {
+                    $key = $option;
+                    $value = true;
+                }
 
-		        $that->arguments[$key] = $value;
-		        continue;
-		    }
+                $that->arguments[$key] = $value;
+                continue;
+            }
 
-		    if ($arg[0] === "-") {
-		        $key = $arg[1];
-		        $value = substr((string) $arg, 2);
+            if ($arg[0] === "-") {
+                $key = $arg[1];
+                $value = substr((string) $arg, 2);
 
-		        if (empty($value)) {
-		            if (isset($argv[0]) && $argv[0][0] !== "-") {
-		                $value = array_shift($argv);
-		            } else {
-		                $value = true;
-		            }
-		        }
+                if (empty($value)) {
+                    if (isset($argv[0]) && $argv[0][0] !== "-") {
+                        $value = array_shift($argv);
+                    } else {
+                        $value = true;
+                    }
+                }
 
-		        $that->arguments[$key] = $value;
-		        continue;
-		    }
+                $that->arguments[$key] = $value;
+                continue;
+            }
 
-		    if (empty($that->command)) {
-		        $that->command = $arg;
-		    } else {
-		        $that->arguments[] = $arg;
-		    }
-		}
+            if (empty($that->command)) {
+                $that->command = $arg;
+            } else {
+                $that->arguments[] = $arg;
+            }
+        }
 
-		return $that;
-	}
+        return $that;
+    }
 
-	/**
-	 * Retrieves a specific argument value.
-	 *
-	 * @param int|string $key
-	 * @param mixed      $default
-	 * @return mixed
-	 */
-	public function get(int|string $key, mixed $default = null): mixed
-	{
-		return $this->arguments[$key] ?? $default;
-	}
+    /**
+     * Retrieves a specific argument value.
+     *
+     * @param int|string $key
+     * @param mixed      $default
+     * @return mixed
+     */
+    public function get(int|string $key, mixed $default = null): mixed
+    {
+        return $this->arguments[$key] ?? $default;
+    }
 }
 
 class Container
 {
-	/** @var array<string, object{factory:callable, once:bool}> */
-	protected array $bindings = [];
+    /** @var array<string, object{factory:callable, once:bool}> */
+    protected array $bindings = [];
 
-	/**
-	 * @template T of object
-	 * @var array<class-string<T>, T>
-	 */
-	protected array $cache = [];
+    /**
+     * @template T of object
+     * @var array<class-string<T>, T>
+     */
+    protected array $cache = [];
 
-	/**
-	 * Bind a service to the container.
-	 *
-	 * @template T of object
-	 * @param class-string<T> $id
-	 * @param callable(static):T $factory
-	 * @return object{factory:callable, once:bool}
-	 */
-	public function bind(string $id, callable $factory): object
-	{
-		$once = false;
-		return $this->bindings[$id] = (object) compact("factory", "once");
-	}
+    /**
+     * Bind a service to the container.
+     *
+     * @template T of object
+     * @param class-string<T> $id
+     * @param callable(static):T $factory
+     * @return object{factory:callable, once:bool}
+     */
+    public function bind(string $id, callable $factory): object
+    {
+        $once = false;
+        return $this->bindings[$id] = (object) compact("factory", "once");
+    }
 
-	/**
-	 * Retrieve a service from the container.
-	 *
-	 * @template T of object
-	 * @param  class-string<T>|string $id
-	 * @return ($id is class-string<T> ? T : object)
-	 * @throws RuntimeException
-	 */
-	public function resolve(string $id): object
-	{
-		if (!isset($this->bindings[$id])) {
-		    if (class_exists($id, true)) {
-		        return new $id();
-		    }
+    /**
+     * Retrieve a service from the container.
+     *
+     * @template T of object
+     * @param  class-string<T>|string $id
+     * @return ($id is class-string<T> ? T : object)
+     * @throws RuntimeException
+     */
+    public function resolve(string $id): object
+    {
+        if (!isset($this->bindings[$id])) {
+            if (class_exists($id, true)) {
+                return new $id();
+            }
 
-		    throw new RuntimeException(sprintf("No binding for %s exists", $id));
-		}
+            throw new RuntimeException(sprintf("No binding for %s exists", $id));
+        }
 
-		if (isset($this->cache[$id])) {
-		    return $this->cache[$id];
-		}
+        if (isset($this->cache[$id])) {
+            return $this->cache[$id];
+        }
 
-		$binding = $this->bindings[$id];
-		$resolved = call_user_func($binding->factory, $this);
+        $binding = $this->bindings[$id];
+        $resolved = call_user_func($binding->factory, $this);
 
-		if ($binding->once) {
-		    $this->cache[$id] = $resolved;
-		}
+        if ($binding->once) {
+            $this->cache[$id] = $resolved;
+        }
 
-		return $resolved;
-	}
+        return $resolved;
+    }
 }
 
 class Environment
 {
-	/** @var array<string,mixed> */
-	public protected(set) array $data = [];
+    /** @var array<string,mixed> */
+    public protected(set) array $data = [];
 
-	/**
-	 * Loads environment variables from a file.
-	 *
-	 * @param string $file
-	 * @return static
-	 */
-	public function load(string $file): static
-	{
-		if (!file_exists($file)) {
-		    return $this;
-		}
+    /**
+     * Loads environment variables from a file.
+     *
+     * @param string $file
+     * @return static
+     */
+    public function load(string $file): static
+    {
+        if (!file_exists($file)) {
+            return $this;
+        }
 
-		$lines = file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+        $lines = file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
 
-		foreach ($lines as $line) {
-		    if (trim($line)[0] === "#" || !str_contains($line, "=")) {
-			    continue;
-			}
+        foreach ($lines as $line) {
+            if (trim($line)[0] === "#" || !str_contains($line, "=")) {
+                continue;
+            }
 
-		    [$name, $value] = explode("=", $line, 2);
-		    $name = trim($name);
-		    $value = trim($value);
+            [$name, $value] = explode("=", $line, 2);
+            $name = trim($name);
+            $value = trim($value);
 
-		    if (preg_match('/^(["\']).*\1$/', $value)) {
-		        $value = substr($value, 1, -1);
-		    } else {
-		        $lower = strtolower($value);
-		        $value = match (true) {
-		            $lower === "true"  => true,
-		            $lower === "false" => false,
-		            $lower === "null"  => null,
-		            is_numeric($value) => preg_match("/[e\.]/", $value) ? (float) $value : (int) $value,
-		            default            => $value,
-		        };
-		    }
+            if (preg_match('/^(["\']).*\1$/', $value)) {
+                $value = substr($value, 1, -1);
+            } else {
+                $lower = strtolower($value);
+                $value = match (true) {
+                    $lower === "true"  => true,
+                    $lower === "false" => false,
+                    $lower === "null"  => null,
+                    is_numeric($value) => preg_match("/[e\.]/", $value) ? (float) $value : (int) $value,
+                    default            => $value,
+                };
+            }
 
-		    $this->data[$name] = $value;
-		}
+            $this->data[$name] = $value;
+        }
 
-		return $this;
-	}
+        return $this;
+    }
 
-	/**
-	 * Retrieves an environment variable.
-	 *
-	 * @param string $key
-	 * @param mixed  $default
-	 * @return mixed
-	 */
-	public function get(string $key, mixed $default = null): mixed
-	{
-		return $this->data[$key] ?? $default;
-	}
+    /**
+     * Retrieves an environment variable.
+     *
+     * @param string $key
+     * @param mixed  $default
+     * @return mixed
+     */
+    public function get(string $key, mixed $default = null): mixed
+    {
+        return $this->data[$key] ?? $default;
+    }
 }
 
 class HttpException extends Exception
 {
-	public const HTTP_STATUS = [
-		200 => 'OK',
-		201 => 'Created',
-		202 => 'Accepted',
-		204 => 'No Content',
-		301 => 'Moved Permanently',
-		302 => 'Found',
-		303 => 'See Other',
-		307 => 'Temporary Redirect',
-		308 => 'Permanent Redirect',
-		400 => 'Bad Request',
-		401 => 'Unauthorized',
-		403 => 'Forbidden',
-		404 => 'Not Found',
-		405 => 'Method Not Allowed',
-		500 => 'Internal Server Error',
-	];
+    public const HTTP_STATUS = [
+        200 => 'OK',
+        201 => 'Created',
+        202 => 'Accepted',
+        204 => 'No Content',
+        301 => 'Moved Permanently',
+        302 => 'Found',
+        303 => 'See Other',
+        307 => 'Temporary Redirect',
+        308 => 'Permanent Redirect',
+        400 => 'Bad Request',
+        401 => 'Unauthorized',
+        403 => 'Forbidden',
+        404 => 'Not Found',
+        405 => 'Method Not Allowed',
+        500 => 'Internal Server Error',
+    ];
 
-	/**
-	 * Factory method to create a new HttpException instance.
-	 *
-	 * @param int            $status HTTP status code (e.g., 404, 500).
-	 * @param string|null    $message Optional custom error message.
-	 * @param Throwable|null $previous Optional previous exception for chaining.
-	 * @return static A new instance of the HttpException class.
-	 */
-	public static function new(int $status, ?string $message = null, ?Throwable $previous = null): static
-	{
-		return new static($message ?? (static::HTTP_STATUS[$status] ?? "Unknown Error"), $status, $previous);
-	}
+    /**
+     * Factory method to create a new HttpException instance.
+     *
+     * @param int            $status HTTP status code (e.g., 404, 500).
+     * @param string|null    $message Optional custom error message.
+     * @param Throwable|null $previous Optional previous exception for chaining.
+     * @return static A new instance of the HttpException class.
+     */
+    public static function new(int $status, ?string $message = null, ?Throwable $previous = null): static
+    {
+        return new static($message ?? (static::HTTP_STATUS[$status] ?? "Unknown Error"), $status, $previous);
+    }
 }
 
 class Request
 {
-	/** @var string */
-	public protected(set) string $method {
-		set => /*(f*/strtoupper($value);
-	}
+    /** @var string */
+    public protected(set) string $method {
+        set => /*(f*/strtoupper($value);
+    }
 
-	/** @var string */
-	public protected(set) string $scheme {
-		set => /*(f*/strtolower($value);
-	}
+    /** @var string */
+    public protected(set) string $scheme {
+        set => /*(f*/strtolower($value);
+    }
 
-	/** @var ?string */
-	public protected(set) ?string $host = null;
+    /** @var ?string */
+    public protected(set) ?string $host = null;
 
-	/** @var ?int */
-	public protected(set) ?int $port = null;
+    /** @var ?int */
+    public protected(set) ?int $port = null;
 
-	/** @var string */
-	public protected(set) string $path;
+    /** @var string */
+    public protected(set) string $path;
 
-	/** @var array<string,mixed> */
-	public protected(set) array $parameters;
+    /** @var array<string,mixed> */
+    public protected(set) array $parameters;
 
-	/** @var array<string,mixed> */
-	public protected(set) array $query;
+    /** @var array<string,mixed> */
+    public protected(set) array $query;
 
-	/** @var array<string,mixed> */
-	public protected(set) array $headers;
+    /** @var array<string,mixed> */
+    public protected(set) array $headers;
 
-	/** @var array<string,mixed> */
-	public protected(set) array $cookies;
+    /** @var array<string,mixed> */
+    public protected(set) array $cookies;
 
-	/** @var array<string,mixed> */
-	public protected(set) array $files;
+    /** @var array<string,mixed> */
+    public protected(set) array $files;
 
-	/** @var string */
-	public protected(set) string $rawInput;
+    /** @var string */
+    public protected(set) string $rawInput;
 
-	/** @var array<string,mixed> */
-	public protected(set) array $body;
+    /** @var array<string,mixed> */
+    public protected(set) array $body;
 
-	/**
-	 * Initializes and returns a new Request instance using PHP superglobals.
-	 *
-	 * @param array<string, mixed>|null $server
-	 * @param array<string, mixed>|null $headers
-	 * @param array<string, mixed>|null $get
-	 * @param array<string, mixed>|null $post
-	 * @param array<string, mixed>|null $cookie
-	 * @param array<string, mixed>|null $files
-	 * @param string|null               $body
-	 * @return static
-	 */
-	public static function init(
-		?array $server = null,
-		?array $headers = null,
-		?array $get = null,
-		?array $post = null,
-		?array $cookie = null,
-		?array $files = null,
-		?string $body = null,
-	): static
-	{
-		$server ??= $_SERVER ?? [];
-		$post ??= $_POST ?? [];
+    /**
+     * Initializes and returns a new Request instance using PHP superglobals.
+     *
+     * @param array<string, mixed>|null $server
+     * @param array<string, mixed>|null $headers
+     * @param array<string, mixed>|null $get
+     * @param array<string, mixed>|null $post
+     * @param array<string, mixed>|null $cookie
+     * @param array<string, mixed>|null $files
+     * @param string|null               $body
+     * @return static
+     */
+    public static function init(
+        ?array $server = null,
+        ?array $headers = null,
+        ?array $get = null,
+        ?array $post = null,
+        ?array $cookie = null,
+        ?array $files = null,
+        ?string $body = null,
+    ): static
+    {
+        $server ??= $_SERVER ?? [];
+        $post ??= $_POST ?? [];
 
-		$that = new static();
+        $that = new static();
 
-		$that->method = $post["_method"] ?? $server["REQUEST_METHOD"] ?? "GET";
-		$that->scheme = filter_var($server["HTTPS"] ?? "", FILTER_VALIDATE_BOOLEAN) ? "https" : "http";
+        $that->method = $post["_method"] ?? $server["REQUEST_METHOD"] ?? "GET";
+        $that->scheme = filter_var($server["HTTPS"] ?? "", FILTER_VALIDATE_BOOLEAN) ? "https" : "http";
 
-		$host = null;
-		$port = null;
+        $host = null;
+        $port = null;
 
-		if (isset($server["HTTP_HOST"])) {
-		    if (str_contains($server["HTTP_HOST"], ":")) {
-		        [$host, $port] = explode(":", $server["HTTP_HOST"], 2);
-		        $port = (int) $port;
-		    } else {
-		        $host = $server["HTTP_HOST"];
-		        $port = $that->scheme === "https" ? 443 : 80;
-		    }
-		}
+        if (isset($server["HTTP_HOST"])) {
+            if (str_contains($server["HTTP_HOST"], ":")) {
+                [$host, $port] = explode(":", $server["HTTP_HOST"], 2);
+                $port = (int) $port;
+            } else {
+                $host = $server["HTTP_HOST"];
+                $port = $that->scheme === "https" ? 443 : 80;
+            }
+        }
 
-		$that->host = $host ?? $server["SERVER_NAME"] ?? "localhost";
-		$that->port = (int) ($port ?? $server["SERVER_PORT"] ??  80);
+        $that->host = $host ?? $server["SERVER_NAME"] ?? "localhost";
+        $that->port = (int) ($port ?? $server["SERVER_PORT"] ??  80);
 
-		$that->path = trim(parse_url($server["REQUEST_URI"] ?? "", PHP_URL_PATH) ?? "", "/");
-		$that->parameters = [];
-		$that->query = $get ?? $_GET ?? [];
-		$that->headers = $headers ?? (function_exists("getallheaders") ? (getallheaders() ?: []) : []);
-		$that->cookies = $cookie ?? $_COOKIE ?? [];
-		$that->files = $files ?? $_FILES ?? [];
+        $that->path = trim(parse_url($server["REQUEST_URI"] ?? "", PHP_URL_PATH) ?? "", "/");
+        $that->parameters = [];
+        $that->query = $get ?? $_GET ?? [];
+        $that->headers = $headers ?? (function_exists("getallheaders") ? (getallheaders() ?: []) : []);
+        $that->cookies = $cookie ?? $_COOKIE ?? [];
+        $that->files = $files ?? $_FILES ?? [];
 
-		$that->rawInput = $body ?? file_get_contents("php://input") ?: "";
+        $that->rawInput = $body ?? file_get_contents("php://input") ?: "";
 
-		$contentType = $that->headers["Content-Type"] ?? "";
-		$mimeType = explode(";", $contentType, 2)[0];
+        $contentType = $that->headers["Content-Type"] ?? "";
+        $mimeType = explode(";", $contentType, 2)[0];
 
-		$that->body = match ($mimeType) {
-		    "application/x-www-form-urlencoded" => (function (string $input): array {
-		        parse_str($input, $result);
-		        return $result;
-		    })($that->rawInput),
-		    "application/json" => json_decode($that->rawInput, true),
-		    "application/xml", "text/xml" => (function (string $input): array {
-		        libxml_use_internal_errors(true);
-		        $xml = simplexml_load_string($input);
-		        return $xml ? json_decode(json_encode($xml), true) : [];
-		    })($that->rawInput),
-		    default => $post,
-		};
+        $that->body = match ($mimeType) {
+            "application/x-www-form-urlencoded" => (function (string $input): array {
+                parse_str($input, $result);
+                return $result;
+            })($that->rawInput),
+            "application/json" => json_decode($that->rawInput, true),
+            "application/xml", "text/xml" => (function (string $input): array {
+                libxml_use_internal_errors(true);
+                $xml = simplexml_load_string($input);
+                return $xml ? json_decode(json_encode($xml), true) : [];
+            })($that->rawInput),
+            default => $post,
+        };
 
-		return $that;
-	}
+        return $that;
+    }
 
-	/**
-	 * Sets custom parameters for the request.
-	 *
-	 * @param array<string, mixed> $parameters
-	 * @return static
-	 */
-	public function setParameters(array $parameters): static
-	{
-		$this->parameters = $parameters;
-		return $this;
-	}
+    /**
+     * Sets custom parameters for the request.
+     *
+     * @param array<string, mixed> $parameters
+     * @return static
+     */
+    public function setParameters(array $parameters): static
+    {
+        $this->parameters = $parameters;
+        return $this;
+    }
 
-	/**
-	 * Retrieve a value from the request parameters.
-	 *
-	 * @param array|string $key
-	 * @param mixed        $default
-	 * @return mixed
-	 */
-	public function get(array|string $key, mixed $default = null): mixed
-	{
-		if (is_array($key)) {
-		    $result = [];
+    /**
+     * Retrieve a value from the request parameters.
+     *
+     * @param array|string $key
+     * @param mixed        $default
+     * @return mixed
+     */
+    public function get(array|string $key, mixed $default = null): mixed
+    {
+        if (is_array($key)) {
+            $result = [];
 
-		    foreach ($key as $k) {
-		        $result[$k] = $this->get($k, $default);
-		    }
+            foreach ($key as $k) {
+                $result[$k] = $this->get($k, $default);
+            }
 
-		    return $result;
-		}
+            return $result;
+        }
 
-		return $this->parameters[$key]
-		    ?? $this->query[$key]
-		    ?? $default;
-	}
+        return $this->parameters[$key]
+            ?? $this->query[$key]
+            ?? $default;
+    }
 
-	/**
-	 * Extracts a specific parameter from the incoming request data.
-	 *
-	 * @param array|string $key
-	 * @param mixed        $default
-	 * @return mixed
-	 */
-	public function input(array|string $key, mixed $default = null): mixed
-	{
-		if (is_array($key)) {
-		    $result = [];
+    /**
+     * Extracts a specific parameter from the incoming request data.
+     *
+     * @param array|string $key
+     * @param mixed        $default
+     * @return mixed
+     */
+    public function input(array|string $key, mixed $default = null): mixed
+    {
+        if (is_array($key)) {
+            $result = [];
 
-		    foreach ($key as $k) {
-		        $result[$k] = $this->input($k, $default);
-		    }
+            foreach ($key as $k) {
+                $result[$k] = $this->input($k, $default);
+            }
 
-		    return $result;
-		}
+            return $result;
+        }
 
-		if (in_array($this->method, ["GET", "HEAD", "OPTIONS", "TRACE"])) {
-		    return $this->query[$key] ?? $default;
-		}
+        if (in_array($this->method, ["GET", "HEAD", "OPTIONS", "TRACE"])) {
+            return $this->query[$key] ?? $default;
+        }
 
-		return $this->body[$key] ?? $default;
-	}
+        return $this->body[$key] ?? $default;
+    }
 }
 
 class Response
 {
-	/** @var int */
-	public protected(set) int $status = 200;
+    /** @var int */
+    public protected(set) int $status = 200;
 
-	/** @var array<string, mixed> */
-	public protected(set) array $headers = [];
+    /** @var array<string, mixed> */
+    public protected(set) array $headers = [];
 
-	/** @var bool|float|int|string|Stringable|null */
-	public protected(set) bool|float|int|string|Stringable|null $body = null;
+    /** @var bool|float|int|string|Stringable|null */
+    public protected(set) bool|float|int|string|Stringable|null $body = null;
 
-	/**
-	 * Returns a new Response instance with the specified HTTP status code.
-	 *
-	 * @param int $status
-	 * @return static
-	 */
-	public function withStatus(int $status): static
-	{
-		$that = clone $this;
-		$that->status = $status;
-		return $that;
-	}
+    /**
+     * Returns a new Response instance with the specified HTTP status code.
+     *
+     * @param int $status
+     * @return static
+     */
+    public function withStatus(int $status): static
+    {
+        $that = clone $this;
+        $that->status = $status;
+        return $that;
+    }
 
-	/**
-	 * Returns a new Response instance with additional headers merged into the existing headers.
-	 *
-	 * @param array<string, mixed> $headers
-	 * @return static
-	 */
-	public function addHeaders(array $headers): static
-	{
-		$that = clone $this;
-		$that->headers = array_merge($that->headers, $headers);
-		return $that;
-	}
+    /**
+     * Returns a new Response instance with additional headers merged into the existing headers.
+     *
+     * @param array<string, mixed> $headers
+     * @return static
+     */
+    public function addHeaders(array $headers): static
+    {
+        $that = clone $this;
+        $that->headers = array_merge($that->headers, $headers);
+        return $that;
+    }
 
-	/**
-	 * Returns a new Response instance with the headers replaced by the provided array.
-	 *
-	 * @param array<string, mixed> $headers
-	 * @return static
-	 */
-	public function withHeaders(array $headers): static
-	{
-		$that = clone $this;
-		$that->headers = $headers;
-		return $that;
-	}
+    /**
+     * Returns a new Response instance with the headers replaced by the provided array.
+     *
+     * @param array<string, mixed> $headers
+     * @return static
+     */
+    public function withHeaders(array $headers): static
+    {
+        $that = clone $this;
+        $that->headers = $headers;
+        return $that;
+    }
 
-	/**
-	 * Returns a new Response instance with the specified body.
-	 *
-	 * @param bool|float|int|string|Stringable|null $body
-	 * @return static
-	 */
-	public function withBody(bool|float|int|string|Stringable|null $body): static
-	{
-		$that = clone $this;
-		$that->body = $body;
-		return $that;
-	}
+    /**
+     * Returns a new Response instance with the specified body.
+     *
+     * @param bool|float|int|string|Stringable|null $body
+     * @return static
+     */
+    public function withBody(bool|float|int|string|Stringable|null $body): static
+    {
+        $that = clone $this;
+        $that->body = $body;
+        return $that;
+    }
 
-	/**
-	 * Sends the HTTP response to the client.
-	 *
-	 * @param bool $detachResponse
-	 * @return bool
-	 */
-	public function send(bool $detachResponse = false): bool
-	{
-		if (headers_sent()) {
-		    return false;
-		}
+    /**
+     * Sends the HTTP response to the client.
+     *
+     * @param bool $detachResponse
+     * @return bool
+     */
+    public function send(bool $detachResponse = false): bool
+    {
+        if (headers_sent()) {
+            return false;
+        }
 
-		try {
-		    http_response_code($this->status);
+        try {
+            http_response_code($this->status);
 
-		    foreach ($this->headers as $key => $value) {
-		        if (is_array($value)) {
-		            foreach ($value as $i => $v) {
-		                header(sprintf("%s: %s", $key, $v), $i === 0);
-		            }
-		        } else {
-		            header(sprintf("%s: %s", $key, $value), true);
-		        }
-		    }
+            foreach ($this->headers as $key => $value) {
+                if (is_array($value)) {
+                    foreach ($value as $i => $v) {
+                        header(sprintf("%s: %s", $key, $v), $i === 0);
+                    }
+                } else {
+                    header(sprintf("%s: %s", $key, $value), true);
+                }
+            }
 
-		    echo (string) $this->body;
+            echo (string) $this->body;
 
-		    if ($detachResponse) {
-		        session_write_close();
-		        if (function_exists("fastcgi_finish_request")) {
-		            return fastcgi_finish_request();
-		        } else {
-		            flush();
-		        }
-		    }
+            if ($detachResponse) {
+                session_write_close();
+                if (function_exists("fastcgi_finish_request")) {
+                    return fastcgi_finish_request();
+                } else {
+                    flush();
+                }
+            }
 
-		    return true;
-		} catch (Throwable) {
-		    return false;
-		}
-	}
+            return true;
+        } catch (Throwable) {
+            return false;
+        }
+    }
 }
 
 class Router
 {
-	protected const LEAFNODE = "\x00L";
-	protected const WILDCARD = "\x00W";
+    protected const LEAFNODE = "\x00L";
+    protected const WILDCARD = "\x00W";
 
-	/** @var list<callable> */
-	protected array $globalMiddleware = [];
+    /** @var list<callable> */
+    protected array $globalMiddleware = [];
 
-	/** @var string */
-	protected string $prefix = '';
+    /** @var string */
+    protected string $prefix = '';
 
-	/** @var list<callable> */
-	protected array $middleware = [];
+    /** @var list<callable> */
+    protected array $middleware = [];
 
-	/** @var array<string, array{list<callable>, callable}> */
-	protected array $staticRoutes = [];
+    /** @var array<string, array{list<callable>, callable}> */
+    protected array $staticRoutes = [];
 
-	/** @var array<string, array{list<callable>, callable}> */
-	protected array $dynamicRoutes = [];
+    /** @var array<string, array{list<callable>, callable}> */
+    protected array $dynamicRoutes = [];
 
-	/**
-	 * Add middleware that will be applied globally
-	 *
-	 * @param callable $middleware
-	 * @return static
-	 */
-	public function use(callable $middleware): static
-	{
-		$this->globalMiddleware[] = $middleware;
-		return $this;
-	}
+    /**
+     * Add middleware that will be applied globally
+     *
+     * @param callable $middleware
+     * @return static
+     */
+    public function use(callable $middleware): static
+    {
+        $this->globalMiddleware[] = $middleware;
+        return $this;
+    }
 
-	/**
-	 * Groups routes under a shared prefix and middleware stack for scoped handling.
-	 *
-	 * @param string $prefix
-	 * @param callable $handle
-	 * @param list<callable> $middleware
-	 * @return static
-	 */
-	public function group(string $prefix, callable $handle, array $middleware = []): static
-	{
-		$previousPrefix = $this->prefix;
-		$previousMiddleware = $this->middleware;
+    /**
+     * Groups routes under a shared prefix and middleware stack for scoped handling.
+     *
+     * @param string $prefix
+     * @param callable $handle
+     * @param list<callable> $middleware
+     * @return static
+     */
+    public function group(string $prefix, callable $handle, array $middleware = []): static
+    {
+        $previousPrefix = $this->prefix;
+        $previousMiddleware = $this->middleware;
 
-		$this->prefix .= $prefix;
-		$this->middleware = array_merge($this->middleware, $middleware);
+        $this->prefix .= $prefix;
+        $this->middleware = array_merge($this->middleware, $middleware);
 
-		$handle($this);
+        $handle($this);
 
-		$this->prefix = $previousPrefix;
-		$this->middleware = $previousMiddleware;
+        $this->prefix = $previousPrefix;
+        $this->middleware = $previousMiddleware;
 
-		return $this;
-	}
+        return $this;
+    }
 
-	/**
-	 * Registers a route with the router.
-	 *
-	 * @param string         $method
-	 * @param string         $path
-	 * @param callable       $handle
-	 * @param list<callable> $middleware
-	 * @return static
-	 */
-	public function add(string $method, string $path, callable $handle, array $middleware = []): static
-	{
-		$path = trim((string) preg_replace("/\/+/", "/", $this->prefix . $path), "/");
-		$allMiddleware = array_merge($this->globalMiddleware, $this->middleware, $middleware);
+    /**
+     * Registers a route with the router.
+     *
+     * @param string         $method
+     * @param string         $path
+     * @param callable       $handle
+     * @param list<callable> $middleware
+     * @return static
+     */
+    public function add(string $method, string $path, callable $handle, array $middleware = []): static
+    {
+        $path = trim((string) preg_replace("/\/+/", "/", $this->prefix . $path), "/");
+        $allMiddleware = array_merge($this->globalMiddleware, $this->middleware, $middleware);
 
-		if (!str_contains($path, ":")) {
-		    $this->staticRoutes[$path][$method] = [$allMiddleware, $handle];
-		}
+        if (!str_contains($path, ":")) {
+            $this->staticRoutes[$path][$method] = [$allMiddleware, $handle];
+        }
 
-		$node = &$this->dynamicRoutes;
-		$params = [];
+        $node = &$this->dynamicRoutes;
+        $params = [];
 
-		foreach (explode("/", $path) as $segment) {
-		    if (str_starts_with($segment, ":")) {
-		        $node = &$node[static::WILDCARD];
-		        $params[] = substr($segment, 1);
-		    } else {
-		        $node = &$node[$segment];
-		    }
-		}
+        foreach (explode("/", $path) as $segment) {
+            if (str_starts_with($segment, ":")) {
+                $node = &$node[static::WILDCARD];
+                $params[] = substr($segment, 1);
+            } else {
+                $node = &$node[$segment];
+            }
+        }
 
-		$node[static::LEAFNODE][$method] = [$params, $allMiddleware, $handle];
-		return $this;
-	}
+        $node[static::LEAFNODE][$method] = [$params, $allMiddleware, $handle];
+        return $this;
+    }
 
-	/**
-	 * Dispatches the incoming HTTP request and executes the corresponding route.
-	 *
-	 * @param Request $request
-	 * @return Response
-	 * @throws HttpException
-	 */
-	public function dispatch(Request $request): Response
-	{
-		if (isset($this->staticRoutes[$request->path][$request->method])) {
-		    [$middleware, $handle] = $this->staticRoutes[$request->path][$request->method];
-		    return $this->call($request, $middleware, $handle);
-		}
+    /**
+     * Dispatches the incoming HTTP request and executes the corresponding route.
+     *
+     * @param Request $request
+     * @return Response
+     * @throws HttpException
+     */
+    public function dispatch(Request $request): Response
+    {
+        if (isset($this->staticRoutes[$request->path][$request->method])) {
+            [$middleware, $handle] = $this->staticRoutes[$request->path][$request->method];
+            return $this->call($request, $middleware, $handle);
+        }
 
-		$result = $this->search($this->dynamicRoutes, explode("/", $request->path));
+        $result = $this->search($this->dynamicRoutes, explode("/", $request->path));
 
-		if ($result === null) {
-		    throw HttpException::new(404);
-		}
+        if ($result === null) {
+            throw HttpException::new(404);
+        }
 
-		[$values, $methods] = $result;
+        [$values, $methods] = $result;
 
-		if (!isset($methods[$request->method])) {
-		    throw HttpException::new(405);
-		}
+        if (!isset($methods[$request->method])) {
+            throw HttpException::new(405);
+        }
 
-		[$params, $middleware, $handle] = $methods[$request->method];
+        [$params, $middleware, $handle] = $methods[$request->method];
 
-		$req = $request->setParameters(array_combine($params, $values));
-		return $this->call($req, $middleware, $handle);
-	}
+        $req = $request->setParameters(array_combine($params, $values));
+        return $this->call($req, $middleware, $handle);
+    }
 
-	/**
-	 * Recursively searches the route trie for a matching route.
-	 *
-	 * @param array $trie
-	 * @param array $segments
-	 * @param array $params
-	 * @return array|null
-	 */
-	protected function search(array $trie, array $segments, array $params = []): ?array
-	{
-		if (empty($segments)) {
-		    return isset($trie[static::LEAFNODE]) ? [$params, $trie[static::LEAFNODE]] : null;
-		}
+    /**
+     * Recursively searches the route trie for a matching route.
+     *
+     * @param array $trie
+     * @param array $segments
+     * @param array $params
+     * @return array|null
+     */
+    protected function search(array $trie, array $segments, array $params = []): ?array
+    {
+        if (empty($segments)) {
+            return isset($trie[static::LEAFNODE]) ? [$params, $trie[static::LEAFNODE]] : null;
+        }
 
-		$segment = array_shift($segments);
+        $segment = array_shift($segments);
 
-		if (isset($trie[$segment])) {
-		    if ($result = $this->search($trie[$segment], $segments, $params)) {
-		        return $result;
-		    }
-		}
+        if (isset($trie[$segment])) {
+            if ($result = $this->search($trie[$segment], $segments, $params)) {
+                return $result;
+            }
+        }
 
-		if (isset($trie[static::WILDCARD])) {
-		    $params[] = $segment;
+        if (isset($trie[static::WILDCARD])) {
+            $params[] = $segment;
 
-		    if ($result = $this->search($trie[static::WILDCARD], $segments, $params)) {
-		        return $result;
-		    }
-		}
+            if ($result = $this->search($trie[static::WILDCARD], $segments, $params)) {
+                return $result;
+            }
+        }
 
-		return null;
-	}
+        return null;
+    }
 
-	/**
-	 * Executes the route handler within a middleware pipeline.
-	 *
-	 * @param Request  $request
-	 * @param array    $middleware
-	 * @param callable $handle
-	 * @return Response
-	 */
-	protected function call(Request $request, array $middleware, callable $handle): Response
-	{
-		$pipeline = $handle;
+    /**
+     * Executes the route handler within a middleware pipeline.
+     *
+     * @param Request  $request
+     * @param array    $middleware
+     * @param callable $handle
+     * @return Response
+     */
+    protected function call(Request $request, array $middleware, callable $handle): Response
+    {
+        $pipeline = $handle;
 
-		foreach (array_reverse($middleware) as $m) {
-		    $pipeline = fn($req, $res): mixed => call_user_func($m, $req, $res, $pipeline);
-		}
+        foreach (array_reverse($middleware) as $m) {
+            $pipeline = fn($req, $res): mixed => call_user_func($m, $req, $res, $pipeline);
+        }
 
-		$response = new Response();
-		$result = call_user_func($pipeline, $request, $response);
+        $response = new Response();
+        $result = call_user_func($pipeline, $request, $response);
 
-		if ($result instanceof Response) {
-		    return $result;
-		}
+        if ($result instanceof Response) {
+            return $result;
+        }
 
-		return $response;
-	}
+        return $response;
+    }
 }
 
 class Session
 {
-	public function __construct()
-	{
-		if (session_status() !== PHP_SESSION_ACTIVE) {
-		    session_start();
-		}
+    public function __construct()
+    {
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            session_start();
+        }
 
-		$_SESSION["_flash"]["old"] = $_SESSION["_flash"]["new"] ?? [];
-		$_SESSION["_flash"]["new"] = [];
-	}
+        $_SESSION["_flash"]["old"] = $_SESSION["_flash"]["new"] ?? [];
+        $_SESSION["_flash"]["new"] = [];
+    }
 
-	/**
-	 * Stores a value in the session under the specified key.
-	 *
-	 * @param string $key
-	 * @param mixed $value
-	 */
-	public function set(string $key, mixed $value): void
-	{
-		$_SESSION[$key] = $value;
-	}
+    /**
+     * Stores a value in the session under the specified key.
+     *
+     * @param string $key
+     * @param mixed $value
+     */
+    public function set(string $key, mixed $value): void
+    {
+        $_SESSION[$key] = $value;
+    }
 
-	/**
-	 * Stores a temporary flash value in the session under the specified key.
-	 *
-	 * @param string $key
-	 * @param mixed $value
-	 */
-	public function flash(string $key, mixed $value): void
-	{
-		$_SESSION["_flash"]["new"][$key] = $value;
-	}
+    /**
+     * Stores a temporary flash value in the session under the specified key.
+     *
+     * @param string $key
+     * @param mixed $value
+     */
+    public function flash(string $key, mixed $value): void
+    {
+        $_SESSION["_flash"]["new"][$key] = $value;
+    }
 
-	/**
-	 * Retrieves a value from the flash (old) session or regular session by key.
-	 *
-	 * @param string $key
-	 * @return mixed
-	 */
-	public function get(string $key): mixed
-	{
-		return $_SESSION["_flash"]["old"][$key] ?? ($_SESSION[$key] ?? null);
-	}
+    /**
+     * Retrieves a value from the flash (old) session or regular session by key.
+     *
+     * @param string $key
+     * @return mixed
+     */
+    public function get(string $key): mixed
+    {
+        return $_SESSION["_flash"]["old"][$key] ?? ($_SESSION[$key] ?? null);
+    }
 }
 
 /**
@@ -851,7 +851,7 @@ class Session
  */
 function app(?string $id = null): object
 {
-	return $id ? Application::$container->resolve($id) : Application::$container;
+    return $id ? Application::$container->resolve($id) : Application::$container;
 }
 
 /**
@@ -862,7 +862,7 @@ function app(?string $id = null): object
  */
 function base_path(string $path = ''): string
 {
-	return Application::fromBase($path);
+    return Application::fromBase($path);
 }
 
 /**
@@ -874,7 +874,7 @@ function base_path(string $path = ''): string
  */
 function env(string $key, mixed $default = null): mixed
 {
-	return app(Environment::class)->get($key, $default);
+    return app(Environment::class)->get($key, $default);
 }
 
 /**
@@ -886,7 +886,7 @@ function env(string $key, mixed $default = null): mixed
  */
 function bind(string $id, callable $factory): object
 {
-	return app()->bind($id, $factory);
+    return app()->bind($id, $factory);
 }
 
 /**
@@ -898,7 +898,7 @@ function bind(string $id, callable $factory): object
  */
 function arg(int|string $key, mixed $default = null): string|array|null
 {
-	return app(Argument::class)->get($key, $default);
+    return app(Argument::class)->get($key, $default);
 }
 
 /**
@@ -910,19 +910,19 @@ function arg(int|string $key, mixed $default = null): string|array|null
  */
 function command(string $name, callable $handle): void
 {
-	if (Application::$isWeb) {
-	    return;
-	}
+    if (Application::$isWeb) {
+        return;
+    }
 
-	$argument = app(Argument::class);
+    $argument = app(Argument::class);
 
-	if ($argument->command !== $name) {
-	    return;
-	}
+    if ($argument->command !== $name) {
+        return;
+    }
 
-	$result = $handle($argument);
+    $result = $handle($argument);
 
-	exit(is_int($result) ? $result : 0);
+    exit(is_int($result) ? $result : 0);
 }
 
 /**
@@ -934,7 +934,7 @@ function command(string $name, callable $handle): void
  */
 function request(array|string $key, mixed $default = null): mixed
 {
-	return app(Request::class)->get($key, $default);
+    return app(Request::class)->get($key, $default);
 }
 
 /**
@@ -946,7 +946,7 @@ function request(array|string $key, mixed $default = null): mixed
  */
 function input(array|string $key, mixed $default = null): mixed
 {
-	return app(Request::class)->input($key, $default);
+    return app(Request::class)->input($key, $default);
 }
 
 /**
@@ -957,11 +957,11 @@ function input(array|string $key, mixed $default = null): mixed
  */
 function middleware(callable $middleware): void
 {
-	if (!Application::$isWeb) {
-	    return;
-	}
+    if (!Application::$isWeb) {
+        return;
+    }
 
-	app(Router::class)->use($middleware);
+    app(Router::class)->use($middleware);
 }
 
 /**
@@ -974,11 +974,11 @@ function middleware(callable $middleware): void
  */
 function group(string $prefix, callable $handle, array $middleware = []): void
 {
-	if (!Application::$isWeb) {
-	    return;
-	}
+    if (!Application::$isWeb) {
+        return;
+    }
 
-	app(Router::class)->group($prefix, $handle, $middleware);
+    app(Router::class)->group($prefix, $handle, $middleware);
 }
 
 /**
@@ -991,11 +991,11 @@ function group(string $prefix, callable $handle, array $middleware = []): void
  */
 function get(string $path, callable $handle, array $middleware = []): void
 {
-	if (!Application::$isWeb) {
-	    return;
-	}
+    if (!Application::$isWeb) {
+        return;
+    }
 
-	app(Router::class)->add("GET", $path, $handle, $middleware);
+    app(Router::class)->add("GET", $path, $handle, $middleware);
 }
 
 /**
@@ -1008,11 +1008,11 @@ function get(string $path, callable $handle, array $middleware = []): void
  */
 function post(string $path, callable $handle, array $middleware = []): void
 {
-	if (!Application::$isWeb) {
-	    return;
-	}
+    if (!Application::$isWeb) {
+        return;
+    }
 
-	app(Router::class)->add("POST", $path, $handle, $middleware);
+    app(Router::class)->add("POST", $path, $handle, $middleware);
 }
 
 /**
@@ -1025,11 +1025,11 @@ function post(string $path, callable $handle, array $middleware = []): void
  */
 function put(string $path, callable $handle, array $middleware = []): void
 {
-	if (!Application::$isWeb) {
-	    return;
-	}
+    if (!Application::$isWeb) {
+        return;
+    }
 
-	app(Router::class)->add("PUT", $path, $handle, $middleware);
+    app(Router::class)->add("PUT", $path, $handle, $middleware);
 }
 
 /**
@@ -1042,11 +1042,11 @@ function put(string $path, callable $handle, array $middleware = []): void
  */
 function patch(string $path, callable $handle, array $middleware = []): void
 {
-	if (!Application::$isWeb) {
-	    return;
-	}
+    if (!Application::$isWeb) {
+        return;
+    }
 
-	app(Router::class)->add("PATCH", $path, $handle, $middleware);
+    app(Router::class)->add("PATCH", $path, $handle, $middleware);
 }
 
 /**
@@ -1059,11 +1059,11 @@ function patch(string $path, callable $handle, array $middleware = []): void
  */
 function delete(string $path, callable $handle, array $middleware = []): void
 {
-	if (!Application::$isWeb) {
-	    return;
-	}
+    if (!Application::$isWeb) {
+        return;
+    }
 
-	app(Router::class)->add("DELETE", $path, $handle, $middleware);
+    app(Router::class)->add("DELETE", $path, $handle, $middleware);
 }
 
 /**
@@ -1075,16 +1075,16 @@ function delete(string $path, callable $handle, array $middleware = []): void
  */
 function flash(string $key, mixed $value = null): mixed
 {
-	if (!Application::$isWeb) {
-	    return null;
-	}
+    if (!Application::$isWeb) {
+        return null;
+    }
 
-	if (func_num_args() === 1) {
-	    return app(Session::class)->get($key);
-	}
+    if (func_num_args() === 1) {
+        return app(Session::class)->get($key);
+    }
 
-	app(Session::class)->flash($key, $value);
-	return null;
+    app(Session::class)->flash($key, $value);
+    return null;
 }
 
 /**
@@ -1096,16 +1096,16 @@ function flash(string $key, mixed $value = null): mixed
  */
 function session(string $key, mixed $value = null): mixed
 {
-	if (!Application::$isWeb) {
-	    return null;
-	}
+    if (!Application::$isWeb) {
+        return null;
+    }
 
-	if (func_num_args() === 1) {
-	    return app(Session::class)->get($key);
-	}
+    if (func_num_args() === 1) {
+        return app(Session::class)->get($key);
+    }
 
-	app(Session::class)->set($key, $value);
-	return null;
+    app(Session::class)->set($key, $value);
+    return null;
 }
 
 /**
@@ -1117,13 +1117,13 @@ function session(string $key, mixed $value = null): mixed
  */
 function render(string $template, array $data = []): string
 {
-	$class = Essentio\Core\Extra\Template::class;
+    $class = Essentio\Core\Extra\Template::class;
 
-	if (class_exists($class)) {
-	    return new $class($template)->render($data);
-	}
+    if (class_exists($class)) {
+        return new $class($template)->render($data);
+    }
 
-	return preg_replace_callback("/{{\s*(\w+)\s*}}/", fn ($m) => $data[$m[1]] ?? $m[0], $template);
+    return preg_replace_callback("/{{\s*(\w+)\s*}}/", fn ($m) => $data[$m[1]] ?? $m[0], $template);
 }
 
 /**
@@ -1135,7 +1135,7 @@ function render(string $template, array $data = []): string
  */
 function redirect(string $uri, int $status = 302): Response
 {
-	return new Response()->withStatus($status)->withHeaders(["Location" => $uri]);
+    return new Response()->withStatus($status)->withHeaders(["Location" => $uri]);
 }
 
 /**
@@ -1147,10 +1147,10 @@ function redirect(string $uri, int $status = 302): Response
  */
 function html(string $html, int $status = 200): Response
 {
-	return new Response()
-	    ->withStatus($status)
-	    ->withHeaders(["Content-Type" => "text/html"])
-	    ->withBody($html);
+    return new Response()
+        ->withStatus($status)
+        ->withHeaders(["Content-Type" => "text/html"])
+        ->withBody($html);
 }
 
 /**
@@ -1162,10 +1162,10 @@ function html(string $html, int $status = 200): Response
  */
 function json(mixed $data, int $status = 200): Response
 {
-	return new Response()
-	    ->withStatus($status)
-	    ->withHeaders(["Content-Type" => "application/json"])
-	    ->withBody(json_encode($data));
+    return new Response()
+        ->withStatus($status)
+        ->withHeaders(["Content-Type" => "application/json"])
+        ->withBody(json_encode($data));
 }
 
 /**
@@ -1177,10 +1177,10 @@ function json(mixed $data, int $status = 200): Response
  */
 function text(string $text, int $status = 200): Response
 {
-	return new Response()
-	    ->withStatus($status)
-	    ->withHeaders(["Content-Type" => "text/plain"])
-	    ->withBody($text);
+    return new Response()
+        ->withStatus($status)
+        ->withHeaders(["Content-Type" => "text/plain"])
+        ->withBody($text);
 }
 
 /**
@@ -1193,7 +1193,7 @@ function text(string $text, int $status = 200): Response
  */
 function view(string $template, array $data = [], int $status = 200): Response
 {
-	return html(render($template, $data), $status);
+    return html(render($template, $data), $status);
 }
 
 /**
@@ -1205,10 +1205,10 @@ function view(string $template, array $data = [], int $status = 200): Response
  */
 function logger(string $level, string $message): void
 {
-	$level = strtoupper($level);
-	$file = base_path(env(sprintf("%s_LOG_FILE", $level), "app.log"));
-	$line = sprintf("[%s] [%s]: %s" . PHP_EOL, date("Y-m-d H:i:s"), $level, $message);
-	file_put_contents($file, $line, FILE_APPEND);
+    $level = strtoupper($level);
+    $file = base_path(env(sprintf("%s_LOG_FILE", $level), "app.log"));
+    $line = sprintf("[%s] [%s]: %s" . PHP_EOL, date("Y-m-d H:i:s"), $level, $message);
+    file_put_contents($file, $line, FILE_APPEND);
 }
 
 /**
@@ -1219,12 +1219,12 @@ function logger(string $level, string $message): void
  */
 function dump(...$data): void
 {
-	if (!Application::$isWeb) {
-	    var_dump(...$data);
-	    return;
-	}
+    if (!Application::$isWeb) {
+        var_dump(...$data);
+        return;
+    }
 
-	echo "<pre>";
-	var_dump(...$data);
-	echo "</pre>";
+    echo "<pre>";
+    var_dump(...$data);
+    echo "</pre>";
 }
