@@ -87,7 +87,7 @@ class Application
                 ->withBody($e->getMessage())
                 ->send();
         } catch (Throwable $e) {
-            error_log("[{$e->getMessage()}]\n{$e->getTraceAsString()}");
+            error_log(sprintf("[%s]\n%s", $e->getMessage(), $e->getTraceAsString()));
 
             new Response()
                 ->withStatus(500)

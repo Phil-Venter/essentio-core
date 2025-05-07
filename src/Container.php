@@ -6,6 +6,7 @@ use RuntimeException;
 
 use function call_user_func;
 use function class_exists;
+use function compact;
 use function sprintf;
 
 class Container
