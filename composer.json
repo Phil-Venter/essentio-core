@@ -22,8 +22,10 @@
     },
     "minimum-stability": "stable",
     "scripts": {
-        "build": "php scripts/build.php",
-        "test": "./vendor/bin/pest"
+        "all": "composer run format && composer run test && composer run build",
+        "format": "./vendor/bin/rector",
+        "test": "./vendor/bin/pest",
+        "build": "php scripts/build.php"
     },
     "config": {
         "allow-plugins": {

@@ -20,16 +20,27 @@ function stripSlashesOutsideQuotes(string $code): string
     $output = "";
 
     foreach ($tokens as $token) {
-        if (is_array($token)) {
-            [$id, $text] = $token;
-            if ($id === T_CONSTANT_ENCAPSED_STRING || $id === T_ENCAPSED_AND_WHITESPACE) {
-                $output .= $text;
-            } else {
-                $output .= str_replace("\\", "", $text);
+        if (!is_array($token)) {
+            if ($token !== "\\") {
+                $output .= $token;
             }
-        } else {
-            $output .= $token === "\\" ? "" : $token;
+
+            continue;
         }
+
+        [$id, $text] = $token;
+
+        if ($id === T_STRING || $id === T_CONSTANT_ENCAPSED_STRING || $id === T_ENCAPSED_AND_WHITESPACE) {
+            $output .= $text;
+            continue;
+        }
+
+        if ($id === T_NAME_QUALIFIED || $id === T_NAME_FULLY_QUALIFIED || $id === T_NAME_RELATIVE) {
+            $output .= trim($text, "\\");
+            continue;
+        }
+
+        $output .= str_replace("\\", "", $text);
     }
 
     return $output;

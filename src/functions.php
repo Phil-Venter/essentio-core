@@ -284,13 +284,13 @@ function session(string $key, mixed $value = null): mixed
 
 function render(string $template, array $data = []): string
 {
-    $class = "\Essentio\Core\Extra\Template";
+    $class = \Essentio\Core\Extra\Template::class;
 
 	if (class_exists($class)) {
 	    return new $class($template)->render($data);
 	}
 
-	return sprintf($template, ...$data);
+	return preg_replace_callback("/{{\s*(\w+)\s*}}/", fn ($m) => $data[$m[1]] ?? $m[0], $template);
 }
 
 /**
