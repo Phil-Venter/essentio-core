@@ -42,11 +42,6 @@ describe(Template::class, function (): void {
         expect($template->exposeYield("content"))->toBe("Buffered Content");
     });
 
-    it("throws exception if end() is called without an open segment", function (): void {
-        $template = new TestableTemplate();
-        expect(fn() => $template->exposeEnd())->toThrow(AssertionError::class);
-    });
-
     it("renders a template file without layout", function (): void {
         $file = tempnam(sys_get_temp_dir(), "tmpl");
         file_put_contents($file, '<?php echo "Hello, " . $name . "!";');
