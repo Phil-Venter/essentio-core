@@ -60,9 +60,9 @@ function bind(string $id, callable $factory): object
  *
  * @param int|string $key
  * @param mixed      $default
- * @return string|array|null
+ * @return mixed
  */
-function arg(int|string $key, mixed $default = null): string|array|null
+function arg(int|string $key, mixed $default = null): mixed
 {
     return app(Argument::class)->get($key, $default);
 }
@@ -94,11 +94,11 @@ function command(string $name, callable $handle): void
 /**
  * Fetches a value from the current Request instance using the specified key.
  *
- * @param array|string $key
- * @param mixed        $default
+ * @param string $key
+ * @param mixed  $default
  * @return mixed
  */
-function request(array|string $key, mixed $default = null): mixed
+function request(string $key, mixed $default = null): mixed
 {
     return app(Request::class)->get($key, $default);
 }
@@ -106,11 +106,11 @@ function request(array|string $key, mixed $default = null): mixed
 /**
  * Fetches a value from the current Request instance body using the specified key.
  *
- * @param array|string $key
- * @param mixed        $default
+ * @param string $key
+ * @param mixed  $default
  * @return mixed
  */
-function input(array|string $key, mixed $default = null): mixed
+function input(string $key, mixed $default = null): mixed
 {
     return app(Request::class)->input($key, $default);
 }

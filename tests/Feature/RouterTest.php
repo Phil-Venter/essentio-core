@@ -15,7 +15,7 @@ describe(Router::class, function (): void {
             "REQUEST_METHOD" => "GET",
             "REQUEST_URI" => "/home",
         ];
-        $request = Request::init($server);
+        $request = Request::new($server);
         $response = $router->dispatch($request);
         expect($response->body)->toBe("Welcome Home");
     });
@@ -30,7 +30,7 @@ describe(Router::class, function (): void {
             "REQUEST_METHOD" => "GET",
             "REQUEST_URI" => "/user/42",
         ];
-        $request = Request::init($server);
+        $request = Request::new($server);
         $response = $router->dispatch($request);
         expect($response->body)->toBe("User 42");
     });
@@ -41,7 +41,7 @@ describe(Router::class, function (): void {
             "REQUEST_METHOD" => "GET",
             "REQUEST_URI" => "/nonexistent",
         ];
-        $request = Request::init($server);
+        $request = Request::new($server);
         expect(fn() => $router->dispatch($request))->toThrow(HttpException::class, "Not Found");
     });
 
@@ -54,7 +54,7 @@ describe(Router::class, function (): void {
             "REQUEST_METHOD" => "POST",
             "REQUEST_URI" => "/about",
         ];
-        $request = Request::init($server);
+        $request = Request::new($server);
         expect(fn() => $router->dispatch($request))->toThrow(HttpException::class, "Method Not Allowed");
     });
 
@@ -77,7 +77,7 @@ describe(Router::class, function (): void {
             "REQUEST_METHOD" => "GET",
             "REQUEST_URI" => "/test",
         ];
-        $request = Request::init($server);
+        $request = Request::new($server);
         $response = $router->dispatch($request);
         expect($response->body)->toBe("Base with middleware");
     });
@@ -92,7 +92,7 @@ describe(Router::class, function (): void {
             "REQUEST_METHOD" => "GET",
             "REQUEST_URI" => "/post/10/comment/99",
         ];
-        $request = Request::init($server);
+        $request = Request::new($server);
         $response = $router->dispatch($request);
         expect($response->body)->toBe("Post 10, Comment 99");
     });
@@ -120,7 +120,7 @@ describe(Router::class, function (): void {
             "REQUEST_METHOD" => "GET",
             "REQUEST_URI" => "/chain",
         ];
-        $request = Request::init($server);
+        $request = Request::new($server);
         $response = $router->dispatch($request);
         expect($response->body)->toBe("Start second first");
     });

@@ -44,7 +44,7 @@ describe(Template::class, function (): void {
 
     it("throws exception if end() is called without an open segment", function (): void {
         $template = new TestableTemplate();
-        expect(fn() => $template->exposeEnd())->toThrow(LogicException::class, "No segment is currently open.");
+        expect(fn() => $template->exposeEnd())->toThrow(AssertionError::class);
     });
 
     it("renders a template file without layout", function (): void {

@@ -2,9 +2,6 @@
 
 namespace Essentio\Core\Extra;
 
-use LogicException;
-use RuntimeException;
-
 use function array_pop;
 use function extract;
 use function file_exists;
@@ -71,13 +68,10 @@ class Template
      * Ends the current output buffer and assigns it to the last opened segment.
      *
      * @return void
-     * @throws LogicException if no segment is open
      */
     protected function end(): void
     {
-        if (empty($this->stack)) {
-            throw new LogicException("No segment is currently open.");
-        }
+        assert(!empty($this->stack));
 
         $name = array_pop($this->stack);
         $this->segments[$name] = ob_get_clean();
@@ -91,9 +85,8 @@ class Template
      */
     public function render(array $data = []): string
     {
-        if (!$this->path || !file_exists($this->path)) {
-            throw new RuntimeException(sprintf("Template [%s] does not exist.", $this->path));
-        }
+        assert($this->path);
+        assert(file_exists($this->path));
 
         $content = (function (array $data) {
             ob_start();
@@ -118,7 +111,7 @@ class Template
      * @return void
      * @internal
      */
-    public function setSegments(array $segments): void
+    protected function setSegments(array $segments): void
     {
         $this->segments = $segments;
     }

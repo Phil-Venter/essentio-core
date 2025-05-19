@@ -69,7 +69,7 @@ class Request
      * @param string|null               $body
      * @return static
      */
-    public static function init(
+    public static function new(
         ?array $server = null,
         ?array $headers = null,
         ?array $get = null,
@@ -101,18 +101,15 @@ class Request
 
         $that->host = $host ?? $server["SERVER_NAME"] ?? "localhost";
         $that->port = (int) ($port ?? $server["SERVER_PORT"] ??  80);
-
         $that->path = trim(parse_url($server["REQUEST_URI"] ?? "", PHP_URL_PATH) ?? "", "/");
         $that->parameters = [];
         $that->query = $get ?? $_GET ?? [];
         $that->headers = $headers ?? (function_exists("getallheaders") ? (getallheaders() ?: []) : []);
         $that->cookies = $cookie ?? $_COOKIE ?? [];
         $that->files = $files ?? $_FILES ?? [];
-
         $that->rawInput = $body ?? file_get_contents("php://input") ?: "";
 
-        $contentType = $that->headers["Content-Type"] ?? "";
-        $mimeType = explode(";", $contentType, 2)[0];
+        $mimeType = explode(";", $that->headers["Content-Type"] ?? "", 2)[0] ?? "";
 
         $that->body = match ($mimeType) {
             "application/x-www-form-urlencoded" => (function (string $input): array {
@@ -146,22 +143,12 @@ class Request
     /**
      * Retrieve a value from the request parameters.
      *
-     * @param array|string $key
-     * @param mixed        $default
+     * @param string $key
+     * @param mixed  $default
      * @return mixed
      */
-    public function get(array|string $key, mixed $default = null): mixed
+    public function get(string $key, mixed $default = null): mixed
     {
-        if (is_array($key)) {
-            $result = [];
-
-            foreach ($key as $k) {
-                $result[$k] = $this->get($k, $default);
-            }
-
-            return $result;
-        }
-
         return $this->parameters[$key]
             ?? $this->query[$key]
             ?? $default;
@@ -170,22 +157,12 @@ class Request
     /**
      * Extracts a specific parameter from the incoming request data.
      *
-     * @param array|string $key
-     * @param mixed        $default
+     * @param string $key
+     * @param mixed  $default
      * @return mixed
      */
-    public function input(array|string $key, mixed $default = null): mixed
+    public function input(string $key, mixed $default = null): mixed
     {
-        if (is_array($key)) {
-            $result = [];
-
-            foreach ($key as $k) {
-                $result[$k] = $this->input($k, $default);
-            }
-
-            return $result;
-        }
-
         if (in_array($this->method, ["GET", "HEAD", "OPTIONS", "TRACE"])) {
             return $this->query[$key] ?? $default;
         }

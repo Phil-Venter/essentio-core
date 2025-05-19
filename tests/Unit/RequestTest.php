@@ -16,7 +16,7 @@ describe(Request::class, function (): void {
         $body = "raw input data";
         $headers = [];
 
-        $request = Request::init($server, $headers, $get, null, $cookie, $files, $body);
+        $request = Request::new($server, $headers, $get, null, $cookie, $files, $body);
 
         expect($request->method)->toBe("GET");
         expect($request->scheme)->toBe("http");
@@ -39,7 +39,7 @@ describe(Request::class, function (): void {
         $post = ["_method" => "patch"];
         $headers = [];
 
-        $request = Request::init($server, $headers, null, $post);
+        $request = Request::new($server, $headers, null, $post);
 
         expect($request->method)->toBe("PATCH");
     });
@@ -52,7 +52,7 @@ describe(Request::class, function (): void {
         ];
         $headers = [];
 
-        $request = Request::init($server, $headers);
+        $request = Request::new($server, $headers);
 
         expect($request->scheme)->toBe("https");
         expect($request->host)->toBe("secure.example.com");
@@ -67,7 +67,7 @@ describe(Request::class, function (): void {
         ];
         $headers = [];
 
-        $request = Request::init($server, $headers);
+        $request = Request::new($server, $headers);
 
         expect($request->host)->toBe("example.com");
         expect($request->port)->toBe(3000);
@@ -81,7 +81,7 @@ describe(Request::class, function (): void {
         $get = ["key" => "from_query", "other" => "value"];
         $headers = [];
 
-        $request = Request::init($server, $headers, $get);
+        $request = Request::new($server, $headers, $get);
 
         expect($request->get("key", "default"))->toBe("from_query");
 
@@ -98,7 +98,7 @@ describe(Request::class, function (): void {
         $get = ["q" => "test"];
         $headers = [];
 
-        $request = Request::init($server, $headers, $get);
+        $request = Request::new($server, $headers, $get);
 
         expect($request->input("q", "default"))->toBe("test");
         expect($request->input("missing", "default"))->toBe("default");
@@ -113,7 +113,7 @@ describe(Request::class, function (): void {
         $body = '{"data":"value"}';
         $headers = ["Content-Type" => "application/json"];
 
-        $request = Request::init($server, $headers, null, null, null, null, $body);
+        $request = Request::new($server, $headers, null, null, null, null, $body);
 
         expect($request->input("data", "default"))->toBe("value");
         expect($request->input("missing", "default"))->toBe("default");
@@ -128,7 +128,7 @@ describe(Request::class, function (): void {
         $body = "field1=value1&field2=value2";
         $headers = ["Content-Type" => "application/x-www-form-urlencoded"];
 
-        $request = Request::init($server, $headers, null, null, null, null, $body);
+        $request = Request::new($server, $headers, null, null, null, null, $body);
 
         expect($request->input("field1", "default"))->toBe("value1");
         expect($request->input("field2", "default"))->toBe("value2");

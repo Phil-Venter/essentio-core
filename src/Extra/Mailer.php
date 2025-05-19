@@ -115,9 +115,9 @@ class Mailer
      */
     public function send(): true
     {
-        if (empty($this->from) || empty($this->to) || empty($this->subject)) {
-            throw new RuntimeException("Missing required fields: from, to, or subject.");
-        }
+        assert(!empty($this->from));
+        assert(!empty($this->to));
+        assert(!empty($this->subject));
 
         $stream = fopen("php://temp", "r+");
         if (!$stream) {

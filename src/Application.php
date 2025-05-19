@@ -33,7 +33,7 @@ class Application
 
         static::$container->bind(Environment::class, fn(): Environment => new Environment())->once = true;
         static::$container->bind(Session::class, fn(): Session => new Session())->once = true;
-        static::$container->bind(Request::class, fn(): Request => Request::init())->once = true;
+        static::$container->bind(Request::class, fn(): Request => Request::new())->once = true;
         static::$container->bind(Router::class, fn(): Router => new Router())->once = true;
     }
 
@@ -50,7 +50,7 @@ class Application
         static::$isWeb = false;
 
         static::$container->bind(Environment::class, fn(): Environment => new Environment())->once = true;
-        static::$container->bind(Argument::class, fn(): Argument => Argument::init())->once = true;
+        static::$container->bind(Argument::class, fn(): Argument => Argument::new())->once = true;
     }
 
     /**
@@ -88,7 +88,6 @@ class Application
                 ->send();
         } catch (Throwable $e) {
             error_log(sprintf("[%s]\n%s", $e->getMessage(), $e->getTraceAsString()));
-
             new Response()
                 ->withStatus(500)
                 ->withHeaders(["Content-Type" => "text/plain"])

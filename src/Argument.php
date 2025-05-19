@@ -23,7 +23,7 @@ class Argument
      * @param list<string>|null $argv
      * @return static
      */
-    public static function init(?array $argv = null): static
+    public static function new(?array $argv = null): static
     {
         $argv ??= $_SERVER["argv"] ?? [];
         $that = new static;
