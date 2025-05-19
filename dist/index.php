@@ -798,14 +798,17 @@ class Router
 
 class Session
 {
+    protected const FLASH_OLD = "\x00FO";
+    protected const FLASH_NEW = "\x00FN";
+
     public function __construct()
     {
         if (session_status() !== PHP_SESSION_ACTIVE) {
             session_start();
         }
 
-        $_SESSION["_flash"]["old"] = $_SESSION["_flash"]["new"] ?? [];
-        $_SESSION["_flash"]["new"] = [];
+        $_SESSION[static::FLASH_OLD] = $_SESSION[static::FLASH_NEW] ?? [];
+        $_SESSION[static::FLASH_NEW] = [];
     }
 
     /**
@@ -827,7 +830,7 @@ class Session
      */
     public function flash(string $key, mixed $value): void
     {
-        $_SESSION["_flash"]["new"][$key] = $value;
+        $_SESSION[static::FLASH_NEW][$key] = $value;
     }
 
     /**
@@ -838,7 +841,7 @@ class Session
      */
     public function get(string $key): mixed
     {
-        return $_SESSION["_flash"]["old"][$key] ?? ($_SESSION[$key] ?? null);
+        return $_SESSION[static::FLASH_OLD][$key] ?? ($_SESSION[$key] ?? null);
     }
 }
 
