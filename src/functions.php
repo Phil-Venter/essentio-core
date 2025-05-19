@@ -26,7 +26,7 @@ function app(?string $id = null): object
  * @param string $path
  * @return string
  */
-function base_path(string $path = ""): string
+function base(string $path = ""): string
 {
     return Application::fromBase($path);
 }
@@ -361,21 +361,6 @@ function text(string $text, int $status = 200): Response
 function view(string $template, array $data = [], int $status = 200): Response
 {
     return html(render($template, $data), $status);
-}
-
-/**
- * Logs a message at a given log level to a file specified in the configuration.
- *
- * @param string $level
- * @param string $message
- * @return void
- */
-function logger(string $level, string $message): void
-{
-    $level = strtoupper($level);
-    $file = base_path(env(sprintf("%s_LOG_FILE", $level), "app.log"));
-    $line = sprintf("[%s] [%s]: %s" . PHP_EOL, date("Y-m-d H:i:s"), $level, $message);
-    file_put_contents($file, $line, FILE_APPEND);
 }
 
 /**
