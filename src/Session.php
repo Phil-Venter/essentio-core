@@ -7,9 +7,9 @@ use function session_status;
 
 class Session
 {
-    protected const FLASH_OLD = "\0FO";
+    protected const FLASH_OLD = "\0OLD";
 
-    protected const FLASH_NEW = "\0FN";
+    protected const FLASH_NEW = "\0NEW";
 
     public function __construct()
     {

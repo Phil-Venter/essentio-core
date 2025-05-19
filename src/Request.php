@@ -2,6 +2,8 @@
 
 namespace Essentio\Core;
 
+use Throwable;
+
 use function explode;
 use function file_get_contents;
 use function filter_var;
@@ -37,7 +39,7 @@ class Request
     public protected(set) string $path;
 
     /** @var array<string,mixed> */
-    public protected(set) array $parameters;
+    public protected(set) array $parameters = [];
 
     /** @var array<string,mixed> */
     public protected(set) array $query;
@@ -56,6 +58,9 @@ class Request
 
     /** @var array<string,mixed> */
     public protected(set) array $body;
+
+    /** @var array<string,string> */
+    public protected(set) array $errors = [];
 
     /**
      * Initializes and returns a new Request instance using PHP superglobals.
@@ -102,7 +107,6 @@ class Request
         $that->host = $host ?? $server["SERVER_NAME"] ?? "localhost";
         $that->port = (int) ($port ?? $server["SERVER_PORT"] ??  80);
         $that->path = trim(parse_url($server["REQUEST_URI"] ?? "", PHP_URL_PATH) ?? "", "/");
-        $that->parameters = [];
         $that->query = $get ?? $_GET ?? [];
         $that->headers = $headers ?? (function_exists("getallheaders") ? (getallheaders() ?: []) : []);
         $that->cookies = $cookie ?? $_COOKIE ?? [];
@@ -168,5 +172,33 @@ class Request
         }
 
         return $this->body[$key] ?? $default;
+    }
+
+    /**
+     * Sanitizes and validates request input using field-specific callables.
+     *
+     * @param array<string, array<callable>> $rules
+     * @return array<string, mixed>|false
+     */
+    public function sanitize(array $rules): array|false
+    {
+        $sanitized = [];
+
+        foreach ($rules as $field => $chain) {
+            $value = $this->input($field);
+
+            try {
+                foreach ($chain as $fn) {
+                    $value = $fn($value);
+                }
+
+                $sanitized[$field] = $value;
+            } catch (Throwable $e) {
+                $this->errors[$field][] = $e->getMessage();
+                $sanitized[$field] = null;
+            }
+        }
+
+        return empty($this->errors) ? $sanitized : false;
     }
 }

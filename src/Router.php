@@ -9,16 +9,15 @@ use function array_shift;
 use function call_user_func;
 use function explode;
 use function preg_replace;
-use function str_contains;
 use function str_starts_with;
 use function substr;
 use function trim;
 
 class Router
 {
-    protected const LEAFNODE = "\0L";
+    protected const LEAFNODE = "\0LEAF";
 
-    protected const WILDCARD = "\0W";
+    protected const WILDCARD = "\0WILD";
 
     /** @var list<callable> */
     protected array $globalMiddleware = [];
@@ -30,10 +29,7 @@ class Router
     protected array $middleware = [];
 
     /** @var array<string, array{list<callable>, callable}> */
-    protected array $staticRoutes = [];
-
-    /** @var array<string, array{list<callable>, callable}> */
-    protected array $dynamicRoutes = [];
+    protected array $routes = [];
 
     /**
      * Add middleware that will be applied globally
@@ -83,13 +79,7 @@ class Router
     public function add(string $method, string $path, callable $handle, array $middleware = []): static
     {
         $path = trim((string) preg_replace("/\/+/", "/", $this->prefix . $path), "/");
-        $allMiddleware = array_merge($this->globalMiddleware, $this->middleware, $middleware);
-
-        if (!str_contains($path, ":")) {
-            $this->staticRoutes[$path][$method] = [$allMiddleware, $handle];
-        }
-
-        $node = &$this->dynamicRoutes;
+        $node = &$this->routes;
         $params = [];
 
         foreach (explode("/", $path) as $segment) {
@@ -101,7 +91,8 @@ class Router
             }
         }
 
-        $node[static::LEAFNODE][$method] = [$params, $allMiddleware, $handle];
+        $middlewares = array_merge($this->globalMiddleware, $this->middleware, $middleware);
+        $node[static::LEAFNODE][$method] = [$params, $middlewares, $handle];
         return $this;
     }
 
@@ -114,12 +105,7 @@ class Router
      */
     public function dispatch(Request $request): Response
     {
-        if (isset($this->staticRoutes[$request->path][$request->method])) {
-            [$middleware, $handle] = $this->staticRoutes[$request->path][$request->method];
-            return $this->call($request, $middleware, $handle);
-        }
-
-        $result = $this->search($this->dynamicRoutes, explode("/", $request->path));
+        $result = $this->search($this->routes, explode("/", $request->path));
 
         if ($result === null) {
             throw HttpException::new(404);

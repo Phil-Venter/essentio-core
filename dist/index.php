@@ -349,7 +349,7 @@ class Request
     public protected(set) string $path;
 
     /** @var array<string,mixed> */
-    public protected(set) array $parameters;
+    public protected(set) array $parameters = [];
 
     /** @var array<string,mixed> */
     public protected(set) array $query;
@@ -368,6 +368,9 @@ class Request
 
     /** @var array<string,mixed> */
     public protected(set) array $body;
+
+    /** @var array<string,string> */
+    public protected(set) array $errors = [];
 
     /**
      * Initializes and returns a new Request instance using PHP superglobals.
@@ -415,7 +418,6 @@ class Request
         $that->host = $host ?? $server["SERVER_NAME"] ?? "localhost";
         $that->port = (int) ($port ?? $server["SERVER_PORT"] ??  80);
         $that->path = trim(parse_url($server["REQUEST_URI"] ?? "", PHP_URL_PATH) ?? "", "/");
-        $that->parameters = [];
         $that->query = $get ?? $_GET ?? [];
         $that->headers = $headers ?? (function_exists("getallheaders") ? (getallheaders() ?: []) : []);
         $that->cookies = $cookie ?? $_COOKIE ?? [];
@@ -481,6 +483,34 @@ class Request
         }
 
         return $this->body[$key] ?? $default;
+    }
+
+    /**
+     * Sanitizes and validates request input using field-specific callables.
+     *
+     * @param array<string, array<callable>> $rules
+     * @return array<string, mixed>|false
+     */
+    public function sanitize(array $rules): array|false
+    {
+        $sanitized = [];
+
+        foreach ($rules as $field => $chain) {
+            $value = $this->input($field);
+
+            try {
+                foreach ($chain as $fn) {
+                    $value = $fn($value);
+                }
+
+                $sanitized[$field] = $value;
+            } catch (Throwable $e) {
+                $this->errors[$field][] = $e->getMessage();
+                $sanitized[$field] = null;
+            }
+        }
+
+        return empty($this->errors) ? $sanitized : false;
     }
 }
 
@@ -592,8 +622,8 @@ class Response
 
 class Router
 {
-    protected const LEAFNODE = "\x00L";
-    protected const WILDCARD = "\x00W";
+    protected const LEAFNODE = "\x00LEAF";
+    protected const WILDCARD = "\x00WILD";
 
     /** @var list<callable> */
     protected array $globalMiddleware = [];
@@ -605,10 +635,7 @@ class Router
     protected array $middleware = [];
 
     /** @var array<string, array{list<callable>, callable}> */
-    protected array $staticRoutes = [];
-
-    /** @var array<string, array{list<callable>, callable}> */
-    protected array $dynamicRoutes = [];
+    protected array $routes = [];
 
     /**
      * Add middleware that will be applied globally
@@ -658,13 +685,7 @@ class Router
     public function add(string $method, string $path, callable $handle, array $middleware = []): static
     {
         $path = trim((string) preg_replace("/\/+/", "/", $this->prefix . $path), "/");
-        $allMiddleware = array_merge($this->globalMiddleware, $this->middleware, $middleware);
-
-        if (!str_contains($path, ":")) {
-            $this->staticRoutes[$path][$method] = [$allMiddleware, $handle];
-        }
-
-        $node = &$this->dynamicRoutes;
+        $node = &$this->routes;
         $params = [];
 
         foreach (explode("/", $path) as $segment) {
@@ -676,7 +697,8 @@ class Router
             }
         }
 
-        $node[static::LEAFNODE][$method] = [$params, $allMiddleware, $handle];
+        $middlewares = array_merge($this->globalMiddleware, $this->middleware, $middleware);
+        $node[static::LEAFNODE][$method] = [$params, $middlewares, $handle];
         return $this;
     }
 
@@ -689,12 +711,7 @@ class Router
      */
     public function dispatch(Request $request): Response
     {
-        if (isset($this->staticRoutes[$request->path][$request->method])) {
-            [$middleware, $handle] = $this->staticRoutes[$request->path][$request->method];
-            return $this->call($request, $middleware, $handle);
-        }
-
-        $result = $this->search($this->dynamicRoutes, explode("/", $request->path));
+        $result = $this->search($this->routes, explode("/", $request->path));
 
         if ($result === null) {
             throw HttpException::new(404);
@@ -774,8 +791,8 @@ class Router
 
 class Session
 {
-    protected const FLASH_OLD = "\x00FO";
-    protected const FLASH_NEW = "\x00FN";
+    protected const FLASH_OLD = "\x00OLD";
+    protected const FLASH_NEW = "\x00NEW";
 
     public function __construct()
     {
@@ -926,6 +943,17 @@ function request(string $key, mixed $default = null): mixed
 function input(string $key, mixed $default = null): mixed
 {
     return app(Request::class)->input($key, $default);
+}
+
+/**
+ * Sanitizes and validates request input using field-specific callables.
+ *
+ * @param array<string, array<Closure>> $rules
+ * @return array<string, mixed>|false
+ */
+function sanitize(array $rules): array|false
+{
+    return app(Request::class)->sanitize($rules);
 }
 
 /**
@@ -1085,6 +1113,37 @@ function session(string $key, mixed $value = null): mixed
 
     app(Session::class)->set($key, $value);
     return null;
+}
+
+/**
+ * Retrieves the CSRF token from the session or generates a new one if absent.
+ *
+ * @return string
+ */
+function csrf(): string
+{
+    if ($token = session('\0CSRF')) {
+        return $token;
+    }
+
+    $token = bin2hex(random_bytes(32));
+    session('\0CSRF', $token);
+    return $token;
+}
+
+/**
+ * Validates the provided CSRF token against the session token and rotates if valid.
+ *
+ * @param string $csrf
+ * @return bool
+ */
+function verify(string $csrf): bool
+{
+    if ($valid = hash_equals(session('\0CSRF'), $csrf)) {
+        session('\0CSRF', bin2hex(random_bytes(32)));
+    }
+
+    return $valid;
 }
 
 /**

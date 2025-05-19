@@ -116,6 +116,17 @@ function input(string $key, mixed $default = null): mixed
 }
 
 /**
+ * Sanitizes and validates request input using field-specific callables.
+ *
+ * @param array<string, array<Closure>> $rules
+ * @return array<string, mixed>|false
+ */
+function sanitize(array $rules): array|false
+{
+    return app(Request::class)->sanitize($rules);
+}
+
+/**
  * Add middleware that will be applied globally.
  *
  * @param callable $middleware
@@ -272,6 +283,37 @@ function session(string $key, mixed $value = null): mixed
 
     app(Session::class)->set($key, $value);
     return null;
+}
+
+/**
+ * Retrieves the CSRF token from the session or generates a new one if absent.
+ *
+ * @return string
+ */
+function csrf(): string
+{
+    if ($token = session('\0CSRF')) {
+        return $token;
+    }
+
+    $token = bin2hex(random_bytes(32));
+    session('\0CSRF', $token);
+    return $token;
+}
+
+/**
+ * Validates the provided CSRF token against the session token and rotates if valid.
+ *
+ * @param string $csrf
+ * @return bool
+ */
+function verify(string $csrf): bool
+{
+    if ($valid = hash_equals(session('\0CSRF'), $csrf)) {
+        session('\0CSRF', bin2hex(random_bytes(32)));
+    }
+
+    return $valid;
 }
 
 /**
