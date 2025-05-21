@@ -94,25 +94,25 @@ function command(string $name, callable $handle): void
 /**
  * Fetches a value from the current Request instance using the specified key.
  *
- * @param string $key
+ * @param string $field
  * @param mixed  $default
  * @return mixed
  */
-function request(string $key, mixed $default = null): mixed
+function request(string $field, mixed $default = null): mixed
 {
-    return app(Request::class)->get($key, $default);
+    return app(Request::class)->get($field, $default);
 }
 
 /**
  * Fetches a value from the current Request instance body using the specified key.
  *
- * @param string $key
+ * @param string $field
  * @param mixed  $default
  * @return mixed
  */
-function input(string $key, mixed $default = null): mixed
+function input(string $field, mixed $default = null): mixed
 {
-    return app(Request::class)->input($key, $default);
+    return app(Request::class)->input($field, $default);
 }
 
 /**
@@ -332,14 +332,32 @@ function render(string $template, array $data = []): string
         return new $class($template)->render($data);
     }
 
+    $dotify = function ($array, $prefix = '') use (&$dotify) {
+        $result = [];
+
+        foreach ($array as $key => $value) {
+            $newKey = $prefix === '' ? $key : $prefix . '.' . $key;
+
+            if (is_array($value) && !empty($value)) {
+                $result += $dotify($value, $newKey);
+            } else {
+                $result[$newKey] = $value;
+            }
+        }
+
+        return $result;
+    };
+
+    $data = $dotify($data);
+
     $template = preg_replace_callback(
-        "/{{{\s*(\w+)\s*}}}/",
+        "/{{{\s*([\w\.]+)\s*}}}/",
         fn ($m): string => $data[$m[1]] ?? '',
         $template
     );
 
     return preg_replace_callback(
-        "/{{\s*(\w+)\s*}}/",
+        "/{{\s*([\w\.]+)\s*}}/",
         fn ($m): string => htmlentities(
             $data[$m[1]] ?? '',
             ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML5

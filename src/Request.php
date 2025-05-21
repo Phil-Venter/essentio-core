@@ -147,31 +147,29 @@ class Request
     /**
      * Retrieve a value from the request parameters.
      *
-     * @param string $key
+     * @param string $field
      * @param mixed  $default
      * @return mixed
      */
-    public function get(string $key, mixed $default = null): mixed
+    public function get(string $field, mixed $default = null): mixed
     {
-        return $this->parameters[$key]
-            ?? $this->query[$key]
-            ?? $default;
+        return $this->parameters[$field] ?? $this->query[$field] ?? $default;
     }
 
     /**
      * Extracts a specific parameter from the incoming request data.
      *
-     * @param string $key
+     * @param string $field
      * @param mixed  $default
      * @return mixed
      */
-    public function input(string $key, mixed $default = null): mixed
+    public function input(string $field, mixed $default = null): mixed
     {
         if (in_array($this->method, ["GET", "HEAD", "OPTIONS", "TRACE"])) {
-            return $this->query[$key] ?? $default;
+            return $this->get($field, $default);
         }
 
-        return $this->body[$key] ?? $default;
+        return $this->body[$field] ?? $this->parameters[$field] ?? $default;
     }
 
     /**
@@ -195,7 +193,6 @@ class Request
                 $sanitized[$field] = $value;
             } catch (Throwable $e) {
                 $this->errors[$field][] = $e->getMessage();
-                $sanitized[$field] = null;
             }
         }
 
