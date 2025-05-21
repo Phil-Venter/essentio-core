@@ -332,7 +332,20 @@ function render(string $template, array $data = []): string
         return new $class($template)->render($data);
     }
 
-    return preg_replace_callback("/{{\s*(\w+)\s*}}/", fn ($m) => $data[$m[1]] ?? $m[0], $template);
+    $template = preg_replace_callback(
+        "/{{{\s*(\w+)\s*}}}/",
+        fn ($m): string => $data[$m[1]] ?? '',
+        $template
+    );
+
+    return preg_replace_callback(
+        "/{{\s*(\w+)\s*}}/",
+        fn ($m): string => htmlentities(
+            $data[$m[1]] ?? '',
+            ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML5
+        ),
+        (string) $template
+    );
 }
 
 /**
