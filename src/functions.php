@@ -17,7 +17,7 @@ use Essentio\Core\Session;
  */
 function app(?string $id = null): object
 {
-    return $id ? Application::$container->resolve($id) : Application::$container;
+    return is_null($id) ? Application::$container : Application::$container->resolve($id);
 }
 
 /**
@@ -34,13 +34,13 @@ function base(string $path = ""): string
 /**
  * This function fetches an environment variable from the Environment instance.
  *
- * @param string $key
- * @param mixed  $default
+ * @param ?string $key
+ * @param mixed   $default
  * @return mixed
  */
-function env(string $key, mixed $default = null): mixed
+function env(?string $key = null, mixed $default = null): mixed
 {
-    return app(Environment::class)->get($key, $default);
+    return is_null($key) ? app(Environment::class) : app(Environment::class)->get($key, $default);
 }
 
 /**
@@ -58,13 +58,13 @@ function bind(string $id, callable $factory): object
 /**
  * This function retrieves a command-line argument using the specified key.
  *
- * @param int|string $key
- * @param mixed      $default
+ * @param int|string|null $key
+ * @param mixed           $default
  * @return mixed
  */
-function arg(int|string $key, mixed $default = null): mixed
+function arg(int|string|null $key = null, mixed $default = null): mixed
 {
-    return app(Argument::class)->get($key, $default);
+    return is_null($key) ? app(Argument::class) : app(Argument::class)->get($key, $default);
 }
 
 /**
@@ -94,13 +94,13 @@ function command(string $name, callable $handle): void
 /**
  * Fetches a value from the current Request instance using the specified key.
  *
- * @param string $field
- * @param mixed  $default
+ * @param ?string $field
+ * @param mixed   $default
  * @return mixed
  */
-function request(string $field, mixed $default = null): mixed
+function request(?string $field = null, mixed $default = null): mixed
 {
-    return app(Request::class)->get($field, $default);
+    return is_null($field) ? app(Request::class) : app(Request::class)->get($field, $default);
 }
 
 /**
