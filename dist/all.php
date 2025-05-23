@@ -944,10 +944,10 @@ class Session
 
 class Cast
 {
-    public static function bool(string $message = ''): Closure
+    public function bool(string $message = ''): Closure
     {
         return function (string $input) use ($message): ?bool {
-            $input = static::nullOnEmpty($input);
+            $input = $this->nullOnEmpty($input);
 
             if ($input === null) {
                 return null;
@@ -963,10 +963,10 @@ class Cast
         };
     }
 
-    public static function date(string $message = ''): Closure
+    public function date(string $message = ''): Closure
     {
         return function (string $input) use ($message): ?DateTimeInterface {
-            $input = static::nullOnEmpty($input);
+            $input = $this->nullOnEmpty($input);
 
             if ($input === null) {
                 return null;
@@ -980,7 +980,7 @@ class Cast
         };
     }
 
-    public static function enum(string $enumClass, string $message = ''): Closure
+    public function enum(string $enumClass, string $message = ''): Closure
     {
         if (!enum_exists($enumClass)) {
             throw new Exception("Invalid enum class: $enumClass");
@@ -991,7 +991,7 @@ class Cast
         }
 
         return function (string $input) use ($enumClass, $message): ?BackedEnum {
-            $input = static::nullOnEmpty($input);
+            $input = $this->nullOnEmpty($input);
 
             if ($input === null) {
                 return null;
@@ -1007,16 +1007,16 @@ class Cast
         };
     }
 
-    public static function float(string $message = ''): Closure
+    public function float(string $message = ''): Closure
     {
         return function (string $input) use ($message): ?float {
-            $input = static::nullOnEmpty($input);
+            $input = $this->nullOnEmpty($input);
 
             if ($input === null) {
                 return null;
             }
 
-            $value = static::normalizeNumber($input, $message);
+            $value = $this->normalizeNumber($input, $message);
             $floatVal = filter_var($value, FILTER_VALIDATE_FLOAT);
 
             if ($floatVal === false) {
@@ -1027,16 +1027,16 @@ class Cast
         };
     }
 
-    public static function int(string $message = ''): Closure
+    public function int(string $message = ''): Closure
     {
         return function (string $input) use ($message): ?int {
-            $input = static::nullOnEmpty($input);
+            $input = $this->nullOnEmpty($input);
 
             if ($input === null) {
                 return null;
             }
 
-            $value = static::normalizeNumber($input, $message);
+            $value = $this->normalizeNumber($input, $message);
             $intVal = filter_var($value, FILTER_VALIDATE_INT);
 
             if ($intVal === false) {
@@ -1047,16 +1047,16 @@ class Cast
         };
     }
 
-    public static function numeric(string $message = ''): Closure
+    public function numeric(string $message = ''): Closure
     {
         return function (string $input) use ($message): int|float|null {
-            $input = static::nullOnEmpty($input);
+            $input = $this->nullOnEmpty($input);
 
             if ($input === null) {
                 return null;
             }
 
-            $value = static::normalizeNumber($input, $message);
+            $value = $this->normalizeNumber($input, $message);
             $intVal = filter_var($value, FILTER_VALIDATE_INT);
 
             if ($intVal === false) {
@@ -1073,7 +1073,7 @@ class Cast
         };
     }
 
-    public static function string(bool $trim = false): Closure
+    public function string(bool $trim = false): Closure
     {
         return function (string $input) use ($trim): string {
             if ($trim) {
@@ -1084,7 +1084,7 @@ class Cast
         };
     }
 
-    protected static function nullOnEmpty(string $input): mixed
+    protected function nullOnEmpty(string $input): mixed
     {
         if (trim($input) === "") {
             return null;
@@ -1093,7 +1093,7 @@ class Cast
         return $input;
     }
 
-    protected static function normalizeNumber(string $input, string $message): string
+    protected function normalizeNumber(string $input, string $message): string
     {
         preg_match_all("/-?\d+(\.\d+)?/", $input, $matches);
 
