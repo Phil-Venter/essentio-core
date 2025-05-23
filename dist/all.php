@@ -2381,19 +2381,15 @@ function input(string $field, mixed $default = null): mixed
  * Sanitizes and validates request input using field-specific callables.
  *
  * @param array<string, array<Closure>> $rules
- * @param bool|Exception $exception
+ * @param ?Closure $failed
  * @return array<string, mixed>|false
  */
-function sanitize(array $rules, bool|Exception $exception = false): array|false
+function sanitize(array $rules, ?Closure $failed = null): array|false
 {
     $data = app(Request::class)->sanitize($rules);
 
-    if ($exception !== false && $data === false) {
-        if ($exception instanceof Exception) {
-            throw $exception;
-        }
-
-        throw HttpException::new(422, implode('<br>', array_merge(...app(Request::class)->errors)));
+    if ($failed !== null && $data === false) {
+        $failed(app(Request::class)->errors);
     }
 
     return $data;
