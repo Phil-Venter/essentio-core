@@ -8,9 +8,7 @@ use Nette\PhpGenerator\Printer;
 function stripNamespaceAndUse(string $filePath): string
 {
     $lines = file($filePath, FILE_IGNORE_NEW_LINES);
-
     $filteredLines = array_filter($lines, fn($line): bool => !preg_match("/^\s*(namespace|use)\b/", (string) $line));
-
     return implode(PHP_EOL, $filteredLines);
 }
 
@@ -36,7 +34,8 @@ function stripSlashesOutsideQuotes(string $code): string
         }
 
         if ($id === T_NAME_QUALIFIED || $id === T_NAME_FULLY_QUALIFIED || $id === T_NAME_RELATIVE) {
-            $output .= trim($text, "\\");
+            $parts = explode("\\", $text);
+            $output .= end($parts);
             continue;
         }
 
@@ -47,8 +46,9 @@ function stripSlashesOutsideQuotes(string $code): string
 }
 
 $srcDir = __DIR__ . "/../src";
-$distDir = $argv[1] ?? __DIR__ . "/../dist";
+$option = $argv[1] ?? "base";
 $outputFile = $argv[2] ?? "index.php";
+$distDir = $argv[3] ?? __DIR__ . "/../dist";
 $outputPath = $distDir . "/" . $outputFile;
 
 if (!is_dir($distDir)) {
@@ -57,10 +57,15 @@ if (!is_dir($distDir)) {
 
 $printer = new Printer();
 $outputCode = "<?php\n\n";
-$files = glob($srcDir . "/*.php");
+
+if ($option === "base") {
+    $files = array_merge(glob($srcDir . "/*.php"));
+} elseif ($option === "all") {
+    $files = array_merge(glob($srcDir . "/*.php"), glob($srcDir . "/Extra/*.php"));
+}
 
 foreach ($files as $file) {
-    if (basename($file) === "functions.php") {
+    if (basename((string) $file) === "functions.php") {
         continue;
     }
 
@@ -75,6 +80,16 @@ if (file_exists($functionsFile)) {
     $parsed = PhpFile::fromCode(stripNamespaceAndUse($functionsFile));
     foreach ($parsed->getFunctions() as $function) {
         $outputCode .= $printer->printFunction($function) . "\n\n";
+    }
+}
+
+if ($option === "all") {
+    $functionsFile = $srcDir . "/Extra/functions.php";
+    if (file_exists($functionsFile)) {
+        $parsed = PhpFile::fromCode(stripNamespaceAndUse($functionsFile));
+        foreach ($parsed->getFunctions() as $function) {
+            $outputCode .= $printer->printFunction($function) . "\n\n";
+        }
     }
 }
 

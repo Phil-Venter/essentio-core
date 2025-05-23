@@ -486,7 +486,7 @@ class Request
     /**
      * Sanitizes and validates request input using field-specific callables.
      *
-     * @param array<string, array<callable>> $rules
+     * @param array<string, array<callable>|callable> $rules
      * @return array<string, mixed>|false
      */
     public function sanitize(array $rules): array|false
@@ -497,8 +497,12 @@ class Request
             $value = $this->input($field);
 
             try {
-                foreach ($chain as $fn) {
-                    $value = $fn($value);
+                if (is_array($chain)) {
+                    foreach ($chain as $fn) {
+                        $value = $fn($value);
+                    }
+                } else {
+                     $value = $chain($value);
                 }
 
                 $sanitized[$field] = $value;
@@ -946,11 +950,22 @@ function input(string $field, mixed $default = null): mixed
  * Sanitizes and validates request input using field-specific callables.
  *
  * @param array<string, array<Closure>> $rules
+ * @param bool|Exception $exception
  * @return array<string, mixed>|false
  */
-function sanitize(array $rules): array|false
+function sanitize(array $rules, bool|Exception $exception = false): array|false
 {
-    return app(Request::class)->sanitize($rules);
+    $data = app(Request::class)->sanitize($rules);
+
+    if ($exception !== false && $data === false) {
+        if ($exception instanceof Exception) {
+            throw $exception;
+        }
+
+        throw HttpException::new(422, implode('<br>', array_merge(...app(Request::class)->errors)));
+    }
+
+    return $data;
 }
 
 /**
@@ -1152,44 +1167,13 @@ function verify(string $csrf): bool
  */
 function render(string $template, array $data = []): string
 {
-    $class = Essentio\Core\Extra\Template::class;
+    $class = Template::class;
 
     if (class_exists($class)) {
         return new $class($template)->render($data);
     }
 
-    $dotify = function ($array, $prefix = '') use (&$dotify) {
-        $result = [];
-
-        foreach ($array as $key => $value) {
-            $newKey = $prefix === '' ? $key : $prefix . '.' . $key;
-
-            if (is_array($value) && !empty($value)) {
-                $result += $dotify($value, $newKey);
-            } else {
-                $result[$newKey] = $value;
-            }
-        }
-
-        return $result;
-    };
-
-    $data = $dotify($data);
-
-    $template = preg_replace_callback(
-        "/{{{\s*([\w\.]+)\s*}}}/",
-        fn ($m): string => $data[$m[1]] ?? '',
-        $template
-    );
-
-    return preg_replace_callback(
-        "/{{\s*([\w\.]+)\s*}}/",
-        fn ($m): string => htmlentities(
-            $data[$m[1]] ?? '',
-            ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML5
-        ),
-        (string) $template
-    );
+    return vsprintf($template, $data);
 }
 
 /**

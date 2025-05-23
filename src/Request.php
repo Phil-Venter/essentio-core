@@ -175,7 +175,7 @@ class Request
     /**
      * Sanitizes and validates request input using field-specific callables.
      *
-     * @param array<string, array<callable>> $rules
+     * @param array<string, array<callable>|callable> $rules
      * @return array<string, mixed>|false
      */
     public function sanitize(array $rules): array|false
@@ -186,8 +186,12 @@ class Request
             $value = $this->input($field);
 
             try {
-                foreach ($chain as $fn) {
-                    $value = $fn($value);
+                if (is_array($chain)) {
+                    foreach ($chain as $fn) {
+                        $value = $fn($value);
+                    }
+                } else {
+                     $value = $chain($value);
                 }
 
                 $sanitized[$field] = $value;

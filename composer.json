@@ -8,7 +8,8 @@
             "Essentio\\Core\\": "src/"
         },
         "files": [
-            "src/functions.php"
+            "src/functions.php",
+            "src/Extra/functions.php"
         ]
     },
     "require": {
@@ -22,10 +23,12 @@
     },
     "minimum-stability": "stable",
     "scripts": {
-        "all": "composer run format && composer run test && composer run build",
+        "runner": "composer run format && composer run test && composer run build-all 'all.php' && composer run build-base 'base.php'",
         "format": "./vendor/bin/rector",
         "test": "./vendor/bin/pest",
-        "build": "php scripts/build.php"
+        "build": "php scripts/build.php",
+        "build-all": "php scripts/build.php all",
+        "build-base": "php scripts/build.php base"
     },
     "config": {
         "allow-plugins": {

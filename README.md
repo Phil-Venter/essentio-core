@@ -9,23 +9,65 @@ Because sometimes you don't want the overhead. You don't need the dogma. You're 
 If you see something here that you don't like, that's fine. You have two options:
 
 - **Don't use it.** Seriously, there are plenty of bloated, convention-riddled alternatives out there.
-- **Change it yourself.** Essentio is less than 1000 lines of pure, straightforward PHP (excluding comments). It won't bite. If you want something improved, send a pull request. Pull requests speak louder than bug reports.
+- **Change it yourself.** It's quite small. It won't bite. If you want something improved, send a pull request. Pull requests speak louder than bug reports.
+
+## LoC
+
+`dist/base.php`
+```
+github.com/AlDanial/cloc v 2.04
+-------------------------------------------------------------------------------
+Language                     files          blank        comment           code
+-------------------------------------------------------------------------------
+PHP                              1            175            426            676
+-------------------------------------------------------------------------------
+```
+
+`dist/all.php`
+```
+github.com/AlDanial/cloc v 2.04
+-------------------------------------------------------------------------------
+Language                     files          blank        comment           code
+-------------------------------------------------------------------------------
+PHP                              1            393            683           1549
+-------------------------------------------------------------------------------
+```
 
 ## What Essentio Gives You
 
-- Simple and explicit initialization for web or CLI.
-- Minimalistic routing without convoluted abstractions.
-- Lightweight dependency injection container with zero magic.
-- Basic configuration and environment management.
-- Simple, understandable session management.
-- Clean and straightforward HTTP request and response handling.
-- Essential utility functions (dump, env, logging, etc.) without the noise.
+* **Dead-simple bootstrapping** for web or CLI—just call `Application::http()` or `::cli()` and go.
+* A **tiny router** with zero ceremony—supports route grouping, parameterized paths, and optional middleware.
+* A **barebones dependency injection container**—you bind what you need, no magic involved.
+* **Environment variable loader** with type-casting that Just Works™—no 15-line YAML configs required.
+* **Sessions** that behave like you'd expect. Flash data? Done.
+* **Request/Response** handling that doesn't hide PHP under 5 layers of abstraction.
+* Handy **global helpers** (`get()`, `input()`, `json()`, `env()`, `redirect()`, `dump()`, etc.) that don't make you feel bad for using them.
+
+## Optional Extras
+
+The base is enough. But if you want more, there are Extras. They're not enabled by default, not required, and not magical. Just code you can use—or ignore.
+
+- **Cast** – Converts input into booleans, dates, enums, floats, and more. Throws if it fails.
+- **Validate** – Rule-based input validation using closures. Write your own rules, or use the built-ins.
+- **Query** – A fluent SQL builder for PDO. No ORM. No migrations. Just parameterized SQL you control.
+- **Template** – A basic templating engine with layout support. No caching, no tags, no DSL.
+- **Mailer** – Send plain text or HTML email using SMTP and cURL. Just enough for contact forms or alerts.
+
+Use them if they save you time. Delete them if they don't.
 
 ## What Essentio Does Not Care About
 
-- Following every single best practice recommended by PHP influencers.
-- Catering to complex edge cases or enterprise-level convolutions.
-- Pleasing everyone.
+* **"Best practices"™** as defined by internet influencers and committee-driven blog posts.
+* **Framework purity tests.** If you're asking whether something is "idiomatic," you're probably in the wrong repo.
+* **Convention over configuration.** Essentio doesn't guess what you mean—it does what you tell it.
+* **Autowiring, reflection-based DI, service locators, containers inside containers.** You bind it, you get it.
+* **Overabstracted error handling.** If it breaks, you’ll see it. If you want better logs, write them.
+* **Codegen, scaffolding, or file-based voodoo.** Your filesystem is not your IDE.
+* **Overengineering for hypothetical scale.** Designed for actual projects, not tech talks.
+* **Making you feel bad for writing imperative code.** Procedural is not a sin.
+* **Enterprise buzzwords.** No facades, service providers, factories, or adapters unless you write them.
+
+Essentio isn’t here to teach you how to write PHP. It assumes you already know—or you’ll figure it out.
 
 ## Quickstart
 
@@ -34,9 +76,8 @@ If you see something here that you don't like, that's fine. You have two options
 I have been enamored with the idea of just uploading a single php file to your server and calling it a day.
 So that's what I attempted to do, you can run the command below in your project root and start coding at the end of it.
 
-get it: `curl -LO https://raw.githubusercontent.com/Phil-Venter/essentio_core/main/dist/index.php`
-
-NOTE: If something is in `src/` is missing from `dist/index.php` you can compile it anew with `composer run-script build`.
+- **Full** (with extras like DB, Mail, Template, etc.): `curl -L https://raw.githubusercontent.com/Phil-Venter/essentio_core/main/dist/all.php -o index.php`
+- **Base only** (leanest version): `curl -L https://raw.githubusercontent.com/Phil-Venter/essentio_core/main/dist/base.php -o index.php`
 
 ### Composer
 
@@ -52,12 +93,10 @@ Rely on the global functions for routing (`get()`, `post()`, etc.), service mana
 
 It's deliberately small—extend it yourself. Add your middleware, improve error handling, or replace components entirely. Fork it, mold it to your project, or just tweak what irritates you.
 
-Essentio is a base, not a cage.
-
 ## License
 
 MIT License. Freedom to use, freedom to change, freedom to ignore.
 
 ---
 
-Essentio is yours to love, hate, or improve. The world won't always agree—but that's not your problem.
+> Essentio is yours to love, hate, or improve. The world won't always agree—but that's not your problem.
