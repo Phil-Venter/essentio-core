@@ -140,7 +140,10 @@ PHP | 422 blanks | 691 comments | 1632 code lines
 
 ## License
 
-0BSD. Use it, fork it, break it, fix it.
+Essentio is licensed under the [0BSD License](https://opensource.org/licenses/0BSD). No conditions, no attribution, no nonsense.
+
+Like something? Take it.
+Use it, fork it, break it, fix it—whatever helps you ship.
 
 ---
 
