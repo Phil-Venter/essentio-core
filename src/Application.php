@@ -2,7 +2,6 @@
 
 namespace Essentio\Core;
 
-use Environment;
 use Throwable;
 
 use function error_log;
