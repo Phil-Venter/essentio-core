@@ -140,7 +140,7 @@ PHP | 422 blanks | 691 comments | 1632 code lines
 
 ## License
 
-MIT. Use it, fork it, break it, fix it.
+0BSD. Use it, fork it, break it, fix it.
 
 ---
 
