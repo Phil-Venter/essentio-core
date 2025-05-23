@@ -4,6 +4,7 @@ use Essentio\Core\Application;
 use Essentio\Core\Argument;
 use Essentio\Core\Environment;
 use Essentio\Core\HttpException;
+use Essentio\Core\Jwt;
 use Essentio\Core\Request;
 use Essentio\Core\Response;
 use Essentio\Core\Router;
@@ -77,7 +78,7 @@ function arg(int|string|null $key = null, mixed $default = null): mixed
  */
 function command(string $name, callable $handle): void
 {
-    if (Application::$isWeb) {
+    if (!Application::isCli()) {
         return;
     }
 
@@ -146,7 +147,7 @@ function sanitize(array $rules, bool|Exception $exception = false): array|false
  */
 function middleware(callable $middleware): void
 {
-    if (!Application::$isWeb) {
+    if (Application::isCli()) {
         return;
     }
 
@@ -163,7 +164,7 @@ function middleware(callable $middleware): void
  */
 function group(string $prefix, callable $handle, array $middleware = []): void
 {
-    if (!Application::$isWeb) {
+    if (Application::isCli()) {
         return;
     }
 
@@ -180,7 +181,7 @@ function group(string $prefix, callable $handle, array $middleware = []): void
  */
 function get(string $path, callable $handle, array $middleware = []): void
 {
-    if (!Application::$isWeb) {
+    if (Application::isCli()) {
         return;
     }
 
@@ -197,7 +198,7 @@ function get(string $path, callable $handle, array $middleware = []): void
  */
 function post(string $path, callable $handle, array $middleware = []): void
 {
-    if (!Application::$isWeb) {
+    if (Application::isCli()) {
         return;
     }
 
@@ -214,7 +215,7 @@ function post(string $path, callable $handle, array $middleware = []): void
  */
 function put(string $path, callable $handle, array $middleware = []): void
 {
-    if (!Application::$isWeb) {
+    if (Application::isCli()) {
         return;
     }
 
@@ -231,7 +232,7 @@ function put(string $path, callable $handle, array $middleware = []): void
  */
 function patch(string $path, callable $handle, array $middleware = []): void
 {
-    if (!Application::$isWeb) {
+    if (Application::isCli()) {
         return;
     }
 
@@ -248,7 +249,7 @@ function patch(string $path, callable $handle, array $middleware = []): void
  */
 function delete(string $path, callable $handle, array $middleware = []): void
 {
-    if (!Application::$isWeb) {
+    if (Application::isCli()) {
         return;
     }
 
@@ -264,7 +265,7 @@ function delete(string $path, callable $handle, array $middleware = []): void
  */
 function flash(string $key, mixed $value = null): mixed
 {
-    if (!Application::$isWeb) {
+    if (!Application::isWeb()) {
         return null;
     }
 
@@ -285,7 +286,7 @@ function flash(string $key, mixed $value = null): mixed
  */
 function session(string $key, mixed $value = null): mixed
 {
-    if (!Application::$isWeb) {
+    if (!Application::isWeb()) {
         return null;
     }
 
@@ -302,8 +303,12 @@ function session(string $key, mixed $value = null): mixed
  *
  * @return string
  */
-function csrf(): string
+function csrf(): ?string
 {
+    if (!Application::isWeb()) {
+        return null;
+    }
+
     if ($token = session('\0CSRF')) {
         return $token;
     }
@@ -319,13 +324,35 @@ function csrf(): string
  * @param string $csrf
  * @return bool
  */
-function verify(string $csrf): bool
+function csrf_verify(string $csrf): ?bool
 {
+    if (!Application::isWeb()) {
+        return null;
+    }
+
     if ($valid = hash_equals(session('\0CSRF'), $csrf)) {
         session('\0CSRF', bin2hex(random_bytes(32)));
     }
 
     return $valid;
+}
+
+function jwt(array $payload): ?string
+{
+    if (!Application::isApi()) {
+        return null;
+    }
+
+    return app(Jwt::class)->encode($payload);
+}
+
+function jwt_decode(string $token): ?array
+{
+    if (!Application::isApi()) {
+        return null;
+    }
+
+    return app(Jwt::class)->decode($token);
 }
 
 /**
@@ -425,12 +452,15 @@ function view(string $template, array $data = [], int $status = 200): Response
  */
 function dump(...$data): void
 {
-    if (!Application::$isWeb) {
+    if (Application::isCli()) {
         var_dump(...$data);
-        return;
+    } elseif (Application::isApi()) {
+        echo json_encode($data);
+    } else {
+        echo "<pre>";
+        var_dump(...$data);
+        echo "</pre>";
     }
 
-    echo "<pre>";
-    var_dump(...$data);
-    echo "</pre>";
+    die();
 }

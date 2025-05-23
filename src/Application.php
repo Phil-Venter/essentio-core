@@ -2,6 +2,7 @@
 
 namespace Essentio\Core;
 
+use Environment;
 use Throwable;
 
 use function error_log;
@@ -13,11 +14,38 @@ class Application
     /** @var string */
     protected static string $basePath;
 
+    /** @var string */
+    protected static string $webContentType = "";
+
+    /** @var bool */
+    protected static bool $isWeb;
+
     /** @var Container */
     public static Container $container;
 
-    /** @var bool */
-    public static bool $isWeb;
+    /**
+     * Initialize the application for API requests.
+     *
+     * @param string $basePath
+     * @param ?string $secret
+     * @return void
+     */
+    public static function api(string $basePath, ?string $secret = null): void
+    {
+        static::$basePath = rtrim($basePath, "/");
+        static::$webContentType = "application/json";
+        static::$isWeb = true;
+
+        static::$container = new Container();
+
+        static::$container->bind(Environment::class, fn(): Environment => new Environment())->once = true;
+        static::$container->resolve(Environment::class)->load(static::fromBase(".env"));
+
+        $secret ??= static::$container->resolve(Environment::class)->get("JWT_SECRET", "Essentio");
+        static::$container->bind(JWT::class, fn($c): JWT => new JWT($secret))->once = true;
+        static::$container->bind(Request::class, fn(): Request => Request::new())->once = true;
+        static::$container->bind(Router::class, fn(): Router => new Router())->once = true;
+    }
 
     /**
      * Initialize the application for HTTP requests.
@@ -28,10 +56,14 @@ class Application
     public static function http(string $basePath): void
     {
         static::$basePath = rtrim($basePath, "/");
-        static::$container = new Container();
+        static::$webContentType = "text/html";
         static::$isWeb = true;
 
+        static::$container = new Container();
+
         static::$container->bind(Environment::class, fn(): Environment => new Environment())->once = true;
+        static::$container->resolve(Environment::class)->load(static::fromBase(".env"));
+
         static::$container->bind(Session::class, fn(): Session => new Session())->once = true;
         static::$container->bind(Request::class, fn(): Request => Request::new())->once = true;
         static::$container->bind(Router::class, fn(): Router => new Router())->once = true;
@@ -46,11 +78,29 @@ class Application
     public static function cli(string $basePath): void
     {
         static::$basePath = rtrim($basePath, "/");
-        static::$container = new Container();
         static::$isWeb = false;
 
+        static::$container = new Container();
+
         static::$container->bind(Environment::class, fn(): Environment => new Environment())->once = true;
+        static::$container->resolve(Environment::class)->load(static::fromBase(".env"));
+
         static::$container->bind(Argument::class, fn(): Argument => Argument::new())->once = true;
+    }
+
+    public static function isApi(): bool
+    {
+        return static::$isWeb && static::$webContentType === "application/json";
+    }
+
+    public static function isCli(): bool
+    {
+        return !static::$isWeb;
+    }
+
+    public static function isWeb(): bool
+    {
+        return static::$isWeb && static::$webContentType === "text/html";
     }
 
     /**
@@ -71,7 +121,7 @@ class Application
      */
     public static function run(): void
     {
-        if (!static::$isWeb) {
+        if (static::isCli()) {
             return;
         }
 
@@ -83,14 +133,14 @@ class Application
         } catch (HttpException $e) {
             new Response()
                 ->withStatus($e->getCode())
-                ->withHeaders(["Content-Type" => "text/html"])
+                ->withHeaders(["Content-Type" => static::$webContentType])
                 ->withBody($e->getMessage())
                 ->send();
         } catch (Throwable $e) {
             error_log(sprintf("[%s]\n%s", $e->getMessage(), $e->getTraceAsString()));
             new Response()
                 ->withStatus(500)
-                ->withHeaders(["Content-Type" => "text/plain"])
+                ->withHeaders(["Content-Type" => static::$webContentType])
                 ->withBody("Something went wrong. Please try again later.")
                 ->send();
         }

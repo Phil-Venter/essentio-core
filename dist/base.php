@@ -5,11 +5,38 @@ class Application
     /** @var string */
     protected static string $basePath;
 
+    /** @var string */
+    protected static string $webContentType = '';
+
+    /** @var bool */
+    protected static bool $isWeb;
+
     /** @var Container */
     public static Container $container;
 
-    /** @var bool */
-    public static bool $isWeb;
+    /**
+     * Initialize the application for API requests.
+     *
+     * @param string $basePath
+     * @param ?string $secret
+     * @return void
+     */
+    public static function api(string $basePath, ?string $secret = null): void
+    {
+        static::$basePath = rtrim($basePath, "/");
+        static::$webContentType = "application/json";
+        static::$isWeb = true;
+
+        static::$container = new Container();
+
+        static::$container->bind(Environment::class, fn(): Environment => new Environment())->once = true;
+        static::$container->resolve(Environment::class)->load(static::fromBase(".env"));
+
+        $secret ??= static::$container->resolve(Environment::class)->get("JWT_SECRET", "Essentio");
+        static::$container->bind(JWT::class, fn($c): JWT => new JWT($secret))->once = true;
+        static::$container->bind(Request::class, fn(): Request => Request::new())->once = true;
+        static::$container->bind(Router::class, fn(): Router => new Router())->once = true;
+    }
 
     /**
      * Initialize the application for HTTP requests.
@@ -20,10 +47,14 @@ class Application
     public static function http(string $basePath): void
     {
         static::$basePath = rtrim($basePath, "/");
-        static::$container = new Container();
+        static::$webContentType = "text/html";
         static::$isWeb = true;
 
+        static::$container = new Container();
+
         static::$container->bind(Environment::class, fn(): Environment => new Environment())->once = true;
+        static::$container->resolve(Environment::class)->load(static::fromBase(".env"));
+
         static::$container->bind(Session::class, fn(): Session => new Session())->once = true;
         static::$container->bind(Request::class, fn(): Request => Request::new())->once = true;
         static::$container->bind(Router::class, fn(): Router => new Router())->once = true;
@@ -38,11 +69,29 @@ class Application
     public static function cli(string $basePath): void
     {
         static::$basePath = rtrim($basePath, "/");
-        static::$container = new Container();
         static::$isWeb = false;
 
+        static::$container = new Container();
+
         static::$container->bind(Environment::class, fn(): Environment => new Environment())->once = true;
+        static::$container->resolve(Environment::class)->load(static::fromBase(".env"));
+
         static::$container->bind(Argument::class, fn(): Argument => Argument::new())->once = true;
+    }
+
+    public static function isApi(): bool
+    {
+        return static::$isWeb && static::$webContentType === "application/json";
+    }
+
+    public static function isCli(): bool
+    {
+        return !static::$isWeb;
+    }
+
+    public static function isWeb(): bool
+    {
+        return static::$isWeb && static::$webContentType === "text/html";
     }
 
     /**
@@ -63,7 +112,7 @@ class Application
      */
     public static function run(): void
     {
-        if (!static::$isWeb) {
+        if (static::isCli()) {
             return;
         }
 
@@ -75,14 +124,14 @@ class Application
         } catch (HttpException $e) {
             new Response()
                 ->withStatus($e->getCode())
-                ->withHeaders(["Content-Type" => "text/html"])
+                ->withHeaders(["Content-Type" => static::$webContentType])
                 ->withBody($e->getMessage())
                 ->send();
         } catch (Throwable $e) {
             error_log(sprintf("[%s]\n%s", $e->getMessage(), $e->getTraceAsString()));
             new Response()
                 ->withStatus(500)
-                ->withHeaders(["Content-Type" => "text/plain"])
+                ->withHeaders(["Content-Type" => static::$webContentType])
                 ->withBody("Something went wrong. Please try again later.")
                 ->send();
         }
@@ -324,6 +373,60 @@ class HttpException extends Exception
     public static function new(int $status, ?string $message = null, ?Throwable $previous = null): static
     {
         return new static($message ?? (static::HTTP_STATUS[$status] ?? "Unknown Error"), $status, $previous);
+    }
+}
+
+class Jwt
+{
+    public function __construct(
+        protected string $secret,
+        protected string $algo = 'HS256',
+    ) {
+    }
+
+    public function encode(array $payload): string
+    {
+        $header = ["alg" => $this->algo, "typ" => "JWT"];
+        $segments = [$this->base64url_encode(json_encode($header)), $this->base64url_encode(json_encode($payload))];
+        $signingInput = implode(".", $segments);
+        $signature = $this->sign($signingInput);
+
+        $segments[] = $this->base64url_encode($signature);
+        return implode(".", $segments);
+    }
+
+    public function decode(string $token): array
+    {
+        [$header64, $payload64, $signature64] = explode(".", $token);
+        $signingInput = "$header64.$payload64";
+        $signature = $this->base64url_decode($signature64);
+
+        if (!hash_equals($this->sign($signingInput), $signature)) {
+            throw new Exception("Invalid token signature");
+        }
+
+        $payload = json_decode($this->base64url_decode($payload64), true);
+
+        if (isset($payload["exp"]) && time() > $payload["exp"]) {
+            throw new Exception("Token has expired");
+        }
+
+        return $payload;
+    }
+
+    protected function base64url_encode(string $data): string
+    {
+        return rtrim(strtr(base64_encode($data), "+/", "-_"), "=");
+    }
+
+    protected function base64url_decode(string $data): string
+    {
+        return base64_decode(strtr($data, "-_", "+/"));
+    }
+
+    protected function sign(string $input): string
+    {
+        return hash_hmac("sha256", $input, $this->secret, true);
     }
 }
 
@@ -907,7 +1010,7 @@ function arg(int|string|null $key = null, mixed $default = null): mixed
  */
 function command(string $name, callable $handle): void
 {
-    if (Application::$isWeb) {
+    if (!Application::isCli()) {
         return;
     }
 
@@ -976,7 +1079,7 @@ function sanitize(array $rules, bool|Exception $exception = false): array|false
  */
 function middleware(callable $middleware): void
 {
-    if (!Application::$isWeb) {
+    if (Application::isCli()) {
         return;
     }
 
@@ -993,7 +1096,7 @@ function middleware(callable $middleware): void
  */
 function group(string $prefix, callable $handle, array $middleware = []): void
 {
-    if (!Application::$isWeb) {
+    if (Application::isCli()) {
         return;
     }
 
@@ -1010,7 +1113,7 @@ function group(string $prefix, callable $handle, array $middleware = []): void
  */
 function get(string $path, callable $handle, array $middleware = []): void
 {
-    if (!Application::$isWeb) {
+    if (Application::isCli()) {
         return;
     }
 
@@ -1027,7 +1130,7 @@ function get(string $path, callable $handle, array $middleware = []): void
  */
 function post(string $path, callable $handle, array $middleware = []): void
 {
-    if (!Application::$isWeb) {
+    if (Application::isCli()) {
         return;
     }
 
@@ -1044,7 +1147,7 @@ function post(string $path, callable $handle, array $middleware = []): void
  */
 function put(string $path, callable $handle, array $middleware = []): void
 {
-    if (!Application::$isWeb) {
+    if (Application::isCli()) {
         return;
     }
 
@@ -1061,7 +1164,7 @@ function put(string $path, callable $handle, array $middleware = []): void
  */
 function patch(string $path, callable $handle, array $middleware = []): void
 {
-    if (!Application::$isWeb) {
+    if (Application::isCli()) {
         return;
     }
 
@@ -1078,7 +1181,7 @@ function patch(string $path, callable $handle, array $middleware = []): void
  */
 function delete(string $path, callable $handle, array $middleware = []): void
 {
-    if (!Application::$isWeb) {
+    if (Application::isCli()) {
         return;
     }
 
@@ -1094,7 +1197,7 @@ function delete(string $path, callable $handle, array $middleware = []): void
  */
 function flash(string $key, mixed $value = null): mixed
 {
-    if (!Application::$isWeb) {
+    if (!Application::isWeb()) {
         return null;
     }
 
@@ -1115,7 +1218,7 @@ function flash(string $key, mixed $value = null): mixed
  */
 function session(string $key, mixed $value = null): mixed
 {
-    if (!Application::$isWeb) {
+    if (!Application::isWeb()) {
         return null;
     }
 
@@ -1132,8 +1235,12 @@ function session(string $key, mixed $value = null): mixed
  *
  * @return string
  */
-function csrf(): string
+function csrf(): ?string
 {
+    if (!Application::isWeb()) {
+        return null;
+    }
+
     if ($token = session('\0CSRF')) {
         return $token;
     }
@@ -1149,13 +1256,35 @@ function csrf(): string
  * @param string $csrf
  * @return bool
  */
-function verify(string $csrf): bool
+function csrf_verify(string $csrf): ?bool
 {
+    if (!Application::isWeb()) {
+        return null;
+    }
+
     if ($valid = hash_equals(session('\0CSRF'), $csrf)) {
         session('\0CSRF', bin2hex(random_bytes(32)));
     }
 
     return $valid;
+}
+
+function jwt(array $payload): ?string
+{
+    if (!Application::isApi()) {
+        return null;
+    }
+
+    return app(Jwt::class)->encode($payload);
+}
+
+function jwt_decode(string $token): ?array
+{
+    if (!Application::isApi()) {
+        return null;
+    }
+
+    return app(Jwt::class)->decode($token);
 }
 
 /**
@@ -1254,12 +1383,15 @@ function view(string $template, array $data = [], int $status = 200): Response
  */
 function dump(...$data): void
 {
-    if (!Application::$isWeb) {
+    if (Application::isCli()) {
         var_dump(...$data);
-        return;
+    } elseif (Application::isApi()) {
+        echo json_encode($data);
+    } else {
+        echo "<pre>";
+        var_dump(...$data);
+        echo "</pre>";
     }
 
-    echo "<pre>";
-    var_dump(...$data);
-    echo "</pre>";
+    die();
 }
