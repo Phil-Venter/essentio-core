@@ -6,7 +6,7 @@ class Application
     protected static string $basePath;
 
     /** @var string */
-    protected static string $webContentType = '';
+    protected static string $contentType = '';
 
     /** @var bool */
     protected static bool $isWeb;
@@ -24,40 +24,19 @@ class Application
     public static function api(string $basePath, ?string $secret = null): void
     {
         static::$basePath = rtrim($basePath, "/");
-        static::$webContentType = "application/json";
+        static::$contentType = "application/json";
         static::$isWeb = true;
 
         static::$container = new Container();
 
         static::$container->bind(Environment::class, fn(): Environment => new Environment())->once = true;
+        static::$container->bind(Request::class, fn(): Request => Request::new())->once = true;
+        static::$container->bind(Router::class, fn(): Router => new Router())->once = true;
+
         static::$container->resolve(Environment::class)->load(static::fromBase(".env"));
 
         $secret ??= static::$container->resolve(Environment::class)->get("JWT_SECRET", "Essentio");
         static::$container->bind(JWT::class, fn($c): JWT => new JWT($secret))->once = true;
-        static::$container->bind(Request::class, fn(): Request => Request::new())->once = true;
-        static::$container->bind(Router::class, fn(): Router => new Router())->once = true;
-    }
-
-    /**
-     * Initialize the application for HTTP requests.
-     *
-     * @param string $basePath
-     * @return void
-     */
-    public static function http(string $basePath): void
-    {
-        static::$basePath = rtrim($basePath, "/");
-        static::$webContentType = "text/html";
-        static::$isWeb = true;
-
-        static::$container = new Container();
-
-        static::$container->bind(Environment::class, fn(): Environment => new Environment())->once = true;
-        static::$container->resolve(Environment::class)->load(static::fromBase(".env"));
-
-        static::$container->bind(Session::class, fn(): Session => new Session())->once = true;
-        static::$container->bind(Request::class, fn(): Request => Request::new())->once = true;
-        static::$container->bind(Router::class, fn(): Router => new Router())->once = true;
     }
 
     /**
@@ -74,24 +53,61 @@ class Application
         static::$container = new Container();
 
         static::$container->bind(Environment::class, fn(): Environment => new Environment())->once = true;
-        static::$container->resolve(Environment::class)->load(static::fromBase(".env"));
-
         static::$container->bind(Argument::class, fn(): Argument => Argument::new())->once = true;
+
+        static::$container->resolve(Environment::class)->load(static::fromBase(".env"));
     }
 
+    /**
+     * Initialize the application for HTTP requests.
+     *
+     * @param string $basePath
+     * @return void
+     */
+    public static function web(string $basePath): void
+    {
+        static::$basePath = rtrim($basePath, "/");
+        static::$contentType = "text/html";
+        static::$isWeb = true;
+
+        static::$container = new Container();
+
+        static::$container->bind(Environment::class, fn(): Environment => new Environment())->once = true;
+        static::$container->bind(Session::class, fn(): Session => new Session())->once = true;
+        static::$container->bind(Request::class, fn(): Request => Request::new())->once = true;
+        static::$container->bind(Router::class, fn(): Router => new Router())->once = true;
+
+        static::$container->resolve(Environment::class)->load(static::fromBase(".env"));
+    }
+
+    /**
+     * Indicates whether the application is running in API mode.
+     *
+     * @return bool True if in API mode, false otherwise.
+     */
     public static function isApi(): bool
     {
-        return static::$isWeb && static::$webContentType === "application/json";
+        return static::$isWeb && static::$contentType === "application/json";
     }
 
+    /**
+     * Indicates whether the application is running in CLI mode.
+     *
+     * @return bool True if in CLI mode, false otherwise.
+     */
     public static function isCli(): bool
     {
         return !static::$isWeb;
     }
 
+    /**
+     * Indicates whether the application is running in web (HTML) mode.
+     *
+     * @return bool True if in web mode, false otherwise.
+     */
     public static function isWeb(): bool
     {
-        return static::$isWeb && static::$webContentType === "text/html";
+        return static::$isWeb && static::$contentType === "text/html";
     }
 
     /**
@@ -106,7 +122,9 @@ class Application
     }
 
     /**
-     * Run the application, not required for cli.
+     * Executes the router and sends a response, handling exceptions appropriately.
+     *
+     * Only used in web or API contexts; has no effect in CLI mode.
      *
      * @return void
      */
@@ -124,14 +142,14 @@ class Application
         } catch (HttpException $e) {
             new Response()
                 ->withStatus($e->getCode())
-                ->withHeaders(["Content-Type" => static::$webContentType])
+                ->withHeaders(["Content-Type" => static::$contentType])
                 ->withBody($e->getMessage())
                 ->send();
         } catch (Throwable $e) {
             error_log(sprintf("[%s]\n%s", $e->getMessage(), $e->getTraceAsString()));
             new Response()
                 ->withStatus(500)
-                ->withHeaders(["Content-Type" => static::$webContentType])
+                ->withHeaders(["Content-Type" => static::$contentType])
                 ->withBody("Something went wrong. Please try again later.")
                 ->send();
         }
