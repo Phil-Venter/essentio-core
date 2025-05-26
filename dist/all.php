@@ -398,13 +398,12 @@ class Jwt
 {
     public function __construct(
         protected string $secret,
-        protected string $algo = 'HS256',
     ) {
     }
 
     public function encode(array $payload): string
     {
-        $header = ["alg" => $this->algo, "typ" => "JWT"];
+        $header = ["alg" => "HS256", "typ" => "JWT"];
         $segments = [$this->base64url_encode(json_encode($header)), $this->base64url_encode(json_encode($payload))];
         $signingInput = implode(".", $segments);
         $signature = $this->sign($signingInput);
