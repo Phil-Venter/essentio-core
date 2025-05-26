@@ -28,7 +28,7 @@ cat <<'EOF' > public/index.php
 
 require __DIR__ . '/../framework.php';
 
-Application::http(__DIR__ . '/..');
+Application::web(__DIR__ . '/..');
 
 get('/', fn() => text('Hello, Essentio!'));
 
@@ -58,7 +58,7 @@ use Essentio\Core\Application;
 
 require __DIR__ . '/../vendor/autoload.php';
 
-Application::http(__DIR__ . '/..');
+Application::web(__DIR__ . '/..');
 
 get('/', fn() => text('Hello, Essentio!'));
 
@@ -127,13 +127,13 @@ Measured using [cloc](https://github.com/AlDanial/cloc):
 **Base:**
 
 ```
-PHP | 204 blanks | 434 comments | 759 code lines
+PHP | 204 blanks | 451 comments | 756 code lines
 ```
 
 **Full (with Extras):**
 
 ```
-PHP | 422 blanks | 691 comments | 1632 code lines
+PHP | 422 blanks | 728 comments | 1629 code lines
 ```
 
 ---
