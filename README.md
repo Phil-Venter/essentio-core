@@ -127,13 +127,13 @@ Measured using [cloc](https://github.com/AlDanial/cloc):
 **Base:**
 
 ```
-PHP | 209 blanks | 504 comments | 777 code lines
+PHP | 210 blanks | 504 comments | 771 code lines
 ```
 
 **Full (with Extras):**
 
 ```
-PHP | 446 blanks | 1003 comments | 1654 code lines
+PHP | 447 blanks | 1003 comments | 1648 code lines
 ```
 
 ---

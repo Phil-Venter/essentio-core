@@ -147,19 +147,14 @@ class Application
                 ->resolve(Router::class)
                 ->dispatch(static::$container->resolve(Request::class))
                 ->send();
-        } catch (HttpException $e) {
+        } catch (Throwable $throwable) {
+            error_log(sprintf("[%s]\n%s", $throwable->getMessage(), $throwable->getTraceAsString()));
+
             static::$container
                 ->resolve(Response::class)
-                ->withStatus($e->getCode())
+                ->withStatus($throwable instanceof HttpException ? $throwable->getCode() : 500)
                 ->withHeaders(["Content-Type" => static::$contentType])
-                ->withBody($e->getMessage())
-                ->send();
-        } catch (Throwable) {
-            static::$container
-                ->resolve(Response::class)
-                ->withStatus(500)
-                ->withHeaders(["Content-Type" => static::$contentType])
-                ->withBody("Something went wrong. Please try again later.")
+                ->withBody($throwable instanceof HttpException ? $throwable->getMessage() : "Something went wrong.")
                 ->send();
         }
     }
