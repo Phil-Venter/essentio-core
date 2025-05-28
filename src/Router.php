@@ -15,9 +15,9 @@ use function trim;
 
 class Router
 {
-    protected const LEAFNODE = "\0LEAF";
+    protected const LEAFNODE = "\0LEAF_NODE";
 
-    protected const WILDCARD = "\0WILD";
+    protected const WILDCARD = "\0WILDCARD";
 
     /** @var list<callable> */
     protected array $globalMiddleware = [];
@@ -46,8 +46,8 @@ class Router
     /**
      * Groups routes under a shared prefix and middleware stack for scoped handling.
      *
-     * @param string $prefix
-     * @param callable $handle
+     * @param string         $prefix
+     * @param callable       $handle
      * @param list<callable> $middleware
      * @return static
      */

@@ -22,29 +22,45 @@ use function uniqid;
 
 class Mailer
 {
+    /** @var string */
     protected string $url;
 
+    /** @var string */
     public protected(set) string $from = "";
 
+    /** @var list<string> */
     public protected(set) array $to = [];
 
+    /** @var string */
     public protected(set) string $subject = "";
 
+    /** @var string */
     public protected(set) string $text = "";
 
+    /** @var string */
     public protected(set) string $html = "";
 
+    /**
+     * Initializes a new Mailer instance.
+     *
+     * @param string $url  SMTP server hostname.
+     * @param string $user SMTP username.
+     * @param string $pass SMTP password.
+     * @param int    $port SMTP port (default 587).
+     */
     public function __construct(
         string $url,
-        protected string $username,
-        protected string $password,
+        protected string $user,
+        protected string $pass,
         int $port = 587
     ) {
         $this->url = sprintf("smtp://%s:%s", $url, $port);
     }
 
     /**
-     * @param string $email
+     * Sets the sender address.
+     *
+     * @param string $email Sender address.
      * @return static
      */
     public function withFrom(string $email): static
@@ -55,7 +71,9 @@ class Mailer
     }
 
     /**
-     * @param string $email
+     * Adds a recipient address.
+     *
+     * @param string $email Recipient address.
      * @return static
      */
     public function addTo(string $email): static
@@ -66,18 +84,22 @@ class Mailer
     }
 
     /**
-     * @param list<string>|string $emails
+     * Replaces recipient list with one or more addresses.
+     *
+     * @param list<string>|string $emails One or more recipient addresses.
      * @return static
      */
     public function withTo(array|string $emails): static
     {
         $that = clone $this;
-        $that->to = is_string($emails) ? [$emails] : $emails;
+        $that->to = (array) $emails;
         return $that;
     }
 
     /**
-     * @param string $subject
+     * Sets the message subject.
+     *
+     * @param string $subject Message subject line.
      * @return static
      */
     public function withSubject(string $subject): static
@@ -88,7 +110,9 @@ class Mailer
     }
 
     /**
-     * @param string $text
+     * Sets the plaintext body.
+     *
+     * @param string $text Plaintext content.
      * @return static
      */
     public function withText(string $text): static
@@ -99,7 +123,9 @@ class Mailer
     }
 
     /**
-     * @param string $html
+     * Sets the HTML body.
+     *
+     * @param string $html HTML content.
      * @return static
      */
     public function withHtml(string $html): static
@@ -110,8 +136,10 @@ class Mailer
     }
 
     /**
+     * Sends the composed email via SMTP.
+     *
      * @return true
-     * @throws RuntimeException
+     * @throws RuntimeException On transport or cURL error.
      */
     public function send(): true
     {
@@ -132,8 +160,8 @@ class Mailer
             CURLOPT_URL => $this->url,
             CURLOPT_MAIL_FROM => sprintf("<%s>", $this->from),
             CURLOPT_MAIL_RCPT => array_map(fn($to): string => sprintf("<%s>", $to), $this->to),
-            CURLOPT_USERNAME => $this->username,
-            CURLOPT_PASSWORD => $this->password,
+            CURLOPT_USERNAME => $this->user,
+            CURLOPT_PASSWORD => $this->pass,
             CURLOPT_USE_SSL => CURLUSESSL_ALL,
             CURLOPT_READFUNCTION => fn ($ch, $stream, $length): string|false => fread($stream, $length),
             CURLOPT_INFILE => $stream,
@@ -161,7 +189,9 @@ class Mailer
     }
 
     /**
-     * @return string
+     * Composes the MIME-formatted email message body and headers.
+     *
+     * @return string Full email content including headers.
      * @internal
      */
     protected function buildEmail(): string

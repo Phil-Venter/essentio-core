@@ -60,7 +60,7 @@ $outputCode = "<?php\n\n";
 
 if ($option === "base") {
     $files = array_merge(glob($srcDir . "/*.php"));
-} elseif ($option === "all") {
+} elseif ($option === "full") {
     $files = array_merge(glob($srcDir . "/*.php"), glob($srcDir . "/Extra/*.php"));
 }
 
@@ -83,7 +83,7 @@ if (file_exists($functionsFile)) {
     }
 }
 
-if ($option === "all") {
+if ($option === "full") {
     $functionsFile = $srcDir . "/Extra/functions.php";
     if (file_exists($functionsFile)) {
         $parsed = PhpFile::fromCode(stripNamespaceAndUse($functionsFile));

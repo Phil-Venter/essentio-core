@@ -16,14 +16,13 @@ describe(Container::class, function (): void {
 
         expect(fn() => $container->resolve("nonexistent"))->toThrow(
             RuntimeException::class,
-            "No binding for nonexistent exists"
+            "Service [nonexistent] is not bound and cannot be instantiated."
         );
     });
 
     it("returns the same instance when the binding is marked as once (singleton)", function (): void {
         $container = new Container();
-        $binding = $container->bind("singleton", fn() => new stdClass());
-        $binding->once = true;
+        $container->once("singleton", fn() => new stdClass());
 
         $instance1 = $container->resolve("singleton");
         $instance2 = $container->resolve("singleton");
@@ -39,15 +38,6 @@ describe(Container::class, function (): void {
         $instance2 = $container->resolve("prototype");
 
         expect($instance1)->not->toBe($instance2);
-    });
-
-    it("passes the container instance to the factory", function (): void {
-        $container = new Container();
-        $container->bind("self", function ($c) {
-            return $c;
-        });
-
-        expect($container->resolve("self"))->toBe($container);
     });
 
     it("can bind and retrieve multiple services independently", function (): void {

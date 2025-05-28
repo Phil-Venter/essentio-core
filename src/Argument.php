@@ -18,10 +18,10 @@ class Argument
     public protected(set) array $arguments = [];
 
     /**
-     * Initializes and parses the command-line arguments.
+     * Parses the provided argument vector (or $_SERVER['argv']) and returns an instance.
      *
-     * @param list<string>|null $argv
-     * @return static
+     * @param list<string>|null $argv Optional array of CLI arguments.
+     * @return static Parsed Argument instance.
      */
     public static function new(?array $argv = null): static
     {
@@ -83,11 +83,11 @@ class Argument
     }
 
     /**
-     * Retrieves a specific argument value.
+     * Retrieves a specific argument or option value by key.
      *
-     * @param int|string $key
-     * @param mixed      $default
-     * @return mixed
+     * @param int|string $key     The argument key or index.
+     * @param mixed      $default Value to return if not found.
+     * @return mixed              Retrieved value or default.
      */
     public function get(int|string $key, mixed $default = null): mixed
     {

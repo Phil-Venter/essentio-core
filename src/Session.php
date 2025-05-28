@@ -7,9 +7,9 @@ use function session_status;
 
 class Session
 {
-    protected const FLASH_OLD = "\0OLD";
+    protected const FLASH_OLD = "\0FLASH_OLD";
 
-    protected const FLASH_NEW = "\0NEW";
+    protected const FLASH_NEW = "\0FLASH_NEW";
 
     public function __construct()
     {
@@ -25,7 +25,7 @@ class Session
      * Stores a value in the session under the specified key.
      *
      * @param string $key
-     * @param mixed $value
+     * @param mixed  $value
      */
     public function set(string $key, mixed $value): void
     {
@@ -33,10 +33,21 @@ class Session
     }
 
     /**
+     * Retrieves a value from the session by key.
+     *
+     * @param string $key
+     * @return mixed
+     */
+    public function get(string $key): mixed
+    {
+        return $_SESSION[$key] ?? null;
+    }
+
+    /**
      * Stores a temporary flash value in the session under the specified key.
      *
      * @param string $key
-     * @param mixed $value
+     * @param mixed  $value
      */
     public function flash(string $key, mixed $value): void
     {
@@ -44,13 +55,13 @@ class Session
     }
 
     /**
-     * Retrieves a value from the flash (old) session or regular session by key.
+     * Retrieves a value from the flash (old) session by key.
      *
      * @param string $key
      * @return mixed
      */
-    public function get(string $key): mixed
+    public function restore(string $key): mixed
     {
-        return $_SESSION[static::FLASH_OLD][$key] ?? ($_SESSION[$key] ?? null);
+        return $_SESSION[static::FLASH_OLD][$key] ?? null;
     }
 }

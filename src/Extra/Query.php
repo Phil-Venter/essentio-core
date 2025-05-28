@@ -29,32 +29,46 @@ use function trim;
 
 class Query
 {
+    /** @var list<string> */
     protected array $columns = [];
 
+    /** @var bool */
     protected bool $subquery = false;
 
+    /** @var string */
     protected string $from = "";
 
+    /** @var list<string> */
     protected array $joins = [];
 
+    /** @var list<string> */
     protected array $unions = [];
 
+    /** @var list<string> */
     protected array $wheres = [];
 
+    /** @var list<string> */
     protected array $group = [];
 
+    /** @var list<string> */
     protected array $havings = [];
 
+    /** @var list<string> */
     protected array $orderBy = [];
 
+    /** @var ?int */
     protected ?int $limit = null;
 
+    /** @var ?int */
     protected ?int $offset = null;
 
+    /** @var list<mixed> */
     protected array $whereBindings = [];
 
+    /** @var list<mixed> */
     protected array $havingBindings = [];
 
+    /** @var list<mixed> */
     protected array $unionBindings = [];
 
     public function __construct(protected PDO $pdo) {}
@@ -501,6 +515,7 @@ class Query
      *
      * @param string $str Table declaration.
      * @return array Array with [table, alias|null].
+     * @internal
      */
     protected function extractAlias(string $str): array
     {
@@ -527,6 +542,7 @@ class Query
      * @param string         $type Logical operator.
      * @param string         $clause Clause type ("where" or "having").
      * @return array [string SQL, array bindings]
+     * @internal
      */
     protected function makeCondition(
         string|Closure $column,
@@ -579,6 +595,7 @@ class Query
      * @param PDOStatement $stmt Prepared statement.
      * @param array        $bindings Values to bind.
      * @return PDOStatement Bound statement.
+     * @internal
      */
     protected function bindValues(PDOStatement $stmt, array $bindings): void
     {
@@ -599,6 +616,7 @@ class Query
      *
      * @param string $clause SQL clause.
      * @return string Cleaned clause.
+     * @internal
      */
     protected function stripLeadingBoolean(string $clause): string
     {

@@ -20,9 +20,14 @@ function cast(): Cast
  *
  * @return Mailer
  */
-function mailer(): Mailer
+function mailer(?string $url = null, ?string $user = null, ?string $pass = null, ?int $port = null): Mailer
 {
-    return app(Mailer::class);
+    $url ??= env("MAILER_URL");
+    $user ??= env("MAILER_USER");
+    $pass ??= env("MAILER_PASS");
+    $port ??= env("MAILER_PORT", 587);
+
+    return app(Mailer::class, compact("url", "user", "pass", "port"));
 }
 
 /**
@@ -30,9 +35,9 @@ function mailer(): Mailer
  *
  * @return Query
  */
-function query(): Query
+function query(?PDO $pdo): Query
 {
-    return new Query(app(PDO::class));
+    return app(Query::class, [$pdo ?? app(PDO::class)]);
 }
 
 /**
@@ -42,5 +47,5 @@ function query(): Query
  */
 function validate(): Validate
 {
-    return new Validate();
+    return app(Validate::class);
 }

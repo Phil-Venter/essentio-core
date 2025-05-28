@@ -7,6 +7,7 @@ use Throwable;
 
 class HttpException extends Exception
 {
+    /** @var array<int, string> */
     public const HTTP_STATUS = [
         // Success
         200 => "OK",
@@ -33,12 +34,12 @@ class HttpException extends Exception
     ];
 
     /**
-     * Factory method to create a new HttpException instance.
+     * Creates a new instance of HttpException with a standard or custom message.
      *
-     * @param int            $status HTTP status code (e.g., 404, 500).
-     * @param string|null    $message Optional custom error message.
-     * @param Throwable|null $previous Optional previous exception for chaining.
-     * @return static A new instance of the HttpException class.
+     * @param int               $status   HTTP status code.
+     * @param string|null       $message  Optional custom error message.
+     * @param Throwable|null    $previous Optional previous exception for chaining.
+     * @return static
      */
     public static function new(int $status, ?string $message = null, ?Throwable $previous = null): static
     {

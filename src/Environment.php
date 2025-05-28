@@ -14,13 +14,14 @@ use function trim;
 
 class Environment
 {
-    /** @var array<string,mixed> */
+    /** @var array<string, mixed> */
     public protected(set) array $data = [];
 
     /**
-     * Loads environment variables from a file.
+     * Loads key-value pairs from a .env file into memory.
+     * Supports quoted values and auto type inference.
      *
-     * @param string $file
+     * @param string $file Path to .env file.
      * @return static
      */
      public function load(string $file): static
@@ -60,11 +61,11 @@ class Environment
     }
 
     /**
-     * Retrieves an environment variable.
+     * Retrieves an environment value by key.
      *
-     * @param string $key
-     * @param mixed  $default
-     * @return mixed
+     * @param string $key     Name of the variable.
+     * @param mixed  $default Default value if not found.
+     * @return mixed          The stored or default value.
      */
     public function get(string $key, mixed $default = null): mixed
     {

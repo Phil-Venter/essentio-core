@@ -23,11 +23,11 @@
     },
     "minimum-stability": "stable",
     "scripts": {
-        "runner": "composer run format && composer run test && composer run build-all 'all.php' && composer run build-base 'base.php'",
+        "runner": "composer run format && composer run test && composer run build-full 'full.php' && composer run build-base 'base.php'",
         "format": "./vendor/bin/rector",
         "test": "./vendor/bin/pest",
         "build": "php scripts/build.php",
-        "build-all": "php scripts/build.php all",
+        "build-full": "php scripts/build.php full",
         "build-base": "php scripts/build.php base"
     },
     "config": {

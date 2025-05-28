@@ -3,7 +3,6 @@
 use Essentio\Core\Application;
 use Essentio\Core\Argument;
 use Essentio\Core\Environment;
-use Essentio\Core\HttpException;
 use Essentio\Core\Jwt;
 use Essentio\Core\Request;
 use Essentio\Core\Response;
@@ -17,9 +16,9 @@ use Essentio\Core\Session;
  * @param class-string<T>|string|null $id
  * @return ($id is class-string<T> ? T : object)
  */
-function app(?string $id = null): object
+function app(?string $id = null, array $dependancies = []): object
 {
-    return is_null($id) ? Application::$container : Application::$container->resolve($id);
+    return is_null($id) ? Application::$container : Application::$container->resolve($id, $dependancies);
 }
 
 /**
@@ -37,7 +36,7 @@ function base(string $path = ""): string
  * This function fetches an environment variable from the Environment instance.
  *
  * @param ?string $key
- * @param mixed   $default
+ * @param mixed $default
  * @return mixed
  */
 function env(?string $key = null, mixed $default = null): mixed
@@ -48,13 +47,18 @@ function env(?string $key = null, mixed $default = null): mixed
 /**
  * This function binds a service to the container using the specified identifier and factory.
  *
- * @param string   $id
- * @param callable $factory
- * @return object
+ * @param string $abstract
+ * @param Closure|string|null $concrete
+ * @return void
  */
-function bind(string $id, callable $factory): object
+function bind(string $abstract, Closure|string|null $concrete): void
 {
-    return app()->bind($id, $factory);
+    app()->bind($abstract, $concrete);
+}
+
+function once(string $abstract, Closure|string|null $concrete): void
+{
+    app()->once($abstract, $concrete);
 }
 
 /**
@@ -266,11 +270,11 @@ function flash(string $key, mixed $value = null): mixed
     }
 
     if (func_num_args() === 1) {
-        return app(Session::class)->get($key);
+        return app(Session::class)->restore($key);
     }
 
     app(Session::class)->flash($key, $value);
-    return null;
+    return $value;
 }
 
 /**
@@ -291,7 +295,7 @@ function session(string $key, mixed $value = null): mixed
     }
 
     app(Session::class)->set($key, $value);
-    return null;
+    return $value;
 }
 
 /**
@@ -305,13 +309,11 @@ function csrf(): ?string
         return null;
     }
 
-    if ($token = session('\0CSRF')) {
+    if ($token = session('\0SESSION_CSRF')) {
         return $token;
     }
 
-    $token = bin2hex(random_bytes(32));
-    session('\0CSRF', $token);
-    return $token;
+    return session('\0SESSION_CSRF', bin2hex(random_bytes(32)));
 }
 
 /**
@@ -326,8 +328,8 @@ function csrf_verify(string $csrf): ?bool
         return null;
     }
 
-    if ($valid = hash_equals(session('\0CSRF'), $csrf)) {
-        session('\0CSRF', bin2hex(random_bytes(32)));
+    if ($valid = hash_equals(session('\0SESSION_CSRF'), $csrf)) {
+        session('\0SESSION_CSRF', bin2hex(random_bytes(32)));
     }
 
     return $valid;
@@ -379,7 +381,7 @@ function render(string $template, array $data = []): string
  */
 function redirect(string $uri, int $status = 302): Response
 {
-    return new Response()->withStatus($status)->withHeaders(["Location" => $uri]);
+    return app(Response::class)->withStatus($status)->withHeaders(["Location" => $uri]);
 }
 
 /**
@@ -391,7 +393,7 @@ function redirect(string $uri, int $status = 302): Response
  */
 function html(string $html, int $status = 200): Response
 {
-    return new Response()
+    return app(Response::class)
         ->withStatus($status)
         ->withHeaders(["Content-Type" => "text/html"])
         ->withBody($html);
@@ -406,7 +408,7 @@ function html(string $html, int $status = 200): Response
  */
 function json(mixed $data, int $status = 200): Response
 {
-    return new Response()
+    return app(Response::class)
         ->withStatus($status)
         ->withHeaders(["Content-Type" => "application/json"])
         ->withBody(json_encode($data));
@@ -421,7 +423,7 @@ function json(mixed $data, int $status = 200): Response
  */
 function text(string $text, int $status = 200): Response
 {
-    return new Response()
+    return app(Response::class)
         ->withStatus($status)
         ->withHeaders(["Content-Type" => "text/plain"])
         ->withBody($text);

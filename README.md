@@ -12,7 +12,7 @@ No dependencies. No build steps. Just download and go:
 
 ```bash
 # Full version with extras
-curl -L https://raw.githubusercontent.com/Phil-Venter/essentio_core/main/dist/all.php -o framework.php
+curl -L https://raw.githubusercontent.com/Phil-Venter/essentio_core/main/dist/full.php -o framework.php
 
 # Base version, leanest setup
 curl -L https://raw.githubusercontent.com/Phil-Venter/essentio_core/main/dist/base.php -o framework.php
@@ -127,13 +127,13 @@ Measured using [cloc](https://github.com/AlDanial/cloc):
 **Base:**
 
 ```
-PHP | 204 blanks | 451 comments | 756 code lines
+PHP | 209 blanks | 504 comments | 777 code lines
 ```
 
 **Full (with Extras):**
 
 ```
-PHP | 422 blanks | 728 comments | 1629 code lines
+PHP | 446 blanks | 1003 comments | 1654 code lines
 ```
 
 ---

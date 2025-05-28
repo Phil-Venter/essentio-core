@@ -4,7 +4,6 @@ namespace Essentio\Core;
 
 use Throwable;
 
-use function error_log;
 use function rtrim;
 use function sprintf;
 
@@ -17,112 +16,112 @@ class Application
     protected static string $contentType = "";
 
     /** @var bool */
-    protected static bool $isWeb;
+    protected static bool $isHttp;
 
     /** @var Container */
     public static Container $container;
 
     /**
-     * Initialize the application for API requests.
+     * Bootstraps an API context (application/json), binds required services and config.
      *
-     * @param string $basePath
-     * @param ?string $secret
+     * @param string      $basePath Absolute project base path.
+     * @param string|null $secret   Optional JWT secret (overrides env JWT_SECRET).
      * @return void
      */
     public static function api(string $basePath, ?string $secret = null): void
     {
         static::$basePath = rtrim($basePath, "/");
         static::$contentType = "application/json";
-        static::$isWeb = true;
+        static::$isHttp = true;
 
         static::$container = new Container();
 
-        static::$container->bind(Environment::class, fn(): Environment => new Environment())->once = true;
-        static::$container->bind(Request::class, fn(): Request => Request::new())->once = true;
-        static::$container->bind(Router::class, fn(): Router => new Router())->once = true;
+        static::$container->once(Environment::class, fn(): Environment => new Environment());
+        static::$container->once(Request::class, fn(): Request => Request::new());
+        static::$container->once(Router::class, fn(): Router => new Router());
 
         static::$container->resolve(Environment::class)->load(static::fromBase(".env"));
 
         $secret ??= static::$container->resolve(Environment::class)->get("JWT_SECRET", "Essentio");
-        static::$container->bind(JWT::class, fn($c): JWT => new JWT($secret))->once = true;
+        static::$container->once(JWT::class, fn(): JWT => new JWT($secret));
     }
 
     /**
-     * Initialize the application for CLI commands.
+     * Checks if app is in API (application/json) context.
      *
-     * @param string $basePath
+     * @return bool True if API mode is active.
+     */
+    public static function isApi(): bool
+    {
+        return static::$isHttp && static::$contentType === "application/json";
+    }
+
+    /**
+     * Initializes CLI environment, loading env config and command-line parser.
+     *
+     * @param string $basePath Base directory for resolving paths.
      * @return void
      */
     public static function cli(string $basePath): void
     {
         static::$basePath = rtrim($basePath, "/");
-        static::$isWeb = false;
+        static::$isHttp = false;
 
         static::$container = new Container();
 
-        static::$container->bind(Environment::class, fn(): Environment => new Environment())->once = true;
-        static::$container->bind(Argument::class, fn(): Argument => Argument::new())->once = true;
+        static::$container->once(Environment::class, fn(): Environment => new Environment());
+        static::$container->once(Argument::class, fn(): Argument => Argument::new());
 
         static::$container->resolve(Environment::class)->load(static::fromBase(".env"));
     }
 
     /**
-     * Initialize the application for HTTP requests.
+     * Determines if app is running in CLI mode.
      *
-     * @param string $basePath
+     * @return bool True if CLI.
+     */
+    public static function isCli(): bool
+    {
+        return !static::$isHttp;
+    }
+
+    /**
+     * Bootstraps an HTML web context with sessions, routing, and environment.
+     *
+     * @param string $basePath Root directory of the project.
      * @return void
      */
     public static function web(string $basePath): void
     {
         static::$basePath = rtrim($basePath, "/");
         static::$contentType = "text/html";
-        static::$isWeb = true;
+        static::$isHttp = true;
 
         static::$container = new Container();
 
-        static::$container->bind(Environment::class, fn(): Environment => new Environment())->once = true;
-        static::$container->bind(Session::class, fn(): Session => new Session())->once = true;
-        static::$container->bind(Request::class, fn(): Request => Request::new())->once = true;
-        static::$container->bind(Router::class, fn(): Router => new Router())->once = true;
+        static::$container->once(Environment::class, fn(): Environment => new Environment());
+        static::$container->once(Session::class, fn(): Session => new Session());
+        static::$container->once(Request::class, fn(): Request => Request::new());
+        static::$container->once(Router::class, fn(): Router => new Router());
 
         static::$container->resolve(Environment::class)->load(static::fromBase(".env"));
     }
 
     /**
-     * Indicates whether the application is running in API mode.
+     * Indicates if current context is standard web (HTML) application.
      *
-     * @return bool True if in API mode, false otherwise.
-     */
-    public static function isApi(): bool
-    {
-        return static::$isWeb && static::$contentType === "application/json";
-    }
-
-    /**
-     * Indicates whether the application is running in CLI mode.
-     *
-     * @return bool True if in CLI mode, false otherwise.
-     */
-    public static function isCli(): bool
-    {
-        return !static::$isWeb;
-    }
-
-    /**
-     * Indicates whether the application is running in web (HTML) mode.
-     *
-     * @return bool True if in web mode, false otherwise.
+     * @return bool True if web mode.
      */
     public static function isWeb(): bool
     {
-        return static::$isWeb && static::$contentType === "text/html";
+        return static::$isHttp && static::$contentType === "text/html";
     }
 
     /**
-     * Resolve an absolute path based on the application's base directory.
+     * Returns an absolute path by joining the base path with the given relative path.
      *
-     * @param string $path
-     * @return string
+     * @param string $path Relative file or folder path.
+     * @return string Absolute filesystem path.
      */
     public static function fromBase(string $path): string
     {
@@ -130,9 +129,10 @@ class Application
     }
 
     /**
-     * Executes the router and sends a response, handling exceptions appropriately.
+     * Entry point for handling HTTP requests.
+     * Routes the request, invokes handlers, and generates a response.
      *
-     * Only used in web or API contexts; has no effect in CLI mode.
+     * Handles HTTP errors and internal exceptions gracefully.
      *
      * @return void
      */
@@ -148,14 +148,15 @@ class Application
                 ->dispatch(static::$container->resolve(Request::class))
                 ->send();
         } catch (HttpException $e) {
-            new Response()
+            static::$container
+                ->resolve(Response::class)
                 ->withStatus($e->getCode())
                 ->withHeaders(["Content-Type" => static::$contentType])
                 ->withBody($e->getMessage())
                 ->send();
-        } catch (Throwable $e) {
-            error_log(sprintf("[%s]\n%s", $e->getMessage(), $e->getTraceAsString()));
-            new Response()
+        } catch (Throwable) {
+            static::$container
+                ->resolve(Response::class)
                 ->withStatus(500)
                 ->withHeaders(["Content-Type" => static::$contentType])
                 ->withBody("Something went wrong. Please try again later.")
