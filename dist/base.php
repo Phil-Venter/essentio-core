@@ -1038,9 +1038,11 @@ class Session
  * @param class-string<T>|string|null $id
  * @return ($id is class-string<T> ? T : object)
  */
-function app(?string $id = null, array $dependancies = []): object
+function app(string $id = '', array $dependancies = []): object
 {
-    return is_null($id) ? Application::$container : Application::$container->resolve($id, $dependancies);
+    return func_num_args() === 0
+        ? Application::$container
+        : Application::$container->resolve($id, $dependancies);
 }
 
 /**
@@ -1057,13 +1059,15 @@ function base(string $path = ''): string
 /**
  * This function fetches an environment variable from the Environment instance.
  *
- * @param ?string $key
+ * @param string $key
  * @param mixed $default
  * @return mixed
  */
-function env(?string $key = null, mixed $default = null): mixed
+function env(string $key = '', mixed $default = null): mixed
 {
-    return is_null($key) ? app(Environment::class) : app(Environment::class)->get($key, $default);
+    return func_num_args() === 0
+        ? app(Environment::class)
+        : app(Environment::class)->get($key, $default);
 }
 
 /**
@@ -1078,6 +1082,13 @@ function bind(string $abstract, Closure|string|null $concrete): void
     app()->bind($abstract, $concrete);
 }
 
+/**
+ * Binds a singleton service to the container.
+ *
+ * @param string $abstract
+ * @param Closure|string|null $concrete
+ * @return void
+ */
 function once(string $abstract, Closure|string|null $concrete): void
 {
     app()->once($abstract, $concrete);
@@ -1086,19 +1097,21 @@ function once(string $abstract, Closure|string|null $concrete): void
 /**
  * This function retrieves a command-line argument using the specified key.
  *
- * @param int|string|null $key
- * @param mixed           $default
+ * @param int|string $key
+ * @param mixed $default
  * @return mixed
  */
-function arg(int|string|null $key = null, mixed $default = null): mixed
+function arg(int|string $key = '', mixed $default = null): mixed
 {
-    return is_null($key) ? app(Argument::class) : app(Argument::class)->get($key, $default);
+    return func_num_args() === 0
+        ? app(Argument::class)
+        : app(Argument::class)->get($key, $default);
 }
 
 /**
  * Executes the provided command handler if the current command matches the specified name.
  *
- * @param string   $name
+ * @param string $name
  * @param callable $handle
  * @return void
  */
@@ -1122,13 +1135,15 @@ function command(string $name, callable $handle): void
 /**
  * Fetches a value from the current Request instance using the specified key.
  *
- * @param ?string $field
- * @param mixed   $default
+ * @param string $field
+ * @param mixed $default
  * @return mixed
  */
-function request(?string $field = null, mixed $default = null): mixed
+function request(string $field = '', mixed $default = null): mixed
 {
-    return is_null($field) ? app(Request::class) : app(Request::class)->get($field, $default);
+    return func_num_args() === 0
+        ? app(Request::class)
+        : app(Request::class)->get($field, $default);
 }
 
 /**
@@ -1357,6 +1372,12 @@ function csrf_verify(string $csrf): ?bool
     return $valid;
 }
 
+/**
+ * Encodes a payload into a JWT string using the configured secret key.
+ *
+ * @param array $payload
+ * @return string|null
+ */
 function jwt(array $payload): ?string
 {
     if (!Application::isApi()) {
@@ -1366,6 +1387,13 @@ function jwt(array $payload): ?string
     return app(Jwt::class)->encode($payload);
 }
 
+/**
+ * Decodes a JWT and validates its signature and expiration.
+ *
+ * @param string $token
+ * @return array|null
+ * @throws Exception
+ */
 function jwt_decode(string $token): ?array
 {
     if (!Application::isApi()) {
