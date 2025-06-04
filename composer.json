@@ -23,7 +23,7 @@
     },
     "minimum-stability": "stable",
     "scripts": {
-        "runner": "composer run format && composer run test && composer run build-full 'full.php' && composer run build-base 'base.php'",
+        "runner": "composer run format; composer run test; composer run build-full 'full.php'; composer run build-base 'base.php'",
         "format": "./vendor/bin/rector",
         "test": "./vendor/bin/pest",
         "build": "php scripts/build.php",

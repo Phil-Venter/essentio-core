@@ -2,6 +2,7 @@
 
 use Essentio\Core\HttpException;
 use Essentio\Core\Request;
+use Essentio\Core\Response;
 use Essentio\Core\Router;
 
 describe(Router::class, function (): void {
@@ -15,8 +16,8 @@ describe(Router::class, function (): void {
             "REQUEST_METHOD" => "GET",
             "REQUEST_URI" => "/home",
         ];
-        $request = Request::new($server);
-        $response = $router->dispatch($request);
+        $request = Request::create($server);
+        $response = $router->dispatch($request, new Response());
         expect($response->body)->toBe("Welcome Home");
     });
 
@@ -30,8 +31,8 @@ describe(Router::class, function (): void {
             "REQUEST_METHOD" => "GET",
             "REQUEST_URI" => "/user/42",
         ];
-        $request = Request::new($server);
-        $response = $router->dispatch($request);
+        $request = Request::create($server);
+        $response = $router->dispatch($request, new Response());
         expect($response->body)->toBe("User 42");
     });
 
@@ -41,8 +42,8 @@ describe(Router::class, function (): void {
             "REQUEST_METHOD" => "GET",
             "REQUEST_URI" => "/nonexistent",
         ];
-        $request = Request::new($server);
-        expect(fn() => $router->dispatch($request))->toThrow(HttpException::class, "Not Found");
+        $request = Request::create($server);
+        expect(fn() => $router->dispatch($request, new Response()))->toThrow(HttpException::class, "Not Found");
     });
 
     it("throws a 405 HttpException when the method is not allowed", function (): void {
@@ -54,8 +55,11 @@ describe(Router::class, function (): void {
             "REQUEST_METHOD" => "POST",
             "REQUEST_URI" => "/about",
         ];
-        $request = Request::new($server);
-        expect(fn() => $router->dispatch($request))->toThrow(HttpException::class, "Method Not Allowed");
+        $request = Request::create($server);
+        expect(fn() => $router->dispatch($request, new Response()))->toThrow(
+            HttpException::class,
+            "Method Not Allowed"
+        );
     });
 
     it("executes middleware pipeline correctly for a static route", function (): void {
@@ -77,8 +81,8 @@ describe(Router::class, function (): void {
             "REQUEST_METHOD" => "GET",
             "REQUEST_URI" => "/test",
         ];
-        $request = Request::new($server);
-        $response = $router->dispatch($request);
+        $request = Request::create($server);
+        $response = $router->dispatch($request, new Response());
         expect($response->body)->toBe("Base with middleware");
     });
 
@@ -92,8 +96,8 @@ describe(Router::class, function (): void {
             "REQUEST_METHOD" => "GET",
             "REQUEST_URI" => "/post/10/comment/99",
         ];
-        $request = Request::new($server);
-        $response = $router->dispatch($request);
+        $request = Request::create($server);
+        $response = $router->dispatch($request, new Response());
         expect($response->body)->toBe("Post 10, Comment 99");
     });
 
@@ -120,8 +124,8 @@ describe(Router::class, function (): void {
             "REQUEST_METHOD" => "GET",
             "REQUEST_URI" => "/chain",
         ];
-        $request = Request::new($server);
-        $response = $router->dispatch($request);
+        $request = Request::create($server);
+        $response = $router->dispatch($request, new Response());
         expect($response->body)->toBe("Start second first");
     });
 });

@@ -7,7 +7,6 @@ use Throwable;
 
 class HttpException extends Exception
 {
-    /** @var array<int, string> */
     public const HTTP_STATUS = [
         // Success
         200 => "OK",
@@ -33,15 +32,7 @@ class HttpException extends Exception
         500 => "Internal Server Error",
     ];
 
-    /**
-     * Creates a new instance of HttpException with a standard or custom message.
-     *
-     * @param int               $status   HTTP status code.
-     * @param string|null       $message  Optional custom error message.
-     * @param Throwable|null    $previous Optional previous exception for chaining.
-     * @return static
-     */
-    public static function new(int $status, ?string $message = null, ?Throwable $previous = null): static
+    public static function create(int $status, ?string $message = null, ?Throwable $previous = null): static
     {
         return new static($message ?? (static::HTTP_STATUS[$status] ?? "Unknown Error"), $status, $previous);
     }

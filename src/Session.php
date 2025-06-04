@@ -2,16 +2,15 @@
 
 namespace Essentio\Core;
 
-use function session_start;
-use function session_status;
-
 class Session
 {
     protected const FLASH_OLD = "\0FLASH_OLD";
 
     protected const FLASH_NEW = "\0FLASH_NEW";
 
-    public function __construct()
+    protected const CSRF_KEY = "\0CSRF_KEY";
+
+    public static function create(): static
     {
         if (session_status() !== PHP_SESSION_ACTIVE) {
             session_start();
@@ -19,49 +18,41 @@ class Session
 
         $_SESSION[static::FLASH_OLD] = $_SESSION[static::FLASH_NEW] ?? [];
         $_SESSION[static::FLASH_NEW] = [];
+
+        return new static();
     }
 
-    /**
-     * Stores a value in the session under the specified key.
-     *
-     * @param string $key
-     * @param mixed  $value
-     */
     public function set(string $key, mixed $value): void
     {
         $_SESSION[$key] = $value;
     }
 
-    /**
-     * Retrieves a value from the session by key.
-     *
-     * @param string $key
-     * @return mixed
-     */
     public function get(string $key): mixed
     {
         return $_SESSION[$key] ?? null;
     }
 
-    /**
-     * Stores a temporary flash value in the session under the specified key.
-     *
-     * @param string $key
-     * @param mixed  $value
-     */
-    public function flash(string $key, mixed $value): void
+    public function set_flash(string $key, mixed $value): void
     {
         $_SESSION[static::FLASH_NEW][$key] = $value;
     }
 
-    /**
-     * Retrieves a value from the flash (old) session by key.
-     *
-     * @param string $key
-     * @return mixed
-     */
-    public function restore(string $key): mixed
+    public function get_flash(string $key): mixed
     {
         return $_SESSION[static::FLASH_OLD][$key] ?? null;
+    }
+
+    public function get_csrf(): string
+    {
+        return $_SESSION[static::CSRF_KEY] ??= bin2hex(random_bytes(32));
+    }
+
+    public function verify_csrf(string $csrf): bool
+    {
+        if ($valid = hash_equals($_SESSION[static::CSRF_KEY], $csrf)) {
+            $_SESSION[static::CSRF_KEY] = bin2hex(random_bytes(32));
+        }
+
+        return $valid;
     }
 }

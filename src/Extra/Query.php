@@ -2,633 +2,376 @@
 
 namespace Essentio\Core\Extra;
 
-use Closure;
+use InvalidArgumentException;
 use PDO;
-use PDOStatement;
 
-use function array_fill;
-use function array_keys;
-use function array_merge;
-use function array_values;
-use function count;
-use function explode;
-use function implode;
-use function in_array;
-use function is_bool;
-use function is_int;
-use function is_null;
-use function is_string;
-use function iterator_to_array;
-use function ltrim;
-use function sprintf;
-use function str_contains;
-use function stripos;
-use function strtolower;
-use function substr;
-use function trim;
-
-class Query
+// Aliases not working properly
+class Query implements \Stringable
 {
-    /** @var list<string> */
+    protected bool $distinct = false;
+
     protected array $columns = [];
 
-    /** @var bool */
-    protected bool $subquery = false;
+    protected array $groupBy = [];
 
-    /** @var string */
-    protected string $from = "";
+    protected object $from;
 
-    /** @var list<string> */
     protected array $joins = [];
 
-    /** @var list<string> */
-    protected array $unions = [];
+    protected object $wheres;
 
-    /** @var list<string> */
-    protected array $wheres = [];
+    protected object $havings;
 
-    /** @var list<string> */
-    protected array $group = [];
+    protected ?string $orderBy = null;
 
-    /** @var list<string> */
-    protected array $havings = [];
-
-    /** @var list<string> */
-    protected array $orderBy = [];
-
-    /** @var ?int */
     protected ?int $limit = null;
 
-    /** @var ?int */
     protected ?int $offset = null;
 
-    /** @var list<mixed> */
-    protected array $whereBindings = [];
+    protected object $unions;
 
-    /** @var list<mixed> */
-    protected array $havingBindings = [];
-
-    /** @var list<mixed> */
-    protected array $unionBindings = [];
-
-    public function __construct(protected PDO $pdo) {}
-
-    /**
-     * @return PDO
-     */
-    public function getPDO(): PDO
+    public function __construct(protected PDO $pdo)
     {
-        return $this->pdo;
+        $this->from = (object) ["sql" => "", "data" => []];
+        $this->wheres = (object) ["sql" => [], "data" => []];
+        $this->havings = (object) ["sql" => [], "data" => []];
+        $this->unions = (object) ["sql" => [], "data" => []];
     }
 
-    /**
-     * Specifies columns to select.
-     *
-     * @param string ...$columns Column names.
-     * @return static
-     */
-    public function select(string ...$columns): static
+    public function distinct(bool $on = true): static
     {
+        $this->distinct = $on;
+        return $this;
+    }
+
+    public function select(string|array ...$columns): static
+    {
+        if (is_array($columns[0])) {
+            $columns = $columns[0];
+        }
+
+        if (array_is_list($columns)) {
+            $columns = array_combine($columns, $columns);
+        }
+
         $this->columns = array_merge($this->columns, $columns);
         return $this;
     }
 
-    /**
-     * Specifies the table to select from. Can accept a closure to build a subquery.
-     *
-     * @param Closure|string $table Table name or closure for subquery.
-     * @return static
-     */
-    public function from(Closure|string $table): static
+    public function from(callable|string $from, ?string $alias = null): static
     {
-        assert(empty($this->from));
-
-        if ($table instanceof Closure) {
-            return $this->subquery($table);
+        if (!is_callable($from)) {
+            $this->from->sql = $this->quote($from) . ($alias ? " AS " . $this->quote($alias) : "");
+            return $this;
         }
 
-        $this->from = $table;
-        return $this;
-    }
-
-    /**
-     * Defines a subquery as the source table.
-     *
-     * @param Closure     $table Callback that builds the subquery.
-     * @param string|null $as Optional alias.
-     * @return static
-     */
-    public function subquery(Closure $table, ?string $as = null): static
-    {
-        assert(empty($this->from));
-
-        $query = new static($this->pdo);
-        $table($query);
-
-        $this->subquery = true;
-        $this->from = sprintf("(%s) AS %s", $query->compileSelect(), $as ?? "t");
-        $this->whereBindings = array_merge($this->whereBindings, $query->getBindings());
+        $alias ??= "sub";
+        $from($subQuery = new static($this->pdo));
+        [$sql, $data] = $subQuery->compileSelectArray();
+        $this->from->sql = "($sql) AS " . $this->quote($alias);
+        $this->from->data = $data;
 
         return $this;
     }
 
-    /**
-     * Adds a JOIN clause to the query.
-     *
-     * @param string      $table Join table.
-     * @param string|null $first Left column or 'using'.
-     * @param string|null $op Operator or column (if using 'using').
-     * @param string|null $second Right column (optional).
-     * @param string      $type Type of join (INNER, LEFT, etc.).
-     * @return static
-     */
     public function join(
         string $table,
         ?string $first = null,
-        ?string $op = null,
+        ?string $operator = null,
         ?string $second = null,
         string $type = ""
     ): static {
-        if (in_array(strtolower($type), ["cross", "natural"])) {
-            $this->joins[] = sprintf("%s JOIN %s", $type, $table);
+        $type = strtoupper(trim($type ?: "INNER"));
+
+        if (in_array($type, ["CROSS", "NATURAL"])) {
+            $this->joins[] = "$type JOIN " . $this->quote($table);
             return $this;
         }
 
-        if ($op !== null && strtolower($first ?? "") === "using") {
-            $this->joins[] = sprintf("%s JOIN %s USING(%s)", $type, $table, $op);
+        if ($operator !== null && strtolower($first ?? "") === "using") {
+            $columns = array_map([$this, "quote"], array_map("trim", explode(",", $operator)));
+            $this->joins[] = "$type JOIN {$this->quote($table)} USING (" . implode(", ", $columns) . ")";
             return $this;
         }
 
-        if ($op !== null && $second === null) {
-            $second = $op;
-            $op = null;
+        if ($operator !== null && $second === null) {
+            $second = $operator;
+            $operator = "=";
         }
+
+        $extract = fn($sql): array => preg_match('/^(.+?)\s+AS\s+(.+)$/i', (string) $sql, $m) ? [$m[1], $m[2]] : [$sql, null];
+        [$joinTable, $joinAlias] = $extract($table);
 
         if ($first === null || $second === null) {
-            [$mainTable, $mainAlias] = $this->extractAlias($this->from);
-            [$joinTable, $joinAlias] = $this->extractAlias($table);
-
-            $first ??= sprintf("%s.id", $mainAlias ?? $mainTable);
-            $second ??= sprintf("%s.%s_id", $joinAlias ?? $joinTable, $mainTable);
+            [$mainTable, $mainAlias] = $extract($this->from->sql);
+            $first ??= ($mainAlias ?? $mainTable) . ".id";
+            $second ??= ($joinAlias ?? $joinTable) . "." . $mainTable . "_id";
         }
 
-        $op ??= "=";
-
-        $this->joins[] = sprintf("%s JOIN %s ON %s %s %s", $type, $table, $first, $op, $second);
-        return $this;
-    }
-
-    /**
-     * Adds a UNION or UNION ALL clause to the query.
-     *
-     * @param Closure $callback Callback that builds the union subquery.
-     * @param string  $type Additional UNION keyword like ALL.
-     * @return static
-     */
-    public function union(Closure $callback, string $type = ""): static
-    {
-        $query = new static($this->pdo);
-        $callback($query);
-
-        $this->unions[] = sprintf("UNION %s %s", $type, $query->compileSelect());
-        $this->unionBindings = array_merge($this->unionBindings, $query->getBindings());
+        $as = $joinAlias ? " AS $joinAlias" : "";
+        $quoteId = fn($identifier): string => implode(".", array_map([$this, "quote"], explode(".", (string) $identifier)));
+        $this->joins[] = "{$type} JOIN {$this->quote($table)}{$as} ON {$quoteId($first)} {$operator} {$quoteId(
+            $second
+        )}";
 
         return $this;
     }
 
-    /**
-     * Adds a WHERE condition to the query.
-     *
-     * @param string|Closure $column Column name or closure for grouped conditions.
-     * @param string|null    $op Operator (optional).
-     * @param mixed          $value Value to compare against (optional).
-     * @param string         $type Logical operator ("AND" or "OR").
-     * @return static
-     */
-    public function where(string|Closure $column, ?string $op = null, mixed $value = null, string $type = "AND"): static
+    public function whereRaw(string $sql, array $data = [], string $boolean = "AND"): static
     {
-        [$sql, $bindings] = $this->makeCondition($column, $op, $value, $type, "where");
-        $this->wheres[] = $sql;
-        $this->whereBindings = array_merge($this->whereBindings, $bindings);
+        $this->wheres->sql[] = "$boolean $sql";
+        $this->wheres->data = array_merge($this->wheres->data, $data);
         return $this;
     }
 
-    /**
-     * Adds an OR WHERE condition.
-     *
-     * @param string|Closure $column Column name or closure.
-     * @param string|null    $op Operator (optional).
-     * @param mixed          $value Value (optional).
-     * @return static
-     */
-    public function orWhere(string|Closure $column, ?string $op = null, mixed $value = null): static
+    public function orWhereRaw(string $sql, array $data = []): static
     {
-        return $this->where($column, $op, $value, "OR");
+        return $this->whereRaw($sql, $data, "OR");
     }
 
-    /**
-     * Adds GROUP BY clauses.
-     *
-     * @param string ...$columns Column names.
-     * @return static
-     */
-    public function group(string ...$columns): static
-    {
-        $this->group = array_merge($this->group, $columns);
-        return $this;
-    }
-
-    /**
-     * Adds a HAVING condition.
-     *
-     * @param string|Closure $column Column name or closure for grouped conditions.
-     * @param string|null    $op Operator.
-     * @param mixed          $value Value.
-     * @param string         $type Logical operator.
-     * @return static
-     */
-    public function having(
-        string|Closure $column,
-        ?string $op = null,
+    public function where(
+        callable|string $column,
+        ?string $operator = null,
         mixed $value = null,
-        string $type = "AND"
+        string $boolean = "AND"
     ): static {
-        [$sql, $bindings] = $this->makeCondition($column, $op, $value, $type, "having");
-        $this->havings[] = $sql;
-        $this->havingBindings = array_merge($this->havingBindings, $bindings);
+        if (!empty(($compiled = $this->compileConditional("wheres", $column, $operator, $value, $boolean)))) {
+            $this->wheres->sql[] = $compiled[0];
+            $this->wheres->data = array_merge($this->wheres->data, $compiled[1]);
+        }
+
         return $this;
     }
 
-    /**
-     * Adds an OR HAVING condition.
-     *
-     * @param string|Closure $column Column name or closure.
-     * @param string|null    $op Operator.
-     * @param mixed          $value Value.
-     * @return static
-     */
-    public function orHaving(string|Closure $column, ?string $op = null, mixed $value = null): static
+    public function orWhere(callable|string|self $column, ?string $operator = null, mixed $value = null): static
     {
-        return $this->having($column, $op, $value, "OR");
+        return $this->where($column, $operator, $value, "OR");
     }
 
-    /**
-     * Adds ORDER BY clause.
-     *
-     * @param string $column Column name.
-     * @param string $direction Sort direction ("ASC" or "DESC").
-     * @return static
-     */
-    public function order(string $column, string $direction = "ASC"): static
+    public function groupBy(string|array ...$columns): static
     {
-        $this->orderBy[] = sprintf("%s %s", $column, $direction);
+        $this->groupBy = array_merge($this->groupBy, is_array($columns[0]) ? $columns[0] : $columns);
         return $this;
     }
 
-    /**
-     * Adds LIMIT and OFFSET clauses.
-     *
-     * @param int      $limit Max number of rows.
-     * @param int|null $offset Number of rows to skip.
-     * @return static
-     */
-    public function limit(int $limit, ?int $offset = null): static
+    public function havingRaw(string $sql, array $data = [], string $boolean = "AND"): static
+    {
+        $this->havings->sql[] = "$boolean $sql";
+        $this->havings->data = array_merge($this->havings->data, $data);
+        return $this;
+    }
+
+    public function orHavingRaw(string $sql, array $data = []): static
+    {
+        return $this->havingRaw($sql, $data, "OR");
+    }
+
+    public function having(
+        callable|string $column,
+        ?string $operator = null,
+        mixed $value = null,
+        string $boolean = "AND"
+    ): static {
+        if (!empty(($compiled = $this->compileConditional("havings", $column, $operator, $value, $boolean)))) {
+            $this->havings->sql[] = $compiled[0];
+            $this->havings->data = array_merge($this->havings->data, $compiled[1]);
+        }
+
+        return $this;
+    }
+
+    public function orHaving(callable|string|self $column, ?string $operator = null, mixed $value = null): static
+    {
+        return $this->having($column, $operator, $value, "OR");
+    }
+
+    public function orderBy(string|array $column, string $direction = "ASC"): static
+    {
+        if (is_array($column)) {
+            $clauses = [];
+            foreach ($column as $col => $dir) {
+                $clauses[] = $this->quote($col) . " " . strtoupper((string) $dir);
+            }
+
+            $this->orderBy = implode(", ", $clauses);
+        } else {
+            $this->orderBy = $this->quote($column) . " " . strtoupper($direction);
+        }
+
+        return $this;
+    }
+
+    public function limit(int $limit): static
     {
         $this->limit = $limit;
+        return $this;
+    }
+
+    public function offset(int $offset): static
+    {
         $this->offset = $offset;
+        return $this;
+    }
+
+    public function union(callable $callback, string $type = ""): static
+    {
+        $type = strtoupper(trim($type));
+        if (!in_array($type, ["", "ALL", "DISTINCT"], true)) {
+            throw new InvalidArgumentException("Invalid UNION type: $type");
+        }
+
+        $callback($query = new static($this->pdo));
+        [$sql, $data] = $query->compileSelectArray();
+        $this->unions->sql[] = "UNION {$type} ($sql)";
+        $this->unions->data = array_merge($this->unions->data, $data);
 
         return $this;
     }
 
-    /**
-     * Executes a SELECT query and returns all rows.
-     *
-     * @return iterable
-     */
     public function get(): iterable
     {
-        $sql = $this->compileSelect();
-
+        [$sql, $data] = $this->compileSelectArray();
         $stmt = $this->pdo->prepare($sql);
-        $this->bindValues($stmt, $this->getBindings());
-        $stmt->execute();
 
+        foreach (array_values($data) as $idx => $value) {
+            $stmt->bindValue(
+                $idx + 1,
+                $value,
+                match (true) {
+                    is_int($value) => PDO::PARAM_INT,
+                    is_bool($value) => PDO::PARAM_BOOL,
+                    is_null($value) => PDO::PARAM_NULL,
+                    default => PDO::PARAM_STR,
+                }
+            );
+        }
+
+        $stmt->execute();
         return $stmt->getIterator();
     }
 
-    /**
-     * Lazily yields transformed rows from the SELECT result.
-     *
-     * @param callable $fn Transformation function, called for each row.
-     *                     If callable expects multiple arguments, they are passed from the row by key.
-     *                     Ensure keys in SELECT match parameter names.
-     * @return iterable<mixed> Generator yielding transformed results.
-     */
-    public function morph(callable $fn, bool $spread = false): iterable
+    public function first(): ?object
     {
+        $this->limit(1);
         foreach ($this->get() as $row) {
-            $params = iterator_to_array($row);
-            yield $spread ? $fn(...$params) : $fn($params);
-        }
-    }
-
-    /**
-     * Executes a SELECT query and returns the first row.
-     *
-     * @return array|null Single result row or null.
-     */
-    public function first(): array
-    {
-        $this->limit = 1;
-        $rows = iterator_to_array($this->get());
-        return $rows[0] ?? [];
-    }
-
-    /**
-     * Executes an INSERT query.
-     *
-     * @param array $data Key-value pairs of column => value.
-     * @return int|null Last inserted ID or null if none.
-     */
-    public function insert(array $data): ?int
-    {
-        assert(!empty($data));
-        assert(!$this->subquery);
-        assert(!empty($this->from));
-
-        $columns = implode(", ", array_keys($data));
-        $placeholders = implode(", ", array_fill(0, count($data), "?"));
-        $sql = sprintf("INSERT INTO %s (%s) VALUES (%s)", $this->from, $columns, $placeholders);
-
-        $stmt = $this->pdo->prepare($sql);
-        $this->bindValues($stmt, $data);
-        $stmt->execute();
-
-        return $this->pdo->lastInsertId() ? (int) $this->pdo->lastInsertId() : null;
-    }
-
-    /**
-     * Executes an UPDATE query.
-     *
-     * @param array $data Key-value pairs of column => value.
-     * @return int Number of affected rows.
-     */
-    public function update(array $data): int
-    {
-        assert(!empty($data));
-        assert(!$this->subquery);
-        assert(!empty($this->from));
-
-        $setParts = [];
-        $bindings = [];
-
-        foreach ($data as $column => $value) {
-            $setParts[] = "$column = ?";
-            $bindings[] = $value;
+            return (object) $row;
         }
 
-        $sql = sprintf("UPDATE %s SET %s", $this->from, implode(", ", $setParts));
-        if ($where = $this->compileWhere()) {
-            $sql .= sprintf(" WHERE %s", $where);
-        }
-
-        $bindings = array_merge($bindings, $this->getBindings());
-
-        $stmt = $this->pdo->prepare($sql);
-        $this->bindValues($stmt, $bindings);
-        $stmt->execute();
-
-        return $stmt->rowCount();
+        return null;
     }
 
-    /**
-     * Executes a DELETE query.
-     *
-     * @return int Number of affected rows.
-     */
-    public function delete(): int
+    protected function compileSelectArray(): array
     {
-        assert(!$this->subquery);
-        assert(!empty($this->from));
+        $columns = "*";
+        if (!empty($this->columns)) {
+            $columns = array_map(
+                fn($alias, $col): string => $alias === $col
+                    ? $this->quote($col)
+                    : "{$this->quote($col)} AS {$this->quote($alias)}",
+                array_keys($this->columns),
+                $this->columns
+            );
 
-        $sql = sprintf("DELETE FROM %s", $this->from);
-        if ($where = $this->compileWhere()) {
-            $sql .= sprintf(" WHERE %s", $where);
+            $columns = implode(", ", $columns);
         }
 
-        $stmt = $this->pdo->prepare($sql);
-        $this->bindValues($stmt, $this->getBindings());
-        $stmt->execute();
-
-        return $stmt->rowCount();
-    }
-
-    /**
-     * Compiles the SQL SELECT statement as a string.
-     *
-     * @return string SQL query.
-     * @internal
-     */
-    public function compileSelect(): string
-    {
-        assert(!empty($this->from));
-
-        $sql = sprintf("SELECT %s FROM %s", implode(", ", $this->columns ?: ["*"]), $this->from);
+        $sql = ($this->distinct ? "SELECT DISTINCT" : "SELECT") . " $columns FROM {$this->from->sql}";
 
         if (!empty($this->joins)) {
             $sql .= " " . implode(" ", $this->joins);
         }
 
-        if ($where = $this->compileWhere()) {
-            $sql .= sprintf(" WHERE %s", $where);
+        if ($where = preg_replace("/^\s*(AND|OR)\s*/", "", implode(" ", $this->wheres->sql))) {
+            $sql .= " WHERE $where";
         }
 
-        if (!empty($this->group)) {
-            $sql .= sprintf(" GROUP BY %s", implode(", ", $this->group));
-
-            if ($having = $this->compileHaving()) {
-                $sql .= sprintf(" HAVING %s", $having);
-            }
+        if (!empty($this->groupBy)) {
+            $grouped = array_map(fn($col): string => $this->quote($col), $this->groupBy);
+            $sql .= " GROUP BY " . implode(", ", $grouped);
         }
 
-        if (!empty($this->orderBy)) {
-            $sql .= sprintf(" ORDER BY %s", implode(", ", $this->orderBy));
+        if ($having = preg_replace("/^\s*(AND|OR)\s*/", "", implode(" ", $this->havings->sql))) {
+            $sql .= " HAVING $having";
+        }
+
+        if ($this->orderBy) {
+            $sql .= " ORDER BY $this->orderBy";
         }
 
         if ($this->limit !== null) {
-            $sql .= sprintf(" LIMIT %s", $this->limit);
+            $sql .= " LIMIT $this->limit";
             if ($this->offset !== null) {
-                $sql .= sprintf(" OFFSET %s", $this->offset);
+                $sql .= " OFFSET $this->offset";
             }
         }
 
-        if (!empty($this->unions)) {
-            $sql .= " " . implode(" ", $this->unions);
+        if (!empty($this->unions->sql)) {
+            $sql = "($sql) " . implode(" ", $this->unions->sql);
         }
 
-        return $sql;
+        return [$sql, array_merge($this->from->data, $this->wheres->data, $this->havings->data, $this->unions->data)];
     }
 
-    /**
-     * Compiles the WHERE clause.
-     *
-     * @return string SQL WHERE clause (no "WHERE" keyword).
-     * @internal
-     */
-    public function compileWhere(): string
-    {
-        if (empty($this->wheres)) {
-            return "";
-        }
-
-        return $this->stripLeadingBoolean(implode(" ", $this->wheres));
-    }
-
-    /**
-     * Compiles the HAVING clause.
-     *
-     * @return string SQL HAVING clause (no "HAVING" keyword).
-     * @internal
-     */
-    public function compileHaving(): string
-    {
-        if (empty($this->havings)) {
-            return "";
-        }
-
-        return $this->stripLeadingBoolean(implode(" ", $this->havings));
-    }
-
-    /**
-     * Returns all bound parameters across where, having, and unions.
-     *
-     * @return array All query bindings.
-     * @internal
-     */
-    public function getBindings(): array
-    {
-        return array_merge($this->whereBindings, $this->havingBindings, $this->unionBindings);
-    }
-
-    /**
-     * Parses a table string and returns base name and alias (if present).
-     *
-     * @param string $str Table declaration.
-     * @return array Array with [table, alias|null].
-     * @internal
-     */
-    protected function extractAlias(string $str): array
-    {
-        $str = trim($str);
-        $parts = explode(" ", $str);
-
-        if (count($parts) === 3 && strtolower($parts[1]) === "as") {
-            return [$parts[0], $parts[2]];
-        }
-
-        if (count($parts) === 2) {
-            return $parts;
-        }
-
-        return [$str, null];
-    }
-
-    /**
-     * Builds a condition string and binding values.
-     *
-     * @param string|Closure $column Column or nested condition.
-     * @param string|null    $op Operator.
-     * @param mixed          $value Value to bind.
-     * @param string         $type Logical operator.
-     * @param string         $clause Clause type ("where" or "having").
-     * @return array [string SQL, array bindings]
-     * @internal
-     */
-    protected function makeCondition(
-        string|Closure $column,
-        ?string $op = null,
+    protected function compileConditional(
+        string $typeParam,
+        callable|string $column,
+        ?string $operator = null,
         mixed $value = null,
-        string $type = "AND",
-        string $clause = "where"
+        string $boolean = "AND"
     ): array {
-        if ($column instanceof Closure) {
-            $query = new static($this->pdo);
-            $column($query);
-            $sql = $clause === "where" ? $query->compileWhere() : $query->compileHaving();
-
-            if (empty(trim($sql))) {
-                return [sprintf("%s (%s)", $type, "1=1"), []];
-            }
-
-            return [sprintf("%s (%s)", $type, $sql), $query->getBindings()];
+        if (is_callable($column)) {
+            $column($sub = new self($this->pdo));
+            return ($sql = preg_replace("/^\s*(AND|OR)\s*/", "", implode(" ", $this->{$typeParam}->sql)))
+                ? ["$boolean ($sql)", $sub->{$typeParam}->data]
+                : [];
         }
 
-        if (is_string($op) && str_contains(strtolower($op), "null")) {
-            return [sprintf("%s %s %s", $type, $column, $op), []];
+        $operator = strtoupper($operator ?? (is_array($value) ? "IN" : "="));
+
+        if (is_callable($value)) {
+            $value($sub = new self($this->pdo));
+            [$sql, $data] = $sub->compileSelectArray();
+            return empty($sql) ? [] : ["$boolean {$this->quote($column)} $operator ($sql)", $data];
         }
 
-        if ($value instanceof Closure) {
-            $query = new static($this->pdo);
-            $value($query);
-            return [
-                sprintf("%s %s %s (%s)", $type, $column, $op ?? "IN", $query->compileSelect()),
-                $query->getBindings(),
-            ];
+        if (is_null($value)) {
+            return match ($operator) {
+                "=", "IS", "IS NULL" => ["$boolean {$this->quote($column)} IS NULL", []],
+                "!=", "<>", "IS NOT", "IS NOT NULL" => ["$boolean {$this->quote($column)} IS NOT NULL", []],
+                default => throw new InvalidArgumentException("Unsupported NULL comparison operator: $operator"),
+            };
         }
 
         if (is_array($value)) {
-            $placeholders = implode(", ", array_fill(0, count($value), "?"));
-            return [sprintf("%s %s %s (%s)", $type, $column, $op ?? "IN", $placeholders), $value];
-        }
-
-        if ($value === null && $op !== null) {
-            $value = $op;
-            $op = "=";
-        }
-
-        return [sprintf("%s %s %s ?", $type, $column, $op ?? "="), [$value]];
-    }
-
-    /**
-     * Binds values to a PDOStatement with appropriate types.
-     *
-     * @param PDOStatement $stmt Prepared statement.
-     * @param array        $bindings Values to bind.
-     * @return PDOStatement Bound statement.
-     * @internal
-     */
-    protected function bindValues(PDOStatement $stmt, array $bindings): void
-    {
-        foreach (array_values($bindings) as $index => $value) {
-            $type = match (true) {
-                is_int($value) => PDO::PARAM_INT,
-                is_bool($value) => PDO::PARAM_BOOL,
-                is_null($value) => PDO::PARAM_NULL,
-                default => PDO::PARAM_STR,
+            $placeholders = fn($list) => implode(", ", array_fill(0, count($list), "?"));
+            return match ($operator) {
+                "BETWEEN", "NOT BETWEEN" => [
+                    "$boolean {$this->quote($column)} $operator ? AND ?",
+                    array_values($value),
+                ],
+                "IN", "NOT IN" => [
+                    "$boolean {$this->quote($column)} $operator ({$placeholders($value)})",
+                    array_values($value),
+                ],
+                default => throw new InvalidArgumentException("Unsupported operator '$operator' for array value."),
             };
-
-            $stmt->bindValue($index + 1, $value, $type);
         }
+
+        if (is_string($value) && preg_match('/^[a-zA-Z_][a-zA-Z0-9_\.]*$/', $value)) {
+            return ["$boolean {$this->quote($column)} $operator {$this->quote($value)}", []];
+        }
+
+        return ["$boolean {$this->quote($column)} $operator ?", [is_bool($value) ? (int) $value : $value]];
     }
 
-    /**
-     * Removes leading AND/OR from condition strings.
-     *
-     * @param string $clause SQL clause.
-     * @return string Cleaned clause.
-     * @internal
-     */
-    protected function stripLeadingBoolean(string $clause): string
+    protected function quote(string $identifier): string
     {
-        $trimmed = ltrim($clause);
-        if (stripos($trimmed, "AND ") === 0) {
-            return substr($trimmed, 4); // length of 'AND '
-        }
+        return '"' . str_replace('"', '""', $identifier) . '"';
+    }
 
-        if (stripos($trimmed, "OR ") === 0) {
-            return substr($trimmed, 3); // length of 'OR '
-        }
-
-        return $trimmed;
+    public function __toString(): string
+    {
+        [$sql] = $this->compileSelectArray();
+        return (string) $sql;
     }
 }

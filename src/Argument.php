@@ -11,31 +11,23 @@ use function substr;
 
 class Argument
 {
-    /** @var string */
-    public protected(set) string $command = "";
+    public function __construct(public string $command = "", public array $arguments = []) {}
 
-    /** @var array<int|string, string|int|bool|null> */
-    public protected(set) array $arguments = [];
-
-    /**
-     * Parses the provided argument vector (or $_SERVER['argv']) and returns an instance.
-     *
-     * @param list<string>|null $argv Optional array of CLI arguments.
-     * @return static Parsed Argument instance.
-     */
-    public static function new(?array $argv = null): static
+    public static function create(?array $argv = null): static
     {
         $argv ??= $_SERVER["argv"] ?? [];
-        $that = new static;
         array_shift($argv);
 
         if (empty($argv)) {
-            return $that;
+            return new static();
         }
+
+        $command = "";
+        $arguments = [];
 
         while ($arg = array_shift($argv)) {
             if ($arg === "--") {
-                $that->arguments = array_merge($that->arguments, $argv);
+                $arguments = array_merge($arguments, $argv);
                 break;
             }
 
@@ -52,7 +44,7 @@ class Argument
                     $value = true;
                 }
 
-                $that->arguments[$key] = $value;
+                $arguments[$key] = $value;
                 continue;
             }
 
@@ -68,27 +60,20 @@ class Argument
                     }
                 }
 
-                $that->arguments[$key] = $value;
+                $arguments[$key] = $value;
                 continue;
             }
 
-            if (empty($that->command)) {
-                $that->command = $arg;
+            if (empty($command)) {
+                $command = $arg;
             } else {
-                $that->arguments[] = $arg;
+                $arguments[] = $arg;
             }
         }
 
-        return $that;
+        return new static($command, $arguments);
     }
 
-    /**
-     * Retrieves a specific argument or option value by key.
-     *
-     * @param int|string $key     The argument key or index.
-     * @param mixed      $default Value to return if not found.
-     * @return mixed              Retrieved value or default.
-     */
     public function get(int|string $key, mixed $default = null): mixed
     {
         return $this->arguments[$key] ?? $default;

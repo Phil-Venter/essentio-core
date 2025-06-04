@@ -4,180 +4,75 @@ namespace Essentio\Core;
 
 use Throwable;
 
-use function explode;
-use function file_get_contents;
-use function filter_var;
-use function function_exists;
-use function getallheaders;
-use function in_array;
-use function json_decode;
-use function json_encode;
-use function libxml_use_internal_errors;
-use function parse_str;
-use function parse_url;
-use function simplexml_load_string;
-use function str_contains;
-use function strtolower;
-use function strtoupper;
-use function trim;
-
 class Request
 {
-    /** @var string */
-    public protected(set) string $method { set => strtoupper($value); }
+    public array $errors = [];
 
-    /** @var string */
-    public protected(set) string $scheme { set => strtolower($value); }
+    public function __construct(
+        public string $method,
+        public int $port,
+        public string $path,
+        public array $query,
+        public array $headers,
+        public array $cookies,
+        public array $files,
+        public array $body,
+        public array $parameters
+    ) {}
 
-    /** @var ?string */
-    public protected(set) ?string $host = null;
-
-    /** @var ?int */
-    public protected(set) ?int $port = null;
-
-    /** @var string */
-    public protected(set) string $path;
-
-    /** @var array<string,mixed> */
-    public protected(set) array $parameters = [];
-
-    /** @var array<string,mixed> */
-    public protected(set) array $query;
-
-    /** @var array<string,mixed> */
-    public protected(set) array $headers;
-
-    /** @var array<string,mixed> */
-    public protected(set) array $cookies;
-
-    /** @var array<string,mixed> */
-    public protected(set) array $files;
-
-    /** @var string */
-    public protected(set) string $rawInput;
-
-    /** @var array<string,mixed> */
-    public protected(set) array $body;
-
-    /** @var array<string,string> */
-    public protected(set) array $errors = [];
-
-    /**
-     * Initializes and returns a new Request instance using PHP superglobals.
-     *
-     * @param array<string, mixed>|null $server
-     * @param array<string, mixed>|null $headers
-     * @param array<string, mixed>|null $get
-     * @param array<string, mixed>|null $post
-     * @param array<string, mixed>|null $cookie
-     * @param array<string, mixed>|null $files
-     * @param string|null               $body
-     * @return static
-     */
-    public static function new(
+    public static function create(
         ?array $server = null,
         ?array $headers = null,
-        ?array $get = null,
+        ?array $query = null,
         ?array $post = null,
-        ?array $cookie = null,
+        ?array $cookies = null,
         ?array $files = null,
         ?string $body = null
     ): static {
-        $server ??= $_SERVER ?? [];
+        $server ??= $_SERVER;
         $post ??= $_POST ?? [];
+        $query ??= $_GET;
+        $cookies ??= $_COOKIE;
+        $files ??= $_FILES;
+        $headers ??= function_exists("getallheaders") ? getallheaders() : [];
+        $rawInput = $body ?? file_get_contents("php://input");
 
-        $that = new static();
+        $method = strtoupper($post["_method"] ?? ($server["REQUEST_METHOD"] ?? "GET"));
+        $path = trim(parse_url($server["REQUEST_URI"] ?? "", PHP_URL_PATH) ?? "", "/");
 
-        $that->method = $post["_method"] ?? $server["REQUEST_METHOD"] ?? "GET";
-        $that->scheme = filter_var($server["HTTPS"] ?? "", FILTER_VALIDATE_BOOLEAN) ? "https" : "http";
-
-        $host = null;
-        $port = null;
-
-        if (isset($server["HTTP_HOST"])) {
-            if (str_contains($server["HTTP_HOST"], ":")) {
-                [$host, $port] = explode(":", $server["HTTP_HOST"], 2);
-                $port = (int) $port;
-            } else {
-                $host = $server["HTTP_HOST"];
-                $port = $that->scheme === "https" ? 443 : 80;
-            }
+        $hostHeader = $server["HTTP_HOST"] ?? null;
+        if ($hostHeader && str_contains((string) $hostHeader, ":")) {
+            [, $port] = explode(":", (string) $hostHeader, 2);
+            $port = (int) $port;
+        } else {
+            $port = (int) ($server["SERVER_PORT"] ?? (empty($server["HTTPS"]) ? 80 : 443));
         }
 
-        $that->host = $host ?? $server["SERVER_NAME"] ?? "localhost";
-        $that->port = (int) ($port ?? $server["SERVER_PORT"] ??  80);
-        $that->path = trim(parse_url($server["REQUEST_URI"] ?? "", PHP_URL_PATH) ?? "", "/");
-        $that->query = $get ?? $_GET ?? [];
-        $that->headers = $headers ?? (function_exists("getallheaders") ? (getallheaders() ?: []) : []);
-        $that->cookies = $cookie ?? $_COOKIE ?? [];
-        $that->files = $files ?? $_FILES ?? [];
-        $that->rawInput = $body ?? file_get_contents("php://input") ?: "";
+        $contentType = explode(";", $headers["Content-Type"] ?? "", 2)[0];
 
-        $mimeType = explode(";", $that->headers["Content-Type"] ?? "", 2)[0] ?? "";
-
-        $that->body = match ($mimeType) {
-            "application/x-www-form-urlencoded" => (function (string $input): array {
-                parse_str($input, $result);
-                return $result;
-            })($that->rawInput),
-            "application/json" => json_decode($that->rawInput, true),
-            "application/xml", "text/xml" => (function (string $input): array {
-                libxml_use_internal_errors(true);
-                $xml = simplexml_load_string($input);
-                return $xml ? json_decode(json_encode($xml), true) : [];
-            })($that->rawInput),
+        $parsedBody = match ($contentType) {
+            "application/json" => json_decode($rawInput, true) ?? [],
+            "application/xml", "text/xml" => ($xml = simplexml_load_string($rawInput))
+                ? json_decode(json_encode($xml), true)
+                : [],
             default => $post,
         };
 
-        return $that;
+        return new static($method, $port, $path, $query, $headers, $cookies, $files, $parsedBody, []);
     }
 
-    /**
-     * Sets custom parameters for the request.
-     *
-     * @param array<string, mixed> $parameters
-     * @return static
-     */
-    public function setParameters(array $parameters): static
-    {
-        $this->parameters = $parameters;
-        return $this;
-    }
-
-    /**
-     * Retrieve a value from the request parameters.
-     *
-     * @param string $field
-     * @param mixed  $default
-     * @return mixed
-     */
     public function get(string $field, mixed $default = null): mixed
     {
-        return $this->parameters[$field] ?? $this->query[$field] ?? $default;
+        return $this->parameters[$field] ?? ($this->query[$field] ?? $default);
     }
 
-    /**
-     * Extracts a specific parameter from the incoming request data.
-     *
-     * @param string $field
-     * @param mixed  $default
-     * @return mixed
-     */
     public function input(string $field, mixed $default = null): mixed
     {
-        if (in_array($this->method, ["GET", "HEAD", "OPTIONS", "TRACE"])) {
-            return $this->get($field, $default);
-        }
-
-        return $this->body[$field] ?? $this->parameters[$field] ?? $default;
+        return in_array($this->method, ["GET", "HEAD", "OPTIONS", "TRACE"], true)
+            ? $this->get($field, $default)
+            : $this->body[$field] ?? ($this->parameters[$field] ?? $default);
     }
 
-    /**
-     * Sanitizes and validates request input using field-specific callables.
-     *
-     * @param array<string, array<callable>|callable> $rules
-     * @return array<string, mixed>|false
-     */
     public function sanitize(array $rules): array|false
     {
         $sanitized = [];
@@ -186,12 +81,8 @@ class Request
             $value = $this->input($field);
 
             try {
-                if (is_array($chain)) {
-                    foreach ($chain as $fn) {
-                        $value = $fn($value);
-                    }
-                } else {
-                     $value = $chain($value);
+                foreach ((array) $chain as $fn) {
+                    $value = $fn($value);
                 }
 
                 $sanitized[$field] = $value;

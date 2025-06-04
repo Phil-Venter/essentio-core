@@ -3,120 +3,57 @@
 namespace Essentio\Core;
 
 use Stringable;
-use Throwable;
-
-use function array_merge;
-use function flush;
-use function function_exists;
-use function header;
-use function headers_sent;
-use function http_response_code;
-use function is_array;
-use function session_write_close;
-use function sprintf;
 
 class Response
 {
-    /** @var int */
-    public protected(set) int $status = 200;
+    public function __construct(
+        public int $status = 200,
+        public array $headers = [],
+        public bool|float|int|string|Stringable|null $body = null
+    ) {}
 
-    /** @var array<string, mixed> */
-    public protected(set) array $headers = [];
-
-    /** @var bool|float|int|string|Stringable|null */
-    public protected(set) bool|float|int|string|Stringable|null $body = null;
-
-    /**
-     * Returns a new Response instance with the specified HTTP status code.
-     *
-     * @param int $status
-     * @return static
-     */
-    public function withStatus(int $status): static
+    public function setStatus(int $status): static
     {
-        $that = clone $this;
-        $that->status = $status;
-        return $that;
+        $this->status = $status;
+        return $this;
     }
 
-    /**
-     * Returns a new Response instance with additional headers merged into the existing headers.
-     *
-     * @param array<string, mixed> $headers
-     * @return static
-     */
-    public function addHeaders(array $headers): static
+    public function appendHeaders(array $headers): static
     {
-        $that = clone $this;
-        $that->headers = array_merge($that->headers, $headers);
-        return $that;
+        $this->headers = array_merge($this->headers, $headers);
+        return $this;
     }
 
-    /**
-     * Returns a new Response instance with the headers replaced by the provided array.
-     *
-     * @param array<string, mixed> $headers
-     * @return static
-     */
-    public function withHeaders(array $headers): static
+    public function setHeaders(array $headers): static
     {
-        $that = clone $this;
-        $that->headers = $headers;
-        return $that;
+        $this->headers = $headers;
+        return $this;
     }
 
-    /**
-     * Returns a new Response instance with the specified body.
-     *
-     * @param bool|float|int|string|Stringable|null $body
-     * @return static
-     */
-    public function withBody(bool|float|int|string|Stringable|null $body): static
+    public function setBody(bool|float|int|string|Stringable|null $body): static
     {
-        $that = clone $this;
-        $that->body = $body;
-        return $that;
+        $this->body = $body;
+        return $this;
     }
 
-    /**
-     * Sends the HTTP response to the client.
-     *
-     * @param bool $detachResponse
-     * @return bool
-     */
-    public function send(bool $detachResponse = false): bool
+    public function send(): void
     {
         if (headers_sent()) {
-            return false;
+            return;
         }
 
-        try {
-            http_response_code($this->status);
+        http_response_code($this->status);
 
-            foreach ($this->headers as $key => $value) {
-                if (is_array($value)) {
-                    foreach ($value as $i => $v) {
-                        header(sprintf("%s: %s", $key, $v), $i === 0);
-                    }
-                } else {
-                    header(sprintf("%s: %s", $key, $value), true);
+        foreach ($this->headers as $key => $value) {
+            if (is_array($value)) {
+                foreach ($value as $i => $v) {
+                    header("{$key}: {$v}", $i === 0);
                 }
+            } else {
+                header("{$key}: {$value}", true);
             }
-
-            echo (string) $this->body;
-
-            if ($detachResponse) {
-                session_write_close();
-                if (function_exists("fastcgi_finish_request")) {
-                    return fastcgi_finish_request();
-                } else {
-                    flush();
-                }
-            }
-
-            return true;
-        } catch (Throwable) {
-            return false;
         }
+
+        echo (string) $this->body;
     }
 }
