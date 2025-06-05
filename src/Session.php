@@ -22,9 +22,9 @@ class Session
         return new static();
     }
 
-    public function set(string $key, mixed $value): void
+    public function set(string $key, mixed $value): mixed
     {
-        $_SESSION[$key] = $value;
+        return $_SESSION[$key] = $value;
     }
 
     public function get(string $key): mixed
@@ -32,22 +32,22 @@ class Session
         return $_SESSION[$key] ?? null;
     }
 
-    public function set_flash(string $key, mixed $value): void
+    public function setFlash(string $key, mixed $value): mixed
     {
-        $_SESSION[static::FLASH_NEW][$key] = $value;
+        return $_SESSION[static::FLASH_NEW][$key] = $value;
     }
 
-    public function get_flash(string $key): mixed
+    public function getFlash(string $key): mixed
     {
         return $_SESSION[static::FLASH_OLD][$key] ?? null;
     }
 
-    public function get_csrf(): string
+    public function getCsrf(): string
     {
         return $_SESSION[static::CSRF_KEY] ??= bin2hex(random_bytes(32));
     }
 
-    public function verify_csrf(string $csrf): bool
+    public function verifyCsrf(string $csrf): bool
     {
         if ($valid = hash_equals($_SESSION[static::CSRF_KEY] ?? "", $csrf)) {
             $_SESSION[static::CSRF_KEY] = bin2hex(random_bytes(32));

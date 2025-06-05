@@ -19,7 +19,10 @@ class Application
         $env = static::$container->resolve(Environment::class);
         $env->load(static::fromBase(".env"));
 
-        static::$container->once(Jwt::class, fn(?string $secret = null): Jwt => new Jwt($secret ?? $env->get("JWT_SECRET", "Essentio")));
+        static::$container->once(
+            Jwt::class,
+            fn(?string $secret = null): Jwt => new Jwt($secret ?? $env->get("JWT_SECRET", "Essentio"))
+        );
     }
 
     public static function cli(string $basePath): void
@@ -573,9 +576,9 @@ class Session
         return new static();
     }
 
-    public function set(string $key, mixed $value): void
+    public function set(string $key, mixed $value): mixed
     {
-        $_SESSION[$key] = $value;
+        return $_SESSION[$key] = $value;
     }
 
     public function get(string $key): mixed
@@ -583,22 +586,22 @@ class Session
         return $_SESSION[$key] ?? null;
     }
 
-    public function set_flash(string $key, mixed $value): void
+    public function setFlash(string $key, mixed $value): mixed
     {
-        $_SESSION[static::FLASH_NEW][$key] = $value;
+        return $_SESSION[static::FLASH_NEW][$key] = $value;
     }
 
-    public function get_flash(string $key): mixed
+    public function getFlash(string $key): mixed
     {
         return $_SESSION[static::FLASH_OLD][$key] ?? null;
     }
 
-    public function get_csrf(): string
+    public function getCsrf(): string
     {
         return $_SESSION[static::CSRF_KEY] ??= bin2hex(random_bytes(32));
     }
 
-    public function verify_csrf(string $csrf): bool
+    public function verifyCsrf(string $csrf): bool
     {
         if ($valid = hash_equals($_SESSION[static::CSRF_KEY] ?? "", $csrf)) {
             $_SESSION[static::CSRF_KEY] = bin2hex(random_bytes(32));
@@ -1879,24 +1882,35 @@ class Validate
  * @param class-string<T> $abstract
  * @return T
  */
-function app(string $abstract = ''): object
+function app(string $abstract): object
 {
-    return func_num_args() ? Application::$container : Application::$container->resolve($abstract);
+    return Application::$container->resolve($abstract);
 }
 
+/**
+ * @template T
+ * @param class-string<T> $abstract
+ * @param array<string,mixed>|list<mixed> $dependencies
+ * @return T
+ */
 function map(string $abstract, array $dependencies = []): object
 {
-    return app()->resolve($abstract, $dependencies);
+    return Application::$container->resolve($abstract, $dependencies);
 }
 
 function bind(string $abstract, callable|string|null $concrete = null): void
 {
-    app()->bind($abstract, $concrete);
+    Application::$container->bind($abstract, $concrete);
 }
 
 function once(string $abstract, callable|string|null $concrete = null): void
 {
-    app()->once($abstract, $concrete);
+    Application::$container->once($abstract, $concrete);
+}
+
+function base(string $path): string
+{
+    return Application::fromBase($path);
 }
 
 function env(string $key, mixed $default = null): mixed
@@ -1933,6 +1947,26 @@ function input(string $field, mixed $default = null): mixed
 function sanitize(array $rules): array|false
 {
     return app(Request::class)->sanitize($rules);
+}
+
+function session(string $key, mixed $value = null): mixed
+{
+    return func_num_args() === 1 ? app(Session::class)->get($key) : app(Session::class)->set($key, $value);
+}
+
+function flash(string $key, mixed $value = null): mixed
+{
+    return func_num_args() === 1 ? app(Session::class)->getFlash($key) : app(Session::class)->setFlash($key, $value);
+}
+
+function csrf(string $csrf = ''): string|bool
+{
+    return func_num_args() ? app(Session::class)->verifyCsrf($csrf) : app(Session::class)->getCsrf();
+}
+
+function jwt(array|string $payload): array|string
+{
+    return is_string($payload) ? app(Jwt::class)->decode($payload) : app(Jwt::class)->encode($payload);
 }
 
 function middleware(callable $middleware): void
@@ -1997,7 +2031,7 @@ function text(string $text, int $status = 200): Response
 {
     return app(Response::class)
         ->setStatus($status)
-        ->appendHeaders(["Content-Type" => "text/plain"])
+        ->addHeaders(["Content-Type" => "text/plain"])
         ->setBody($text);
 }
 
@@ -2018,12 +2052,12 @@ function mailer(?string $url = null, ?string $user = null, ?string $pass = null,
     $pass ??= env("MAILER_PASS");
     $port ??= env("MAILER_PORT", 587);
 
-    return app(Mailer::class, compact("url", "user", "pass", "port"));
+    return map(Mailer::class, compact("url", "user", "pass", "port"));
 }
 
 function query(?PDO $pdo): Query
 {
-    return app(Query::class, [$pdo ?? app(PDO::class)]);
+    return map(Query::class, [$pdo ?? app(PDO::class)]);
 }
 
 function validate(): Validate

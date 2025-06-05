@@ -24,7 +24,10 @@ class Application
         $env = static::$container->resolve(Environment::class);
         $env->load(static::fromBase(".env"));
 
-        static::$container->once(Jwt::class, fn(?string $secret = null): \Essentio\Core\Jwt => new Jwt($secret ?? $env->get("JWT_SECRET", "Essentio")));
+        static::$container->once(
+            Jwt::class,
+            fn(?string $secret = null): Jwt => new Jwt($secret ?? $env->get("JWT_SECRET", "Essentio"))
+        );
     }
 
     public static function cli(string $basePath): void

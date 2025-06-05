@@ -17,12 +17,12 @@ function mailer(?string $url = null, ?string $user = null, ?string $pass = null,
     $pass ??= env("MAILER_PASS");
     $port ??= env("MAILER_PORT", 587);
 
-    return app(Mailer::class, compact("url", "user", "pass", "port"));
+    return map(Mailer::class, compact("url", "user", "pass", "port"));
 }
 
 function query(?PDO $pdo): Query
 {
-    return app(Query::class, [$pdo ?? app(PDO::class)]);
+    return map(Query::class, [$pdo ?? app(PDO::class)]);
 }
 
 function validate(): Validate
