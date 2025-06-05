@@ -161,15 +161,12 @@ class Cast
             }
 
             $value = $this->normalizeNumber($input, $message);
-            $intVal = filter_var($value, FILTER_VALIDATE_INT);
 
-            if ($intVal === false) {
+            if (($intVal = filter_var($value, FILTER_VALIDATE_INT)) !== false) {
                 return $intVal;
             }
 
-            $floatVal = filter_var($value, FILTER_VALIDATE_FLOAT);
-
-            if ($floatVal === false) {
+            if (($floatVal = filter_var($value, FILTER_VALIDATE_FLOAT)) !== false) {
                 return $floatVal;
             }
 

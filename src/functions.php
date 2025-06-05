@@ -108,14 +108,14 @@ function redirect(string $uri, int $status = 302): Response
 {
     return app(Response::class)
         ->setStatus($status)
-        ->appendHeaders(["Location" => $uri]);
+        ->addHeaders(["Location" => $uri]);
 }
 
 function html(string $html, int $status = 200): Response
 {
     return app(Response::class)
         ->setStatus($status)
-        ->appendHeaders(["Content-Type" => "text/html"])
+        ->addHeaders(["Content-Type" => "text/html"])
         ->setBody($html);
 }
 
@@ -123,7 +123,7 @@ function json(mixed $data, int $status = 200): Response
 {
     return app(Response::class)
         ->setStatus($status)
-        ->appendHeaders(["Content-Type" => "application/json"])
+        ->addHeaders(["Content-Type" => "application/json"])
         ->setBody(json_encode($data));
 }
 

@@ -25,9 +25,9 @@ class Argument
         $command = "";
         $arguments = [];
 
-        while ($arg = array_shift($argv)) {
+        while (($arg = array_shift($argv)) !== null) {
             if ($arg === "--") {
-                $arguments = array_merge($arguments, $argv);
+                $arguments = array_merge($arguments, array_map(static::cast(...), $argv));
                 break;
             }
 
@@ -44,7 +44,7 @@ class Argument
                     $value = true;
                 }
 
-                $arguments[$key] = $value;
+                $arguments[$key] = static::cast($value);
                 continue;
             }
 
@@ -60,14 +60,14 @@ class Argument
                     }
                 }
 
-                $arguments[$key] = $value;
+                $arguments[$key] = static::cast($value);
                 continue;
             }
 
             if (empty($command)) {
                 $command = $arg;
             } else {
-                $arguments[] = $arg;
+                $arguments[] = static::cast($arg);
             }
         }
 
@@ -77,5 +77,25 @@ class Argument
     public function get(int|string $key, mixed $default = null): mixed
     {
         return $this->arguments[$key] ?? $default;
+    }
+
+    protected static function cast(mixed $value): mixed
+    {
+        if (!is_string($value)) {
+            return $value;
+        }
+
+        if (preg_match('/^(["\']).*\1$/', $value)) {
+            return substr($value, 1, -1);
+        }
+
+        $lower = strtolower($value);
+        return match (true) {
+            $lower === "true" => true,
+            $lower === "false" => false,
+            $lower === "null" => null,
+            is_numeric($value) => preg_match("/[e\.]/", $value) ? (float) $value : (int) $value,
+            default => $value,
+        };
     }
 }

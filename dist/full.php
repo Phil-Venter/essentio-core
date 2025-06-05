@@ -12,12 +12,14 @@ class Application
 
         static::$container->once(Environment::class);
         static::$container->once(Session::class, Session::create(...));
-        static::$container->once(Jwt::class, fn(?string $secret = null): Jwt => new Jwt($secret ?? "Essentio"));
-        static::$container->once(Request::class, [Request::class, "create"]);
+        static::$container->once(Request::class, Request::create(...));
         static::$container->once(Response::class);
         static::$container->once(Router::class);
 
-        static::$container->resolve(Environment::class)->load(static::fromBase(".env"));
+        $env = static::$container->resolve(Environment::class);
+        $env->load(static::fromBase(".env"));
+
+        static::$container->once(Jwt::class, fn(?string $secret = null): Jwt => new Jwt($secret ?? $env->get("JWT_SECRET", "Essentio")));
     }
 
     public static function cli(string $basePath): void
@@ -38,18 +40,16 @@ class Application
 
     public static function run(): void
     {
+        $request = static::$container->resolve(Request::class);
         $response = static::$container->resolve(Response::class);
 
         try {
-            static::$container
-                ->resolve(Router::class)
-                ->dispatch(static::$container->resolve(Request::class), $response)
-                ->send();
-        } catch (Throwable $throwable) {
-            $response
-                ->setStatus($throwable instanceof HttpException ? $throwable->getCode() : 500)
-                ->setBody($throwable instanceof HttpException ? $throwable->getMessage() : "Internal Server Error")
-                ->send();
+            static::$container->resolve(Router::class)->dispatch($request, $response)->send();
+        } catch (HttpException $e) {
+            $status = $e->getCode() ?: 500;
+            $response->setStatus($status)->setBody($e->getMessage())->send();
+        } catch (Throwable) {
+            $response->setStatus(500)->setBody("Internal Server Error")->send();
         }
     }
 }
@@ -74,9 +74,9 @@ class Argument
         $command = "";
         $arguments = [];
 
-        while ($arg = array_shift($argv)) {
+        while (($arg = array_shift($argv)) !== null) {
             if ($arg === "--") {
-                $arguments = array_merge($arguments, $argv);
+                $arguments = array_merge($arguments, array_map(static::cast(...), $argv));
                 break;
             }
 
@@ -93,7 +93,7 @@ class Argument
                     $value = true;
                 }
 
-                $arguments[$key] = $value;
+                $arguments[$key] = static::cast($value);
                 continue;
             }
 
@@ -109,14 +109,14 @@ class Argument
                     }
                 }
 
-                $arguments[$key] = $value;
+                $arguments[$key] = static::cast($value);
                 continue;
             }
 
             if (empty($command)) {
                 $command = $arg;
             } else {
-                $arguments[] = $arg;
+                $arguments[] = static::cast($arg);
             }
         }
 
@@ -126,6 +126,26 @@ class Argument
     public function get(int|string $key, mixed $default = null): mixed
     {
         return $this->arguments[$key] ?? $default;
+    }
+
+    protected static function cast(mixed $value): mixed
+    {
+        if (!is_string($value)) {
+            return $value;
+        }
+
+        if (preg_match('/^(["\']).*\1$/', $value)) {
+            return substr($value, 1, -1);
+        }
+
+        $lower = strtolower($value);
+        return match (true) {
+            $lower === "true" => true,
+            $lower === "false" => false,
+            $lower === "null" => null,
+            is_numeric($value) => preg_match("/[e\.]/", $value) ? (float) $value : (int) $value,
+            default => $value,
+        };
     }
 }
 
@@ -419,7 +439,7 @@ class Response
         return $this;
     }
 
-    public function appendHeaders(array $headers): static
+    public function addHeaders(array $headers): static
     {
         $this->headers = array_merge($this->headers, $headers);
         return $this;
@@ -580,7 +600,7 @@ class Session
 
     public function verify_csrf(string $csrf): bool
     {
-        if ($valid = hash_equals($_SESSION[static::CSRF_KEY], $csrf)) {
+        if ($valid = hash_equals($_SESSION[static::CSRF_KEY] ?? "", $csrf)) {
             $_SESSION[static::CSRF_KEY] = bin2hex(random_bytes(32));
         }
 
@@ -801,15 +821,12 @@ class Cast
             }
 
             $value = $this->normalizeNumber($input, $message);
-            $intVal = filter_var($value, FILTER_VALIDATE_INT);
 
-            if ($intVal === false) {
+            if (($intVal = filter_var($value, FILTER_VALIDATE_INT)) !== false) {
                 return $intVal;
             }
 
-            $floatVal = filter_var($value, FILTER_VALIDATE_FLOAT);
-
-            if ($floatVal === false) {
+            if (($floatVal = filter_var($value, FILTER_VALIDATE_FLOAT)) !== false) {
                 return $floatVal;
             }
 
@@ -1957,14 +1974,14 @@ function redirect(string $uri, int $status = 302): Response
 {
     return app(Response::class)
         ->setStatus($status)
-        ->appendHeaders(["Location" => $uri]);
+        ->addHeaders(["Location" => $uri]);
 }
 
 function html(string $html, int $status = 200): Response
 {
     return app(Response::class)
         ->setStatus($status)
-        ->appendHeaders(["Content-Type" => "text/html"])
+        ->addHeaders(["Content-Type" => "text/html"])
         ->setBody($html);
 }
 
@@ -1972,7 +1989,7 @@ function json(mixed $data, int $status = 200): Response
 {
     return app(Response::class)
         ->setStatus($status)
-        ->appendHeaders(["Content-Type" => "application/json"])
+        ->addHeaders(["Content-Type" => "application/json"])
         ->setBody(json_encode($data));
 }
 

@@ -17,12 +17,14 @@ class Application
 
         static::$container->once(Environment::class);
         static::$container->once(Session::class, Session::create(...));
-        static::$container->once(Jwt::class, fn(?string $secret = null): \Essentio\Core\Jwt => new Jwt($secret ?? "Essentio"));
-        static::$container->once(Request::class, [Request::class, "create"]);
+        static::$container->once(Request::class, Request::create(...));
         static::$container->once(Response::class);
         static::$container->once(Router::class);
 
-        static::$container->resolve(Environment::class)->load(static::fromBase(".env"));
+        $env = static::$container->resolve(Environment::class);
+        $env->load(static::fromBase(".env"));
+
+        static::$container->once(Jwt::class, fn(?string $secret = null): \Essentio\Core\Jwt => new Jwt($secret ?? $env->get("JWT_SECRET", "Essentio")));
     }
 
     public static function cli(string $basePath): void
@@ -43,18 +45,16 @@ class Application
 
     public static function run(): void
     {
+        $request = static::$container->resolve(Request::class);
         $response = static::$container->resolve(Response::class);
 
         try {
-            static::$container
-                ->resolve(Router::class)
-                ->dispatch(static::$container->resolve(Request::class), $response)
-                ->send();
-        } catch (Throwable $throwable) {
-            $response
-                ->setStatus($throwable instanceof HttpException ? $throwable->getCode() : 500)
-                ->setBody($throwable instanceof HttpException ? $throwable->getMessage() : "Internal Server Error")
-                ->send();
+            static::$container->resolve(Router::class)->dispatch($request, $response)->send();
+        } catch (HttpException $e) {
+            $status = $e->getCode() ?: 500;
+            $response->setStatus($status)->setBody($e->getMessage())->send();
+        } catch (Throwable) {
+            $response->setStatus(500)->setBody("Internal Server Error")->send();
         }
     }
 }

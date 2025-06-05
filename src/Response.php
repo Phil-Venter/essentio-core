@@ -18,7 +18,7 @@ class Response
         return $this;
     }
 
-    public function appendHeaders(array $headers): static
+    public function addHeaders(array $headers): static
     {
         $this->headers = array_merge($this->headers, $headers);
         return $this;

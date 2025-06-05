@@ -49,7 +49,7 @@ class Session
 
     public function verify_csrf(string $csrf): bool
     {
-        if ($valid = hash_equals($_SESSION[static::CSRF_KEY], $csrf)) {
+        if ($valid = hash_equals($_SESSION[static::CSRF_KEY] ?? "", $csrf)) {
             $_SESSION[static::CSRF_KEY] = bin2hex(random_bytes(32));
         }
 
