@@ -16,9 +16,9 @@ class Template
         $this->layout = new static($template);
     }
 
-    protected function yield(string $name, string $default = ""): string
+    protected function yield(string $name): ?string
     {
-        return $this->segments[$name] ?? $default;
+        return $this->segments[$name] ?? null;
     }
 
     protected function segment(string $name, ?string $value = null): void
@@ -48,15 +48,10 @@ class Template
 
         if ($this->layout !== null) {
             $this->segments["content"] = $content;
-            $this->layout->setSegments($this->segments);
-            return $this->layout->render($data);
+            $this->layout->segments = $this->segments;
+            return $this->layout->render();
         }
 
         return $content;
-    }
-
-    protected function setSegments(array $segments): void
-    {
-        $this->segments = $segments;
     }
 }

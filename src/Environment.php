@@ -42,8 +42,8 @@ class Environment
         return $this;
     }
 
-    public function get(string $key, mixed $default = null): mixed
+    public function get(string $key): mixed
     {
-        return $this->data[$key] ?? $default;
+        return $this->data[$key] ?? null;
     }
 }

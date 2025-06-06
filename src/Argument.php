@@ -74,9 +74,9 @@ class Argument
         return new static($command, $arguments);
     }
 
-    public function get(int|string $key, mixed $default = null): mixed
+    public function get(int|string $key): mixed
     {
-        return $this->arguments[$key] ?? $default;
+        return $this->arguments[$key] ?? null;
     }
 
     protected static function cast(mixed $value): mixed

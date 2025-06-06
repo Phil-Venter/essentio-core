@@ -61,16 +61,16 @@ class Request
         return new static($method, $port, $path, $query, $headers, $cookies, $files, $parsedBody, []);
     }
 
-    public function get(string $field, mixed $default = null): mixed
+    public function get(string $field): mixed
     {
-        return $this->parameters[$field] ?? ($this->query[$field] ?? $default);
+        return $this->parameters[$field] ?? ($this->query[$field] ?? null);
     }
 
-    public function input(string $field, mixed $default = null): mixed
+    public function input(string $field): mixed
     {
         return in_array($this->method, ["GET", "HEAD", "OPTIONS", "TRACE"], true)
-            ? $this->get($field, $default)
-            : $this->body[$field] ?? ($this->parameters[$field] ?? $default);
+            ? $this->get($field)
+            : $this->body[$field] ?? ($this->parameters[$field] ?? null);
     }
 
     public function sanitize(array $rules): array|false

@@ -126,9 +126,9 @@ class Argument
         return new static($command, $arguments);
     }
 
-    public function get(int|string $key, mixed $default = null): mixed
+    public function get(int|string $key): mixed
     {
-        return $this->arguments[$key] ?? $default;
+        return $this->arguments[$key] ?? null;
     }
 
     protected static function cast(mixed $value): mixed
@@ -249,9 +249,9 @@ class Environment
         return $this;
     }
 
-    public function get(string $key, mixed $default = null): mixed
+    public function get(string $key): mixed
     {
-        return $this->data[$key] ?? $default;
+        return $this->data[$key] ?? null;
     }
 }
 
@@ -393,16 +393,16 @@ class Request
         return new static($method, $port, $path, $query, $headers, $cookies, $files, $parsedBody, []);
     }
 
-    public function get(string $field, mixed $default = null): mixed
+    public function get(string $field): mixed
     {
-        return $this->parameters[$field] ?? ($this->query[$field] ?? $default);
+        return $this->parameters[$field] ?? ($this->query[$field] ?? null);
     }
 
-    public function input(string $field, mixed $default = null): mixed
+    public function input(string $field): mixed
     {
         return in_array($this->method, ["GET", "HEAD", "OPTIONS", "TRACE"], true)
-            ? $this->get($field, $default)
-            : $this->body[$field] ?? ($this->parameters[$field] ?? $default);
+            ? $this->get($field)
+            : $this->body[$field] ?? ($this->parameters[$field] ?? null);
     }
 
     public function sanitize(array $rules): array|false
@@ -626,9 +626,9 @@ class Template
         $this->layout = new static($template);
     }
 
-    protected function yield(string $name, string $default = ''): string
+    protected function yield(string $name): ?string
     {
-        return $this->segments[$name] ?? $default;
+        return $this->segments[$name] ?? null;
     }
 
     protected function segment(string $name, ?string $value = null): void
@@ -658,16 +658,11 @@ class Template
 
         if ($this->layout !== null) {
             $this->segments["content"] = $content;
-            $this->layout->setSegments($this->segments);
-            return $this->layout->render($data);
+            $this->layout->segments = $this->segments;
+            return $this->layout->render();
         }
 
         return $content;
-    }
-
-    protected function setSegments(array $segments): void
-    {
-        $this->segments = $segments;
     }
 }
 
@@ -1913,14 +1908,14 @@ function base(string $path): string
     return Application::fromBase($path);
 }
 
-function env(string $key, mixed $default = null): mixed
+function env(string $key): mixed
 {
-    return app(Environment::class)->get($key, $default);
+    return app(Environment::class)->get($key);
 }
 
-function arg(int|string $key, mixed $default = null): mixed
+function arg(int|string $key): mixed
 {
-    return app(Argument::class)->get($key, $default);
+    return app(Argument::class)->get($key);
 }
 
 function command(string $name, callable $handle): void
@@ -1934,14 +1929,14 @@ function command(string $name, callable $handle): void
     exit(is_int($result = $handle($argument)) ? $result : 0);
 }
 
-function request(string $key = '', mixed $default = null): mixed
+function request(string $key = ''): mixed
 {
-    return func_num_args() ? app(Request::class) : app(Request::class)->get($key, $default);
+    return func_num_args() ? app(Request::class) : app(Request::class)->get($key);
 }
 
-function input(string $field, mixed $default = null): mixed
+function input(string $field): mixed
 {
-    return app(Request::class)->input($field, $default);
+    return app(Request::class)->input($field);
 }
 
 function sanitize(array $rules): array|false
@@ -2038,6 +2033,13 @@ function text(string $text, int $status = 200): Response
 function view(string $template, array $data = [], int $status = 200): Response
 {
     return html(render($template, $data), $status);
+}
+
+function throw_if(bool $condition, Throwable|string $e): void
+{
+    if ($condition) {
+        throw $e instanceof Throwable ? $e : new Exception($e);
+    }
 }
 
 function cast(): Cast

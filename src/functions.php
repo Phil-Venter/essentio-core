@@ -46,14 +46,14 @@ function base(string $path): string
     return Application::fromBase($path);
 }
 
-function env(string $key, mixed $default = null): mixed
+function env(string $key): mixed
 {
-    return app(Environment::class)->get($key, $default);
+    return app(Environment::class)->get($key);
 }
 
-function arg(int|string $key, mixed $default = null): mixed
+function arg(int|string $key): mixed
 {
-    return app(Argument::class)->get($key, $default);
+    return app(Argument::class)->get($key);
 }
 
 function command(string $name, callable $handle): void
@@ -67,14 +67,14 @@ function command(string $name, callable $handle): void
     exit(is_int($result = $handle($argument)) ? $result : 0);
 }
 
-function request(string $key = "", mixed $default = null): mixed
+function request(string $key = ""): mixed
 {
-    return func_num_args() ? app(Request::class) : app(Request::class)->get($key, $default);
+    return func_num_args() ? app(Request::class) : app(Request::class)->get($key);
 }
 
-function input(string $field, mixed $default = null): mixed
+function input(string $field): mixed
 {
-    return app(Request::class)->input($field, $default);
+    return app(Request::class)->input($field);
 }
 
 function sanitize(array $rules): array|false
@@ -171,4 +171,11 @@ function text(string $text, int $status = 200): Response
 function view(string $template, array $data = [], int $status = 200): Response
 {
     return html(render($template, $data), $status);
+}
+
+function throw_if(bool $condition, Throwable|string $e): void
+{
+    if ($condition) {
+        throw $e instanceof Throwable ? $e : new Exception($e);
+    }
 }
