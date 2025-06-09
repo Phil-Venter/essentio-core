@@ -8,12 +8,6 @@ use Exception;
 
 class Validate
 {
-    /**
-     * Allows alphabetic characters only.
-     *
-     * @param string $message Error message to throw if validation fails.
-     * @return Closure
-     */
     public function alpha(string $message = ""): Closure
     {
         return function (?string $input) use ($message): ?string {
@@ -29,12 +23,6 @@ class Validate
         };
     }
 
-    /**
-     * Allows alphanumeric characters, underscores, and dashes.
-     *
-     * @param string $message Error message to throw if validation fails.
-     * @return Closure
-     */
     public function alphaDash(string $message = ""): Closure
     {
         return function (?string $input) use ($message): ?string {
@@ -50,12 +38,6 @@ class Validate
         };
     }
 
-    /**
-     * Allows letters and numbers only.
-     *
-     * @param string $message Error message to throw if validation fails.
-     * @return Closure
-     */
     public function alphaNum(string $message = ""): Closure
     {
         return function (?string $input) use ($message): ?string {
@@ -71,12 +53,6 @@ class Validate
         };
     }
 
-    /**
-     * Validates email address format.
-     *
-     * @param string $message Error message to throw if validation fails.
-     * @return Closure
-     */
     public function email(string $message = ""): Closure
     {
         return function (?string $input) use ($message): ?string {
@@ -92,13 +68,6 @@ class Validate
         };
     }
 
-    /**
-     * Ensures input ends with one of the given suffixes.
-     *
-     * @param array $suffixes List of valid suffixes.
-     * @param string $message Error message to throw if validation fails.
-     * @return Closure
-     */
     public function endsWith(array $suffixes, string $message = ""): Closure
     {
         return function (?string $input) use ($suffixes, $message): ?string {
@@ -116,12 +85,6 @@ class Validate
         };
     }
 
-    /**
-     * Validates input is entirely lowercase.
-     *
-     * @param string $message Error message to throw if validation fails.
-     * @return Closure
-     */
     public function lowercase(string $message = ""): Closure
     {
         return function (?string $input) use ($message): ?string {
@@ -137,12 +100,6 @@ class Validate
         };
     }
 
-    /**
-     * Validates input is entirely uppercase.
-     *
-     * @param string $message Error message to throw if validation fails.
-     * @return Closure
-     */
     public function uppercase(string $message = ""): Closure
     {
         return function (?string $input) use ($message): ?string {
@@ -158,13 +115,6 @@ class Validate
         };
     }
 
-    /**
-     * Enforces minimum character length.
-     *
-     * @param int $min Minimum allowed length.
-     * @param string $message Error message to throw if validation fails.
-     * @return Closure
-     */
     public function minLength(int $min, string $message = ""): Closure
     {
         return function (?string $input) use ($min, $message): ?string {
@@ -180,13 +130,6 @@ class Validate
         };
     }
 
-    /**
-     * Enforces maximum character length.
-     *
-     * @param int $max Maximum allowed length.
-     * @param string $message Error message to throw if validation fails.
-     * @return Closure
-     */
     public function maxLength(int $max, string $message = ""): Closure
     {
         return function (?string $input) use ($max, $message): ?string {
@@ -202,13 +145,6 @@ class Validate
         };
     }
 
-    /**
-     * Validates input against a regular expression pattern.
-     *
-     * @param string $pattern PCRE pattern to validate input.
-     * @param string $message Error message to throw if validation fails.
-     * @return Closure
-     */
     public function regex(string $pattern, string $message = ""): Closure
     {
         return function (?string $input) use ($pattern, $message): ?string {
@@ -224,14 +160,6 @@ class Validate
         };
     }
 
-    /**
-     * Ensures value is between two inclusive bounds.
-     *
-     * @param DateTimeInterface|float|int $min Lower bound.
-     * @param DateTimeInterface|float|int $max Upper bound.
-     * @param string $message Error message to throw if validation fails.
-     * @return Closure
-     */
     public function between(
         DateTimeInterface|float|int $min,
         DateTimeInterface|float|int $max,
@@ -259,13 +187,6 @@ class Validate
         };
     }
 
-    /**
-     * Ensures value is greater than given threshold.
-     *
-     * @param DateTimeInterface|float|int $min Minimum threshold (exclusive).
-     * @param string $message Error message to throw if validation fails.
-     * @return Closure
-     */
     public function gt(DateTimeInterface|float|int $min, string $message = ""): Closure
     {
         $min = $min instanceof DateTimeInterface ? $min->getTimestamp() : $min;
@@ -287,13 +208,6 @@ class Validate
         };
     }
 
-    /**
-     * Ensures value is greater than or equal to threshold.
-     *
-     * @param DateTimeInterface|float|int $min Minimum threshold (inclusive).
-     * @param string $message Error message to throw if validation fails.
-     * @return Closure
-     */
     public function gte(DateTimeInterface|float|int $min, string $message = ""): Closure
     {
         $min = $min instanceof DateTimeInterface ? $min->getTimestamp() : $min;
@@ -315,13 +229,6 @@ class Validate
         };
     }
 
-    /**
-     * Ensures value is less than given threshold.
-     *
-     * @param DateTimeInterface|float|int $max Maximum threshold (exclusive).
-     * @param string $message Error message to throw if validation fails.
-     * @return Closure
-     */
     public function lt(DateTimeInterface|float|int $max, string $message = ""): Closure
     {
         $max = $max instanceof DateTimeInterface ? $max->getTimestamp() : $max;
@@ -343,13 +250,6 @@ class Validate
         };
     }
 
-    /**
-     * Ensures value is less than or equal to threshold.
-     *
-     * @param DateTimeInterface|float|int $max Maximum threshold (inclusive).
-     * @param string $message Error message to throw if validation fails.
-     * @return Closure
-     */
     public function lte(DateTimeInterface|float|int $max, string $message = ""): Closure
     {
         $max = $max instanceof DateTimeInterface ? $max->getTimestamp() : $max;
@@ -371,12 +271,6 @@ class Validate
         };
     }
 
-    /**
-     * Ensures a value is not null or empty.
-     *
-     * @param string $message Error message to throw if validation fails.
-     * @return Closure
-     */
     public function required(string $message = ""): Closure
     {
         return function (mixed $input) use ($message): mixed {
@@ -388,14 +282,6 @@ class Validate
         };
     }
 
-    /**
-     * Validates membership in a given array.
-     *
-     * @param array $allowed Valid values.
-     * @param bool $strict Use strict type comparison.
-     * @param string $message Error message to throw if validation fails.
-     * @return Closure
-     */
     public function inArray(array $allowed, bool $strict = true, string $message = ""): Closure
     {
         return function (mixed $input) use ($allowed, $strict, $message): mixed {

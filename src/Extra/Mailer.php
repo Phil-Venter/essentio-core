@@ -2,6 +2,7 @@
 
 namespace Essentio\Core\Extra;
 
+use Essentio\Core\{Application, Environment};
 use RuntimeException;
 
 use function array_map;
@@ -22,130 +23,80 @@ use function uniqid;
 
 class Mailer
 {
-    /** @var string */
     protected string $url;
 
-    /** @var string */
-    public protected(set) string $from = "";
+    public string $from = "";
 
-    /** @var list<string> */
-    public protected(set) array $to = [];
+    public array $to = [];
 
-    /** @var string */
-    public protected(set) string $subject = "";
+    public string $subject = "";
 
-    /** @var string */
-    public protected(set) string $text = "";
+    public string $text = "";
 
-    /** @var string */
-    public protected(set) string $html = "";
+    public string $html = "";
 
-    /**
-     * Initializes a new Mailer instance.
-     *
-     * @param string $url  SMTP server hostname.
-     * @param string $user SMTP username.
-     * @param string $pass SMTP password.
-     * @param int    $port SMTP port (default 587).
-     */
-    public function __construct(
-        string $url,
-        protected string $user,
-        protected string $pass,
-        int $port = 587
-    ) {
+    public function __construct(string $url, protected string $user, protected string $pass, int $port = 587)
+    {
         $this->url = sprintf("smtp://%s:%s", $url, $port);
     }
 
-    /**
-     * Sets the sender address.
-     *
-     * @param string $email Sender address.
-     * @return static
-     */
-    public function withFrom(string $email): static
-    {
-        $that = clone $this;
-        $that->from = $email;
-        return $that;
+    public static function create(
+        ?string $url = null,
+        ?string $user = null,
+        ?string $pass = null,
+        ?int $port = null
+    ): static {
+        $env = Application::$container->resolve(Environment::class);
+
+        return new static(
+            $url ?? $env->get("MAILER_URL"),
+            $user ?? $env->get("MAILER_USER"),
+            $pass ?? $env->get("MAILER_PASS"),
+            $port ?? 587
+        );
     }
 
-    /**
-     * Adds a recipient address.
-     *
-     * @param string $email Recipient address.
-     * @return static
-     */
+    public function setFrom(string $email): static
+    {
+        $this->from = $email;
+        return $this;
+    }
+
     public function addTo(string $email): static
     {
-        $that = clone $this;
-        $that->to[] = $email;
-        return $that;
+        $this->to[] = $email;
+        return $this;
     }
 
-    /**
-     * Replaces recipient list with one or more addresses.
-     *
-     * @param list<string>|string $emails One or more recipient addresses.
-     * @return static
-     */
-    public function withTo(array|string $emails): static
+    public function setTo(array|string $emails): static
     {
-        $that = clone $this;
-        $that->to = (array) $emails;
-        return $that;
+        $this->to = (array) $emails;
+        return $this;
     }
 
-    /**
-     * Sets the message subject.
-     *
-     * @param string $subject Message subject line.
-     * @return static
-     */
-    public function withSubject(string $subject): static
+    public function setSubject(string $subject): static
     {
-        $that = clone $this;
-        $that->subject = $subject;
-        return $that;
+        $this->subject = $subject;
+        return $this;
     }
 
-    /**
-     * Sets the plaintext body.
-     *
-     * @param string $text Plaintext content.
-     * @return static
-     */
-    public function withText(string $text): static
+    public function setText(string $text): static
     {
-        $that = clone $this;
-        $that->text = $text;
-        return $that;
+        $this->text = $text;
+        return $this;
     }
 
-    /**
-     * Sets the HTML body.
-     *
-     * @param string $html HTML content.
-     * @return static
-     */
-    public function withHtml(string $html): static
+    public function setHtml(string $html): static
     {
-        $that = clone $this;
-        $that->html = $html;
-        return $that;
+        $this->html = $html;
+        return $this;
     }
 
-    /**
-     * Sends the composed email via SMTP.
-     *
-     * @return true
-     * @throws RuntimeException On transport or cURL error.
-     */
     public function send(): true
     {
-        assert(!empty($this->from));
-        assert(!empty($this->to));
-        assert(!empty($this->subject));
+        if (empty($this->from) || empty($this->to) || empty($this->subject)) {
+            throw new RuntimeException("Required data missing.");
+        }
 
         $stream = fopen("php://temp", "r+");
         if (!$stream) {
@@ -163,7 +114,7 @@ class Mailer
             CURLOPT_USERNAME => $this->user,
             CURLOPT_PASSWORD => $this->pass,
             CURLOPT_USE_SSL => CURLUSESSL_ALL,
-            CURLOPT_READFUNCTION => fn ($ch, $stream, $length): string|false => fread($stream, $length),
+            CURLOPT_READFUNCTION => fn($ch, $stream, $length): string|false => fread($stream, $length),
             CURLOPT_INFILE => $stream,
             CURLOPT_UPLOAD => true,
             CURLOPT_VERBOSE => true,
@@ -178,22 +129,16 @@ class Mailer
         fclose($stream);
 
         if ($errno !== 0 || $result === false) {
-            throw new RuntimeException(sprintf("cURL error (%s): %s", $errno, $error));
+            throw new RuntimeException("cURL error ({$errno}): {$error}");
         }
 
         if ($httpCode >= 400) {
-            throw new RuntimeException(sprintf("Email send failed with HTTP status code: %s", $httpCode));
+            throw new RuntimeException("Email send failed with HTTP status code: {$httpCode}");
         }
 
         return true;
     }
 
-    /**
-     * Composes the MIME-formatted email message body and headers.
-     *
-     * @return string Full email content including headers.
-     * @internal
-     */
     protected function buildEmail(): string
     {
         $headers = [
@@ -207,20 +152,26 @@ class Mailer
         if (!empty($this->text) && !empty($this->html)) {
             $boundary = uniqid("np");
             $headers[] = sprintf("Content-Type: multipart/alternative; boundary=%s", $boundary);
-            $body = sprintf(<<<'EOT'
-                --%s\r
-                Content-Type: text/plain; charset=utf-8\r
-                \r
-                %s\r
-                \r
-                --%s\r
-                Content-Type: text/html; charset=utf-8\r
-                \r
-                %s\r
-                \r
-                --%s--\r
-                EOT,
-                $boundary, $this->text, $boundary, $this->html, $boundary
+            $body = sprintf(
+                <<<'EOT'
+--%s\r
+Content-Type: text/plain; charset=utf-8\r
+\r
+%s\r
+\r
+--%s\r
+Content-Type: text/html; charset=utf-8\r
+\r
+%s\r
+\r
+--%s--\r
+EOT
+                ,
+                $boundary,
+                $this->text,
+                $boundary,
+                $this->html,
+                $boundary
             );
         } elseif (!empty($this->html)) {
             $headers[] = "Content-Type: text/html; charset=utf-8";

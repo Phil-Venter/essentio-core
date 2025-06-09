@@ -7,33 +7,57 @@ class Application
 
     public static function http(string $basePath): void
     {
-        static::$basePath = rtrim($basePath, "/");
-        static::$container = new Container();
+        static::initCommon($basePath);
 
-        static::$container->once(Environment::class);
         static::$container->once(Session::class, Session::create(...));
+        static::$container->once(Jwt::class, Jwt::create(...));
         static::$container->once(Request::class, Request::create(...));
         static::$container->once(Response::class);
         static::$container->once(Router::class);
 
-        $env = static::$container->resolve(Environment::class);
-        $env->load(static::fromBase(".env"));
+        if (class_exists(Authenticated::class, true)) {
+            static::$container->once(Authenticated::class, Authenticated::create(...));
+        }
 
-        static::$container->once(
-            Jwt::class,
-            fn(?string $secret = null): Jwt => new Jwt($secret ?? $env->get("JWT_SECRET", "Essentio"))
-        );
+        if (class_exists(Cast::class, true)) {
+            static::$container->once(Cast::class);
+        }
+
+        if (class_exists(Validate::class, true)) {
+            static::$container->once(Validate::class);
+        }
     }
 
     public static function cli(string $basePath): void
+    {
+        static::initCommon($basePath);
+        static::$container->once(Argument::class, Argument::create(...));
+    }
+
+    protected static function initCommon(string $basePath): void
     {
         static::$basePath = rtrim($basePath, "/");
         static::$container = new Container();
 
         static::$container->once(Environment::class);
-        static::$container->once(Argument::class, Argument::create(...));
-
         static::$container->resolve(Environment::class)->load(static::fromBase(".env"));
+
+        static::$container->once(PDO::class, function (
+            ?string $dsn = null,
+            ?string $user = null,
+            ?string $pass = null
+        ) {
+            $env = static::$container->resolve(Environment::class);
+            return new PDO($dsn ?? $env->get("DB_DSN"), $user ?? $env->get("DB_USER"), $pass ?? $env->get("DB_PASS"));
+        });
+
+        if (class_exists(Mailer::class, true)) {
+            static::$container->bind(Mailer::class, Mailer::create(...));
+        }
+
+        if (class_exists(Query::class, true)) {
+            static::$container->bind(Query::class, Query::create(...));
+        }
     }
 
     public static function fromBase(string $path): string
@@ -178,6 +202,12 @@ class Container
         return $this->bind($abstract, $concrete);
     }
 
+    /**
+     * @template T
+     * @param class-string<T> $abstract
+     * @param array<string,mixed>|list<mixed> $dependencies
+     * @return T
+     */
     public function resolve(string $abstract, array $dependencies = []): object
     {
         if (!isset($this->bindings[$abstract])) {
@@ -286,6 +316,13 @@ class Jwt
     public function __construct(
         protected string $secret,
     ) {
+    }
+
+    public static function create(?string $secret = null): static
+    {
+        return new static(
+            $secret ?? (Application::$container->resolve(Environment::class)->get("JWT_SECRET") ?? "Essentio")
+        );
     }
 
     public function encode(array $payload): string
@@ -487,8 +524,11 @@ class Router
     protected const LEAF = "\x00LEAF_NODE";
     protected const PARAM = "\x00PARAMETER";
 
-    protected array $middleware = [];
-    protected array $routes = [];
+    public function __construct(
+        protected array $middleware = [],
+        protected array $routes = [],
+    ) {
+    }
 
     public function middleware(callable $middleware): static
     {
@@ -666,14 +706,68 @@ class Template
     }
 }
 
+class Authenticated
+{
+    protected const USER_KEY = '\0USER';
+
+    public function __construct(
+        protected PDO $pdo,
+        protected Session $session,
+    ) {
+    }
+
+    public static function create(?PDO $pdo = null, ?Session $session = null): static
+    {
+        return new static(
+            $pdo ?? Application::$container->resolve(PDO::class),
+            $session ?? Application::$container->resolve(Session::class)
+        );
+    }
+
+    public function user(): ?object
+    {
+        return ($user = $this->session->get(static::USER_KEY)) ? (object) $user : null;
+    }
+
+    public function login(
+        string $username,
+        #[SensitiveParameter]
+        string $password,
+    ): bool
+    {
+        if ($this->session->get(static::USER_KEY)) {
+            return true;
+        }
+
+        $stmt = $this->pdo->prepare("SELECT * FROM users WHERE username = ? LIMIT 1");
+
+        if (!$stmt) {
+            return false;
+        }
+
+        $stmt->bindValue(1, $username, PDO::PARAM_STR);
+        $stmt->execute();
+        $row = $stmt->fetch();
+
+        if (!$row || !password_verify($password, (string) $row["password"])) {
+            return false;
+        }
+
+        unset($row["password"]);
+        session_regenerate_id(true);
+        $this->session->set(static::USER_KEY, $row);
+        return true;
+    }
+
+    public function logout(): void
+    {
+        $this->session->set(static::USER_KEY, null);
+        session_regenerate_id(true);
+    }
+}
+
 class Cast
 {
-    /**
-     * Returns a closure that casts input to boolean, or throws an error on failure.
-     *
-     * @param string $message Error message for invalid boolean.
-     * @return Closure(string): ?bool
-     */
     public function bool(string $message = ''): Closure
     {
         return function (string $input) use ($message): ?bool {
@@ -693,12 +787,6 @@ class Cast
         };
     }
 
-    /**
-     * Returns a closure that casts input to DateTimeImmutable, or throws on failure.
-     *
-     * @param string $message Error message for invalid date.
-     * @return Closure(string): ?DateTimeInterface
-     */
     public function date(string $message = ''): Closure
     {
         return function (string $input) use ($message): ?DateTimeInterface {
@@ -716,14 +804,6 @@ class Cast
         };
     }
 
-    /**
-     * Returns a closure that casts input to an enum case using tryFrom().
-     *
-     * @param class-string<BackedEnum> $enumClass Enum class to resolve.
-     * @param string                    $message   Error message if resolution fails.
-     * @return Closure(string): ?BackedEnum
-     * @throws Exception If class is not a backed enum.
-     */
     public function enum(string $enumClass, string $message = ''): Closure
     {
         if (!enum_exists($enumClass)) {
@@ -751,12 +831,6 @@ class Cast
         };
     }
 
-    /**
-     * Returns a closure that casts input to float.
-     *
-     * @param string $message Error message if cast fails.
-     * @return Closure(string): ?float
-     */
     public function float(string $message = ''): Closure
     {
         return function (string $input) use ($message): ?float {
@@ -777,12 +851,6 @@ class Cast
         };
     }
 
-    /**
-     * Returns a closure that casts input to int.
-     *
-     * @param string $message Error message if cast fails.
-     * @return Closure(string): ?int
-     */
     public function int(string $message = ''): Closure
     {
         return function (string $input) use ($message): ?int {
@@ -803,12 +871,6 @@ class Cast
         };
     }
 
-    /**
-     * Returns a closure that casts input to either int or float.
-     *
-     * @param string $message Error message if cast fails.
-     * @return Closure(string): int|float|null
-     */
     public function numeric(string $message = ''): Closure
     {
         return function (string $input) use ($message): int|float|null {
@@ -832,12 +894,6 @@ class Cast
         };
     }
 
-    /**
-     * Returns a closure that optionally trims input and returns it as a string.
-     *
-     * @param bool $trim If true, trims whitespace.
-     * @return Closure(string): string
-     */
     public function string(bool $trim = false): Closure
     {
         return function (string $input) use ($trim): string {
@@ -849,13 +905,6 @@ class Cast
         };
     }
 
-    /**
-     * Returns null for empty strings (after trimming), otherwise returns the string.
-     *
-     * @param string $input Input string.
-     * @return mixed|null Original string or null.
-     * @internal
-     */
     protected function nullOnEmpty(string $input): mixed
     {
         if (trim($input) === "") {
@@ -865,15 +914,6 @@ class Cast
         return $input;
     }
 
-    /**
-     * Extracts and returns the first numeric pattern from input string.
-     *
-     * @param string $input Raw input string.
-     * @param string $message Error to throw if no valid number found.
-     * @return string Extracted numeric string.
-     * @throws Exception If no valid number pattern is found.
-     * @internal
-     */
     protected function normalizeNumber(string $input, string $message): string
     {
         preg_match_all("/-?\d+(\.\d+)?/", $input, $matches);
@@ -888,32 +928,13 @@ class Cast
 
 class Mailer
 {
-    /** @var string */
     protected string $url;
+    public string $from = '';
+    public array $to = [];
+    public string $subject = '';
+    public string $text = '';
+    public string $html = '';
 
-    /** @var string */
-    public protected(set) string $from = '';
-
-    /** @var list<string> */
-    public protected(set) array $to = [];
-
-    /** @var string */
-    public protected(set) string $subject = '';
-
-    /** @var string */
-    public protected(set) string $text = '';
-
-    /** @var string */
-    public protected(set) string $html = '';
-
-    /**
-     * Initializes a new Mailer instance.
-     *
-     * @param string $url  SMTP server hostname.
-     * @param string $user SMTP username.
-     * @param string $pass SMTP password.
-     * @param int    $port SMTP port (default 587).
-     */
     public function __construct(
         string $url,
         protected string $user,
@@ -923,95 +944,64 @@ class Mailer
         $this->url = sprintf("smtp://%s:%s", $url, $port);
     }
 
-    /**
-     * Sets the sender address.
-     *
-     * @param string $email Sender address.
-     * @return static
-     */
-    public function withFrom(string $email): static
+    public static function create(
+        ?string $url = null,
+        ?string $user = null,
+        ?string $pass = null,
+        ?int $port = null,
+    ): static
     {
-        $that = clone $this;
-        $that->from = $email;
-        return $that;
+        $env = Application::$container->resolve(Environment::class);
+
+        return new static(
+            $url ?? $env->get("MAILER_URL"),
+            $user ?? $env->get("MAILER_USER"),
+            $pass ?? $env->get("MAILER_PASS"),
+            $port ?? 587
+        );
     }
 
-    /**
-     * Adds a recipient address.
-     *
-     * @param string $email Recipient address.
-     * @return static
-     */
+    public function setFrom(string $email): static
+    {
+        $this->from = $email;
+        return $this;
+    }
+
     public function addTo(string $email): static
     {
-        $that = clone $this;
-        $that->to[] = $email;
-        return $that;
+        $this->to[] = $email;
+        return $this;
     }
 
-    /**
-     * Replaces recipient list with one or more addresses.
-     *
-     * @param list<string>|string $emails One or more recipient addresses.
-     * @return static
-     */
-    public function withTo(array|string $emails): static
+    public function setTo(array|string $emails): static
     {
-        $that = clone $this;
-        $that->to = (array) $emails;
-        return $that;
+        $this->to = (array) $emails;
+        return $this;
     }
 
-    /**
-     * Sets the message subject.
-     *
-     * @param string $subject Message subject line.
-     * @return static
-     */
-    public function withSubject(string $subject): static
+    public function setSubject(string $subject): static
     {
-        $that = clone $this;
-        $that->subject = $subject;
-        return $that;
+        $this->subject = $subject;
+        return $this;
     }
 
-    /**
-     * Sets the plaintext body.
-     *
-     * @param string $text Plaintext content.
-     * @return static
-     */
-    public function withText(string $text): static
+    public function setText(string $text): static
     {
-        $that = clone $this;
-        $that->text = $text;
-        return $that;
+        $this->text = $text;
+        return $this;
     }
 
-    /**
-     * Sets the HTML body.
-     *
-     * @param string $html HTML content.
-     * @return static
-     */
-    public function withHtml(string $html): static
+    public function setHtml(string $html): static
     {
-        $that = clone $this;
-        $that->html = $html;
-        return $that;
+        $this->html = $html;
+        return $this;
     }
 
-    /**
-     * Sends the composed email via SMTP.
-     *
-     * @return true
-     * @throws RuntimeException On transport or cURL error.
-     */
     public function send(): true
     {
-        assert(!empty($this->from));
-        assert(!empty($this->to));
-        assert(!empty($this->subject));
+        if (empty($this->from) || empty($this->to) || empty($this->subject)) {
+            throw new RuntimeException("Required data missing.");
+        }
 
         $stream = fopen("php://temp", "r+");
         if (!$stream) {
@@ -1029,7 +1019,7 @@ class Mailer
             CURLOPT_USERNAME => $this->user,
             CURLOPT_PASSWORD => $this->pass,
             CURLOPT_USE_SSL => CURLUSESSL_ALL,
-            CURLOPT_READFUNCTION => fn ($ch, $stream, $length): string|false => fread($stream, $length),
+            CURLOPT_READFUNCTION => fn($ch, $stream, $length): string|false => fread($stream, $length),
             CURLOPT_INFILE => $stream,
             CURLOPT_UPLOAD => true,
             CURLOPT_VERBOSE => true,
@@ -1044,22 +1034,16 @@ class Mailer
         fclose($stream);
 
         if ($errno !== 0 || $result === false) {
-            throw new RuntimeException(sprintf("cURL error (%s): %s", $errno, $error));
+            throw new RuntimeException("cURL error ({$errno}): {$error}");
         }
 
         if ($httpCode >= 400) {
-            throw new RuntimeException(sprintf("Email send failed with HTTP status code: %s", $httpCode));
+            throw new RuntimeException("Email send failed with HTTP status code: {$httpCode}");
         }
 
         return true;
     }
 
-    /**
-     * Composes the MIME-formatted email message body and headers.
-     *
-     * @return string Full email content including headers.
-     * @internal
-     */
     protected function buildEmail(): string
     {
         $headers = [
@@ -1073,20 +1057,26 @@ class Mailer
         if (!empty($this->text) && !empty($this->html)) {
             $boundary = uniqid("np");
             $headers[] = sprintf("Content-Type: multipart/alternative; boundary=%s", $boundary);
-            $body = sprintf(<<<'EOT'
-                --%s\r
-                Content-Type: text/plain; charset=utf-8\r
-                \r
-                %s\r
-                \r
-                --%s\r
-                Content-Type: text/html; charset=utf-8\r
-                \r
-                %s\r
-                \r
-                --%s--\r
-                EOT,
-                $boundary, $this->text, $boundary, $this->html, $boundary
+            $body = sprintf(
+                <<<'EOT'
+        --%s\r
+        Content-Type: text/plain; charset=utf-8\r
+        \r
+        %s\r
+        \r
+        --%s\r
+        Content-Type: text/html; charset=utf-8\r
+        \r
+        %s\r
+        \r
+        --%s--\r
+        EOT
+                ,
+                $boundary,
+                $this->text,
+                $boundary,
+                $this->html,
+                $boundary
             );
         } elseif (!empty($this->html)) {
             $headers[] = "Content-Type: text/html; charset=utf-8";
@@ -1121,6 +1111,11 @@ class Query implements Stringable
         $this->wheres = (object) ["sql" => [], "data" => []];
         $this->havings = (object) ["sql" => [], "data" => []];
         $this->unions = (object) ["sql" => [], "data" => []];
+    }
+
+    public static function create(?PDO $pdo = null): static
+    {
+        return new static($pdo ?? Application::$container->resolve(PDO::class));
     }
 
     public function distinct(bool $on = true): static
@@ -1185,7 +1180,9 @@ class Query implements Stringable
             $operator = "=";
         }
 
-        $extract = fn($sql): array => preg_match('/^(.+?)\s+AS\s+(.+)$/i', (string) $sql, $m) ? [$m[1], $m[2]] : [$sql, null];
+        $extract = fn($sql): array => preg_match('/^(.+?)\s+AS\s+(.+)$/i', (string) $sql, $m)
+            ? [$m[1], $m[2]]
+            : [$sql, null];
         [$joinTable, $joinAlias] = $extract($table);
 
         if ($first === null || $second === null) {
@@ -1195,7 +1192,10 @@ class Query implements Stringable
         }
 
         $as = $joinAlias ? " AS $joinAlias" : "";
-        $quoteId = fn($identifier): string => implode(".", array_map([$this, "quote"], explode(".", (string) $identifier)));
+        $quoteId = fn($identifier): string => implode(
+            ".",
+            array_map([$this, "quote"], explode(".", (string) $identifier))
+        );
         $this->joins[] = "{$type} JOIN {$this->quote($table)}{$as} ON {$quoteId($first)} {$operator} {$quoteId(
             $second
         )}";
@@ -1467,12 +1467,6 @@ class Query implements Stringable
 
 class Validate
 {
-    /**
-     * Allows alphabetic characters only.
-     *
-     * @param string $message Error message to throw if validation fails.
-     * @return Closure
-     */
     public function alpha(string $message = ''): Closure
     {
         return function (?string $input) use ($message): ?string {
@@ -1488,12 +1482,6 @@ class Validate
         };
     }
 
-    /**
-     * Allows alphanumeric characters, underscores, and dashes.
-     *
-     * @param string $message Error message to throw if validation fails.
-     * @return Closure
-     */
     public function alphaDash(string $message = ''): Closure
     {
         return function (?string $input) use ($message): ?string {
@@ -1509,12 +1497,6 @@ class Validate
         };
     }
 
-    /**
-     * Allows letters and numbers only.
-     *
-     * @param string $message Error message to throw if validation fails.
-     * @return Closure
-     */
     public function alphaNum(string $message = ''): Closure
     {
         return function (?string $input) use ($message): ?string {
@@ -1530,12 +1512,6 @@ class Validate
         };
     }
 
-    /**
-     * Validates email address format.
-     *
-     * @param string $message Error message to throw if validation fails.
-     * @return Closure
-     */
     public function email(string $message = ''): Closure
     {
         return function (?string $input) use ($message): ?string {
@@ -1551,13 +1527,6 @@ class Validate
         };
     }
 
-    /**
-     * Ensures input ends with one of the given suffixes.
-     *
-     * @param array $suffixes List of valid suffixes.
-     * @param string $message Error message to throw if validation fails.
-     * @return Closure
-     */
     public function endsWith(array $suffixes, string $message = ''): Closure
     {
         return function (?string $input) use ($suffixes, $message): ?string {
@@ -1575,12 +1544,6 @@ class Validate
         };
     }
 
-    /**
-     * Validates input is entirely lowercase.
-     *
-     * @param string $message Error message to throw if validation fails.
-     * @return Closure
-     */
     public function lowercase(string $message = ''): Closure
     {
         return function (?string $input) use ($message): ?string {
@@ -1596,12 +1559,6 @@ class Validate
         };
     }
 
-    /**
-     * Validates input is entirely uppercase.
-     *
-     * @param string $message Error message to throw if validation fails.
-     * @return Closure
-     */
     public function uppercase(string $message = ''): Closure
     {
         return function (?string $input) use ($message): ?string {
@@ -1617,13 +1574,6 @@ class Validate
         };
     }
 
-    /**
-     * Enforces minimum character length.
-     *
-     * @param int $min Minimum allowed length.
-     * @param string $message Error message to throw if validation fails.
-     * @return Closure
-     */
     public function minLength(int $min, string $message = ''): Closure
     {
         return function (?string $input) use ($min, $message): ?string {
@@ -1639,13 +1589,6 @@ class Validate
         };
     }
 
-    /**
-     * Enforces maximum character length.
-     *
-     * @param int $max Maximum allowed length.
-     * @param string $message Error message to throw if validation fails.
-     * @return Closure
-     */
     public function maxLength(int $max, string $message = ''): Closure
     {
         return function (?string $input) use ($max, $message): ?string {
@@ -1661,13 +1604,6 @@ class Validate
         };
     }
 
-    /**
-     * Validates input against a regular expression pattern.
-     *
-     * @param string $pattern PCRE pattern to validate input.
-     * @param string $message Error message to throw if validation fails.
-     * @return Closure
-     */
     public function regex(string $pattern, string $message = ''): Closure
     {
         return function (?string $input) use ($pattern, $message): ?string {
@@ -1683,14 +1619,6 @@ class Validate
         };
     }
 
-    /**
-     * Ensures value is between two inclusive bounds.
-     *
-     * @param DateTimeInterface|float|int $min Lower bound.
-     * @param DateTimeInterface|float|int $max Upper bound.
-     * @param string $message Error message to throw if validation fails.
-     * @return Closure
-     */
     public function between(
         DateTimeInterface|float|int $min,
         DateTimeInterface|float|int $max,
@@ -1719,13 +1647,6 @@ class Validate
         };
     }
 
-    /**
-     * Ensures value is greater than given threshold.
-     *
-     * @param DateTimeInterface|float|int $min Minimum threshold (exclusive).
-     * @param string $message Error message to throw if validation fails.
-     * @return Closure
-     */
     public function gt(DateTimeInterface|float|int $min, string $message = ''): Closure
     {
         $min = $min instanceof DateTimeInterface ? $min->getTimestamp() : $min;
@@ -1747,13 +1668,6 @@ class Validate
         };
     }
 
-    /**
-     * Ensures value is greater than or equal to threshold.
-     *
-     * @param DateTimeInterface|float|int $min Minimum threshold (inclusive).
-     * @param string $message Error message to throw if validation fails.
-     * @return Closure
-     */
     public function gte(DateTimeInterface|float|int $min, string $message = ''): Closure
     {
         $min = $min instanceof DateTimeInterface ? $min->getTimestamp() : $min;
@@ -1775,13 +1689,6 @@ class Validate
         };
     }
 
-    /**
-     * Ensures value is less than given threshold.
-     *
-     * @param DateTimeInterface|float|int $max Maximum threshold (exclusive).
-     * @param string $message Error message to throw if validation fails.
-     * @return Closure
-     */
     public function lt(DateTimeInterface|float|int $max, string $message = ''): Closure
     {
         $max = $max instanceof DateTimeInterface ? $max->getTimestamp() : $max;
@@ -1803,13 +1710,6 @@ class Validate
         };
     }
 
-    /**
-     * Ensures value is less than or equal to threshold.
-     *
-     * @param DateTimeInterface|float|int $max Maximum threshold (inclusive).
-     * @param string $message Error message to throw if validation fails.
-     * @return Closure
-     */
     public function lte(DateTimeInterface|float|int $max, string $message = ''): Closure
     {
         $max = $max instanceof DateTimeInterface ? $max->getTimestamp() : $max;
@@ -1831,12 +1731,6 @@ class Validate
         };
     }
 
-    /**
-     * Ensures a value is not null or empty.
-     *
-     * @param string $message Error message to throw if validation fails.
-     * @return Closure
-     */
     public function required(string $message = ''): Closure
     {
         return function (mixed $input) use ($message): mixed {
@@ -1848,14 +1742,6 @@ class Validate
         };
     }
 
-    /**
-     * Validates membership in a given array.
-     *
-     * @param array $allowed Valid values.
-     * @param bool $strict Use strict type comparison.
-     * @param string $message Error message to throw if validation fails.
-     * @return Closure
-     */
     public function inArray(array $allowed, bool $strict = true, string $message = ''): Closure
     {
         return function (mixed $input) use ($allowed, $strict, $message): mixed {
@@ -2042,6 +1928,16 @@ function throw_if(bool $condition, Throwable|string $e): void
     }
 }
 
+function auth(): Authenticated
+{
+    return app(Authenticated::class);
+}
+
+function user(): ?object
+{
+    return auth()->user();
+}
+
 function cast(): Cast
 {
     return app(Cast::class);
@@ -2049,17 +1945,12 @@ function cast(): Cast
 
 function mailer(?string $url = null, ?string $user = null, ?string $pass = null, ?int $port = null): Mailer
 {
-    $url ??= env("MAILER_URL");
-    $user ??= env("MAILER_USER");
-    $pass ??= env("MAILER_PASS");
-    $port ??= env("MAILER_PORT", 587);
-
     return map(Mailer::class, compact("url", "user", "pass", "port"));
 }
 
-function query(?PDO $pdo): Query
+function query(?PDO $pdo = null): Query
 {
-    return map(Query::class, [$pdo ?? app(PDO::class)]);
+    return map(Query::class, compact("pdo"));
 }
 
 function validate(): Validate

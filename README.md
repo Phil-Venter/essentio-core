@@ -28,7 +28,7 @@ cat <<'EOF' > public/index.php
 
 require __DIR__ . '/../framework.php';
 
-Application::web(__DIR__ . '/..');
+Application::http(__DIR__ . '/..');
 
 get('/', fn() => text('Hello, Essentio!'));
 
@@ -58,7 +58,7 @@ use Essentio\Core\Application;
 
 require __DIR__ . '/../vendor/autoload.php';
 
-Application::web(__DIR__ . '/..');
+Application::http(__DIR__ . '/..');
 
 get('/', fn() => text('Hello, Essentio!'));
 
@@ -124,16 +124,24 @@ This isn’t a black box. Modify whatever you like—add middleware, tweak error
 
 Measured using [cloc](https://github.com/AlDanial/cloc):
 
-**Base:**
+**Base:** `cloc dist/base.php`
 
 ```
-PHP | 147 blanks | 5 comments | 649 code lines
+-------------------------------------------------------------------------------
+Language                     files          blank        comment           code
+-------------------------------------------------------------------------------
+PHP                              1            157             17            703
+-------------------------------------------------------------------------------
 ```
 
-**Full (with Extras):**
+**Full (with Extras):** `cloc dist/full.php`
 
 ```
-PHP | 336 blanks | 241 comments | 1455 code lines
+-------------------------------------------------------------------------------
+Language                     files          blank        comment           code
+-------------------------------------------------------------------------------
+PHP                              1            356             18           1585
+-------------------------------------------------------------------------------
 ```
 
 ---

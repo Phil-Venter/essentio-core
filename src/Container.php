@@ -26,6 +26,12 @@ class Container
         return $this->bind($abstract, $concrete);
     }
 
+    /**
+     * @template T
+     * @param class-string<T> $abstract
+     * @param array<string,mixed>|list<mixed> $dependencies
+     * @return T
+     */
     public function resolve(string $abstract, array $dependencies = []): object
     {
         if (!isset($this->bindings[$abstract])) {

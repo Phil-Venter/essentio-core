@@ -2,6 +2,7 @@
 
 namespace Essentio\Core\Extra;
 
+use Essentio\Core\Application;
 use InvalidArgumentException;
 use PDO;
 
@@ -36,6 +37,11 @@ class Query implements \Stringable
         $this->wheres = (object) ["sql" => [], "data" => []];
         $this->havings = (object) ["sql" => [], "data" => []];
         $this->unions = (object) ["sql" => [], "data" => []];
+    }
+
+    public static function create(?PDO $pdo = null): static
+    {
+        return new static($pdo ?? Application::$container->resolve(PDO::class));
     }
 
     public function distinct(bool $on = true): static
@@ -99,7 +105,9 @@ class Query implements \Stringable
             $operator = "=";
         }
 
-        $extract = fn($sql): array => preg_match('/^(.+?)\s+AS\s+(.+)$/i', (string) $sql, $m) ? [$m[1], $m[2]] : [$sql, null];
+        $extract = fn($sql): array => preg_match('/^(.+?)\s+AS\s+(.+)$/i', (string) $sql, $m)
+            ? [$m[1], $m[2]]
+            : [$sql, null];
         [$joinTable, $joinAlias] = $extract($table);
 
         if ($first === null || $second === null) {
@@ -109,7 +117,10 @@ class Query implements \Stringable
         }
 
         $as = $joinAlias ? " AS $joinAlias" : "";
-        $quoteId = fn($identifier): string => implode(".", array_map([$this, "quote"], explode(".", (string) $identifier)));
+        $quoteId = fn($identifier): string => implode(
+            ".",
+            array_map([$this, "quote"], explode(".", (string) $identifier))
+        );
         $this->joins[] = "{$type} JOIN {$this->quote($table)}{$as} ON {$quoteId($first)} {$operator} {$quoteId(
             $second
         )}";

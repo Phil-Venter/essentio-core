@@ -8,9 +8,7 @@ class Router
 
     protected const PARAM = "\0PARAMETER";
 
-    protected array $middleware = [];
-
-    protected array $routes = [];
+    public function __construct(protected array $middleware = [], protected array $routes = []) {}
 
     public function middleware(callable $middleware): static
     {

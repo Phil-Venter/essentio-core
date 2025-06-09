@@ -1,14 +1,6 @@
 <?php
 
-use Essentio\Core\Application;
-use Essentio\Core\Argument;
-use Essentio\Core\Environment;
-use Essentio\Core\Jwt;
-use Essentio\Core\Request;
-use Essentio\Core\Response;
-use Essentio\Core\Router;
-use Essentio\Core\Session;
-use Essentio\Core\Template;
+use Essentio\Core\{Application, Argument, Environment, Jwt, Request, Response, Router, Session, Template};
 
 /**
  * @template T

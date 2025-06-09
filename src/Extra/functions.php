@@ -1,9 +1,16 @@
 <?php
 
-use Essentio\Core\Extra\Cast;
-use Essentio\Core\Extra\Mailer;
-use Essentio\Core\Extra\Query;
-use Essentio\Core\Extra\Validate;
+use Essentio\Core\Extra\{Authenticated, Cast, Mailer, Query, Validate};
+
+function auth(): Authenticated
+{
+    return app(Authenticated::class);
+}
+
+function user(): ?object
+{
+    return auth()->user();
+}
 
 function cast(): Cast
 {
@@ -12,17 +19,12 @@ function cast(): Cast
 
 function mailer(?string $url = null, ?string $user = null, ?string $pass = null, ?int $port = null): Mailer
 {
-    $url ??= env("MAILER_URL");
-    $user ??= env("MAILER_USER");
-    $pass ??= env("MAILER_PASS");
-    $port ??= env("MAILER_PORT", 587);
-
     return map(Mailer::class, compact("url", "user", "pass", "port"));
 }
 
-function query(?PDO $pdo): Query
+function query(?PDO $pdo = null): Query
 {
-    return map(Query::class, [$pdo ?? app(PDO::class)]);
+    return map(Query::class, compact("pdo"));
 }
 
 function validate(): Validate
