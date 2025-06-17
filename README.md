@@ -1,10 +1,36 @@
+Here is your **updated README**, fully integrated with the latest philosophy, accurate class/function listings, corrected features, and cleaned-up extras—while **preserving the original tone** and sharpening the clarity.
+
+---
+
 # Essentio — Minimalist PHP Framework
 
 Essentio isn’t here to impress with design patterns or win internet debates. It’s raw, minimal PHP—for developers who want clarity, speed, and control. No abstractions, no ceremony. Just the essentials.
 
+You can learn the whole framework in an afternoon. That’s the point.
+
 ---
 
-## Quickstart
+## 🔥 Philosophy
+
+Essentio exists because modern PHP frameworks lost the plot.
+
+Somewhere along the way, we decided every project needs hundreds of dependencies, a build chain, and layers of abstraction just to respond to a request. The result? Bloat, boilerplate, and a constant sense that you're working around your tools instead of with them.
+
+Essentio is built around simpler questions:
+
+* **Why can’t I just write code and have it run?**
+* **Why does “Hello World” pull in a hundred packages?**
+* **Do frameworks need to be opinionated—or just useful?**
+* **Why all the scaffolding, code generation, and ceremony?**
+* **What if I could learn the entire framework in a single afternoon?**
+
+This isn’t for everyone. It’s for developers who want full control without the hand-holding. Who trust their own judgment more than someone else’s defaults. Who read the source instead of tutorials.
+
+**Essentio doesn’t try to teach you how to code. It gives you just enough structure to be useful—and nothing that gets in your way.**
+
+---
+
+## 🧪 Quickstart
 
 ### One-file Setup
 
@@ -38,6 +64,8 @@ EOF
 php -S localhost:8080 -t public
 ```
 
+---
+
 ### Composer Install
 
 For projects using Composer (or if you prefer that):
@@ -46,14 +74,7 @@ For projects using Composer (or if you prefer that):
 composer require essentio/core
 ```
 
-Create your entry point:
-
-```bash
-mkdir public
-
-cat <<'EOF' > public/index.php
-<?php
-
+```php
 use Essentio\Core\Application;
 
 require __DIR__ . '/../vendor/autoload.php';
@@ -63,68 +84,151 @@ Application::http(__DIR__ . '/..');
 get('/', fn() => text('Hello, Essentio!'));
 
 Application::run();
-EOF
-
-php -S localhost:8080 -t public
 ```
 
 ---
 
-## Why Essentio?
+## 🧱 Features
 
-Essentio is built for developers who prefer simplicity over convention and explicitness over magic. It strips away the layers so you can get to work—fast.
+Essentio gives you what PHP left out—just enough to build apps with precision and no nonsense:
 
-No opinionated file structures, no hidden scaffolding, no startup delay. Just minimal tools that get out of your way. If something doesn’t suit you: ignore it, change it, or send a PR. It’s all yours.
-
----
-
-## Features
-
-Essentio gives you just enough to build—from simple tools to full apps:
-
-* **Bootstrap fast**: Start a CLI or HTTP app in one call.
-* **Lightweight router**: Groups, params, and middleware with zero fluff.
-* **Manual DI container**: Bind what you need. Nothing resolves unless you say so.
-* **Environment loader**: Typed `.env` parsing without YAML overhead.
-* **Request/Response handling**: No magic, just PHP.
-* **Sessions & flash**: Behaves as expected. No guesswork.
-* **Helper functions**: `get()`, `input()`, `env()`, `redirect()`, `dump()`—use them freely.
-
-### Optional Extras
-
-Use them if they help. Leave them out if they don’t.
-
-* **Cast** – Type-cast input to bools, dates, enums, numbers, etc.
-* **Validate** – Closure-based input validation with built-in and custom rules.
-* **Query** – Fluent SQL builder for PDO. No ORM. No migrations.
-* **Template** – Minimal template engine with layout support, no DSL.
-* **Mailer** – Basic email sending via SMTP and cURL.
+* **Boots fast**: HTTP or CLI mode with one line.
+* **Minimal router**: Params, groups, middleware—no fluff.
+* **Manual DI**: Bind what you want, resolve it yourself.
+* **Environment-aware**: Typed `.env` loading—no YAML.
+* **Input-safe**: Sanitize and validate with zero magic.
+* **Session + CSRF**: Straightforward, not silent.
+* **Templating**: Clean segments and blocks. No DSLs.
+* **Explicit responses**: `json()`, `text()`, `html()`—your call.
 
 ---
 
-## Who It’s For
+## 🧍 Who It’s For
 
-Essentio is for developers who don’t need a framework to teach them PHP. It’s for those who’d rather write the code than configure it, who don’t want a generator holding their hand, and who understand that less code means fewer surprises. Whether you're building small tools, internal APIs, command-line apps, or just want a clean slate—Essentio gives you a sharp knife and stays out of the way.
+Essentio is for developers who:
 
----
+* Want to understand every line
+* Don’t need training wheels
+* Trust code over convention
+* Want fewer files, fewer surprises, and fewer opinions
 
-## What Essentio Does Not Care About
-
-Essentio doesn’t care about best practices, architectural purity, or what some blog thinks is idiomatic. No autowiring, no reflection, no scaffolding, no conventions. It won’t hold your hand, structure your app, or second-guess your intent. If it breaks, it breaks—deal with it. Write procedural code, imperative code, or whatever gets the job done. Essentio stays out of your way.
-
----
-
-## Customizing
-
-This isn’t a black box. Modify whatever you like—add middleware, tweak error handling, extend or replace components. It’s small on purpose.
+Whether you’re building tools, APIs, internal apps, or microservices—Essentio gives you a sharp knife and walks away.
 
 ---
 
-## Code Size
+## 🧠 What You Get
+
+### 🧩 Core (`base.php` and `full.php`)
+
+#### Classes
+
+| Class           | Purpose                        |
+| --------------- | ------------------------------ |
+| `Application`   | Starts HTTP/CLI lifecycle      |
+| `Container`     | Bindings, singleton resolution |
+| `Router`        | Routes + middleware            |
+| `Request`       | Unified input                  |
+| `Response`      | Output handler                 |
+| `Session`       | Session + flash + CSRF         |
+| `Template`      | PHP layout segments            |
+| `Jwt`           | Stateless JWT handling         |
+| `Environment`   | Typed `.env` loader            |
+| `HttpException` | HTTP errors                    |
+| `Cast`          | Input coercion                 |
+| `Validate`      | Input rules                    |
+
+#### Global Helpers
+
+| Function                                          | Purpose               |
+| ------------------------------------------------- | --------------------- |
+| `get()`, `post()`, `put()`, `patch()`, `delete()` | Routing               |
+| `input()`, `request()`                            | Request values        |
+| `sanitize()`                                      | Validate + cast input |
+| `env()`                                           | Config values         |
+| `session()`, `flash()`                            | Session state         |
+| `csrf()`                                          | CSRF token utils      |
+| `render()`, `view()`                              | Templates             |
+| `json()`, `text()`, `html()`, `redirect()`        | Responses             |
+| `throw_if()`                                      | Assert/throw shortcut |
+| `app()`, `bind()`, `once()`, `map()`              | DI                    |
+| `base()`                                          | Base path resolver    |
+
+---
+
+### ➕ Extras (`full.php` only)
+
+#### Extra Classes
+
+| Class      | Purpose            |
+| ---------- | ------------------ |
+| `Query`    | Fluent SQL builder |
+| `Argument` | CLI arg parser     |
+
+#### Extra Global Helpers
+
+| Function    | Purpose                |
+| ----------- | ---------------------- |
+| `command()` | Define CLI commands    |
+| `arg()`     | Get CLI arguments      |
+| `query()`   | SQL builder entrypoint |
+
+---
+
+## 🧾 Example App
+
+```php
+Application::http(__DIR__);
+
+get('/', fn() =>
+    view(base('template/home.tmpl.php'), [
+        'name' => input('name', 'Guest')
+    ])
+);
+
+post('/submit', function () {
+    $data = sanitize([
+        'email' => [
+            Validate::required('Email address is required.'),
+            Validate::email('Invalid email address.')
+        ],
+        'age' => [
+            Cast::int('Not an int'),
+            Validate::gte(18, 'Not old enough.')
+        ]
+    ]);
+
+    if ($data === false) {
+        return json(['errors' => request()->errors], 422);
+    }
+
+    return json($data);
+});
+
+Application::run();
+```
+
+---
+
+## 🧪 What It Doesn’t Do
+
+Essentio doesn’t care about:
+
+* ❌ Autowiring
+* ❌ Scaffolding
+* ❌ ORM
+* ❌ Code generation
+* ❌ File structure
+* ❌ Layered abstraction
+
+If it happens, it’s because you wrote it.
+
+---
+
+## 🧮 Code Size
 
 Measured using [cloc](https://github.com/AlDanial/cloc):
 
-**Base:** `cloc dist/base.php`
+**Base:**
 
 ```
 -------------------------------------------------------------------------------
@@ -134,7 +238,7 @@ PHP                              1            157             17            703
 -------------------------------------------------------------------------------
 ```
 
-**Full (with Extras):** `cloc dist/full.php`
+**Full (with Extras):**
 
 ```
 -------------------------------------------------------------------------------
@@ -146,13 +250,12 @@ PHP                              1            356             18           1585
 
 ---
 
-## License
+## 🪪 License
 
-Essentio is licensed under the [0BSD License](https://opensource.org/licenses/0BSD). No conditions, no attribution, no nonsense.
+Essentio is licensed under the [0BSD License](https://opensource.org/licenses/0BSD). No conditions. No attribution. No nonsense.
 
-Like something? Take it.
-Use it, fork it, break it, fix it—whatever helps you ship.
+Use it. Fork it. Rip it apart. Whatever helps you ship.
 
 ---
 
-> Essentio is yours to love, hate, or improve. The world won’t always agree—but that’s not your problem.
+> Essentio is yours to love, hate, or ignore. The world won’t always agree—but that’s not your problem.

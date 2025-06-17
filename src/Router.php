@@ -2,13 +2,19 @@
 
 namespace Essentio\Core;
 
+use InvalidArgumentException;
+
 class Router
 {
     protected const LEAF = "\0LEAF_NODE";
 
     protected const PARAM = "\0PARAMETER";
 
-    public function __construct(protected array $middleware = [], protected array $routes = []) {}
+    public function __construct(
+        protected array $middleware = [],
+        protected array $routes = [],
+        protected array $named = []
+    ) {}
 
     public function middleware(callable $middleware): static
     {
@@ -16,8 +22,13 @@ class Router
         return $this;
     }
 
-    public function add(string $method, string $path, callable $handler, array $middleware = []): static
-    {
+    public function add(
+        string $method,
+        string $path,
+        callable $handler,
+        ?string $name = null,
+        array $middleware = []
+    ): static {
         $path = trim((string) preg_replace("#/+#", "/", $path), "/");
         $node = &$this->routes;
         $params = [];
@@ -31,8 +42,38 @@ class Router
             }
         }
 
+        if ($name) {
+            $this->named[$name] = $path;
+        }
+
         $node[static::LEAF][$method] = [$params, $middleware, $handler];
         return $this;
+    }
+
+    public function getUrl(string $name, array $params): string
+    {
+        if (!isset($this->named[$name])) {
+            throw new InvalidArgumentException("Route named '{$name}' not found.");
+        }
+
+        $consumed = [];
+        $url = preg_replace_callback(
+            "#:([\w]+)#",
+            function ($matches) use ($params, &$consumed, $name) {
+                if (!isset($params[$matches[1]])) {
+                    throw new InvalidArgumentException("Missing parameter '{$matches[1]}' for route '{$name}'.");
+                }
+
+                $consumed[$matches[1]] = true;
+                return rawurlencode((string) $params[$matches[1]]);
+            },
+            $this->named[$name]
+        );
+
+        $extra = array_diff_key($params, array_flip($consumed));
+        $query = $extra ? "?" . http_build_query($extra) : "";
+
+        return "/" . ltrim($url, "/") . $query;
     }
 
     public function dispatch(Request $req, Response $res): Response

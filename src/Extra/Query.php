@@ -2,387 +2,306 @@
 
 namespace Essentio\Core\Extra;
 
+use Closure;
+use DateTimeInterface;
 use Essentio\Core\Application;
 use InvalidArgumentException;
+use Iterator;
 use PDO;
+use RuntimeException;
+use Stringable;
 
-// Aliases not working properly
-class Query implements \Stringable
+class Query
 {
-    protected bool $distinct = false;
+    protected string $bool = "AND";
 
     protected array $columns = [];
 
-    protected array $groupBy = [];
+    protected string $table = "";
 
-    protected object $from;
+    protected array $where = [];
 
-    protected array $joins = [];
+    protected array $whereParams = [];
 
-    protected object $wheres;
+    protected array $groupBys = [];
 
-    protected object $havings;
+    protected array $having = [];
 
-    protected ?string $orderBy = null;
+    protected array $havingParams = [];
+
+    protected array $orderBys = [];
 
     protected ?int $limit = null;
 
     protected ?int $offset = null;
 
-    protected object $unions;
-
-    public function __construct(protected PDO $pdo)
-    {
-        $this->from = (object) ["sql" => "", "data" => []];
-        $this->wheres = (object) ["sql" => [], "data" => []];
-        $this->havings = (object) ["sql" => [], "data" => []];
-        $this->unions = (object) ["sql" => [], "data" => []];
-    }
+    public function __construct(protected ?PDO $pdo = null) {}
 
     public static function create(?PDO $pdo = null): static
     {
         return new static($pdo ?? Application::$container->resolve(PDO::class));
     }
 
-    public function distinct(bool $on = true): static
+    public function or(): static
     {
-        $this->distinct = $on;
+        $this->bool = "OR";
         return $this;
     }
 
-    public function select(string|array ...$columns): static
+    protected function consumeBool(): string
     {
-        if (is_array($columns[0])) {
-            $columns = $columns[0];
-        }
+        $bool = $this->bool;
+        $this->bool = "AND";
+        return " $bool ";
+    }
 
-        if (array_is_list($columns)) {
-            $columns = array_combine($columns, $columns);
-        }
-
+    public function select(array|string ...$columns): static
+    {
+        $columns = array_values((array) $columns);
         $this->columns = array_merge($this->columns, $columns);
         return $this;
     }
 
-    public function from(callable|string $from, ?string $alias = null): static
+    public function table(string $table): static
     {
-        if (!is_callable($from)) {
-            $this->from->sql = $this->quote($from) . ($alias ? " AS " . $this->quote($alias) : "");
-            return $this;
-        }
-
-        $alias ??= "sub";
-        $from($subQuery = new static($this->pdo));
-        [$sql, $data] = $subQuery->compileSelectArray();
-        $this->from->sql = "($sql) AS " . $this->quote($alias);
-        $this->from->data = $data;
-
+        $this->table = $table;
         return $this;
     }
 
-    public function join(
-        string $table,
-        ?string $first = null,
-        ?string $operator = null,
-        ?string $second = null,
-        string $type = ""
-    ): static {
-        $type = strtoupper(trim($type ?: "INNER"));
-
-        if (in_array($type, ["CROSS", "NATURAL"])) {
-            $this->joins[] = "$type JOIN " . $this->quote($table);
-            return $this;
+    public function where(string|Closure $column, ?string $operator = null, mixed $value = null): static
+    {
+        if ($column instanceof Closure) {
+            $column($query = new static());
+            return $this->whereRaw("({$this->clean($query->where)})", $query->whereParams);
         }
 
-        if ($operator !== null && strtolower($first ?? "") === "using") {
-            $columns = array_map([$this, "quote"], array_map("trim", explode(",", $operator)));
-            $this->joins[] = "$type JOIN {$this->quote($table)} USING (" . implode(", ", $columns) . ")";
-            return $this;
+        if ($value === null) {
+            $sql = match (true) {
+                in_array(strtolower((string) $operator), ["=", "is"], true) => "{$column} IS NULL",
+                in_array(strtolower((string) $operator), ["!=", "<>", "is not", "not"], true) => "{$column} IS NOT NULL",
+                default => throw new InvalidArgumentException("Invalid where condition."),
+            };
+
+            return $this->whereRaw($sql);
         }
 
-        if ($operator !== null && $second === null) {
-            $second = $operator;
-            $operator = "=";
+        $formatValue = fn($val) => match (true) {
+            $val instanceof DateTimeInterface => $val->format("Y-m-d H:i:s"),
+            $val instanceof Stringable => (string) $val,
+            default => $val,
+        };
+
+        $value = $formatValue($value);
+
+        if (is_scalar($value)) {
+            $operator ??= "=";
+            return $this->whereRaw("{$column} {$operator} ?", [$value]);
         }
 
-        $extract = fn($sql): array => preg_match('/^(.+?)\s+AS\s+(.+)$/i', (string) $sql, $m)
-            ? [$m[1], $m[2]]
-            : [$sql, null];
-        [$joinTable, $joinAlias] = $extract($table);
+        $operator ??= "IN";
 
-        if ($first === null || $second === null) {
-            [$mainTable, $mainAlias] = $extract($this->from->sql);
-            $first ??= ($mainAlias ?? $mainTable) . ".id";
-            $second ??= ($joinAlias ?? $joinTable) . "." . $mainTable . "_id";
+        if (strtolower(trim($operator)) === "not") {
+            $operator = "NOT IN";
         }
 
-        $as = $joinAlias ? " AS $joinAlias" : "";
-        $quoteId = fn($identifier): string => implode(
-            ".",
-            array_map([$this, "quote"], explode(".", (string) $identifier))
-        );
-        $this->joins[] = "{$type} JOIN {$this->quote($table)}{$as} ON {$quoteId($first)} {$operator} {$quoteId(
-            $second
-        )}";
+        if ($value instanceof Closure) {
+            $value($query = new static());
+            return $this->whereRaw("{$column} {$operator} ({$query->selectSql()})", $query->getParams());
+        }
 
+        if (!is_array($value)) {
+            throw new InvalidArgumentException("Invalid where condition.");
+        }
+
+        if (mb_stripos($operator, "between") === false) {
+            $placeholders = implode(", ", array_fill(0, count($value), "?"));
+            return $this->whereRaw("{$column} {$operator} ({$placeholders})", $value);
+        }
+
+        if (count($value) !== 2) {
+            throw new InvalidArgumentException("Invalid where condition.");
+        }
+
+        $value[0] = $formatValue($value[0]);
+        $value[1] = $formatValue($value[1]);
+
+        if (!is_scalar($value[0]) || !is_scalar($value[1])) {
+            throw new InvalidArgumentException("Invalid where condition.");
+        }
+
+        return $this->whereRaw("{$column} {$operator} ? AND ?", $value);
+    }
+
+    public function whereRaw(string $statement, array $data = []): static
+    {
+        $this->where[] = "{$this->consumeBool()} {$statement}";
+        $this->whereParams = array_merge($this->whereParams, $data);
         return $this;
     }
 
-    public function whereRaw(string $sql, array $data = [], string $boolean = "AND"): static
+    public function groupBy(array|string ...$groupBys): static
     {
-        $this->wheres->sql[] = "$boolean $sql";
-        $this->wheres->data = array_merge($this->wheres->data, $data);
+        $groupBys = array_values((array) $groupBys);
+        $this->groupBys = array_merge($this->groupBys, $groupBys);
         return $this;
     }
 
-    public function orWhereRaw(string $sql, array $data = []): static
+    public function havingRaw(string $statement, array $data = []): static
     {
-        return $this->whereRaw($sql, $data, "OR");
-    }
-
-    public function where(
-        callable|string $column,
-        ?string $operator = null,
-        mixed $value = null,
-        string $boolean = "AND"
-    ): static {
-        if (!empty(($compiled = $this->compileConditional("wheres", $column, $operator, $value, $boolean)))) {
-            $this->wheres->sql[] = $compiled[0];
-            $this->wheres->data = array_merge($this->wheres->data, $compiled[1]);
-        }
-
+        $this->having[] = "{$this->consumeBool()} {$statement}";
+        $this->havingParams = array_merge($this->havingParams, $data);
         return $this;
     }
 
-    public function orWhere(callable|string|self $column, ?string $operator = null, mixed $value = null): static
+    public function orderBy(string $column, string $direction = "ASC"): static
     {
-        return $this->where($column, $operator, $value, "OR");
-    }
-
-    public function groupBy(string|array ...$columns): static
-    {
-        $this->groupBy = array_merge($this->groupBy, is_array($columns[0]) ? $columns[0] : $columns);
+        $this->orderBys[] = "{$column} {$direction}";
         return $this;
     }
 
-    public function havingRaw(string $sql, array $data = [], string $boolean = "AND"): static
-    {
-        $this->havings->sql[] = "$boolean $sql";
-        $this->havings->data = array_merge($this->havings->data, $data);
-        return $this;
-    }
-
-    public function orHavingRaw(string $sql, array $data = []): static
-    {
-        return $this->havingRaw($sql, $data, "OR");
-    }
-
-    public function having(
-        callable|string $column,
-        ?string $operator = null,
-        mixed $value = null,
-        string $boolean = "AND"
-    ): static {
-        if (!empty(($compiled = $this->compileConditional("havings", $column, $operator, $value, $boolean)))) {
-            $this->havings->sql[] = $compiled[0];
-            $this->havings->data = array_merge($this->havings->data, $compiled[1]);
-        }
-
-        return $this;
-    }
-
-    public function orHaving(callable|string|self $column, ?string $operator = null, mixed $value = null): static
-    {
-        return $this->having($column, $operator, $value, "OR");
-    }
-
-    public function orderBy(string|array $column, string $direction = "ASC"): static
-    {
-        if (is_array($column)) {
-            $clauses = [];
-            foreach ($column as $col => $dir) {
-                $clauses[] = $this->quote($col) . " " . strtoupper((string) $dir);
-            }
-
-            $this->orderBy = implode(", ", $clauses);
-        } else {
-            $this->orderBy = $this->quote($column) . " " . strtoupper($direction);
-        }
-
-        return $this;
-    }
-
-    public function limit(int $limit): static
+    public function limit(int $limit, ?int $offset = null): static
     {
         $this->limit = $limit;
-        return $this;
-    }
-
-    public function offset(int $offset): static
-    {
         $this->offset = $offset;
         return $this;
     }
 
-    public function union(callable $callback, string $type = ""): static
+    protected function selectSql(): string
     {
-        $type = strtoupper(trim($type));
-        if (!in_array($type, ["", "ALL", "DISTINCT"], true)) {
-            throw new InvalidArgumentException("Invalid UNION type: $type");
+        if (empty($this->table)) {
+            throw new RuntimeException("Table name not specified for query.");
         }
 
-        $callback($query = new static($this->pdo));
-        [$sql, $data] = $query->compileSelectArray();
-        $this->unions->sql[] = "UNION {$type} ($sql)";
-        $this->unions->data = array_merge($this->unions->data, $data);
+        $sql = "SELECT " . implode(", ", $this->columns ?: ["*"]) . " FROM {$this->table}";
 
-        return $this;
-    }
-
-    public function get(): iterable
-    {
-        [$sql, $data] = $this->compileSelectArray();
-        $stmt = $this->pdo->prepare($sql);
-
-        foreach (array_values($data) as $idx => $value) {
-            $stmt->bindValue(
-                $idx + 1,
-                $value,
-                match (true) {
-                    is_int($value) => PDO::PARAM_INT,
-                    is_bool($value) => PDO::PARAM_BOOL,
-                    is_null($value) => PDO::PARAM_NULL,
-                    default => PDO::PARAM_STR,
-                }
-            );
+        if (!empty($this->where)) {
+            $sql .= " WHERE {$this->clean($this->where)}";
         }
 
-        $stmt->execute();
-        return $stmt->getIterator();
-    }
+        if (!empty($this->groupBys)) {
+            $sql .= " GROUP BY " . implode(", ", $this->groupBys);
 
-    public function first(): ?object
-    {
-        $this->limit(1);
-        foreach ($this->get() as $row) {
-            return (object) $row;
-        }
-
-        return null;
-    }
-
-    protected function compileSelectArray(): array
-    {
-        $columns = "*";
-        if (!empty($this->columns)) {
-            $columns = array_map(
-                fn($alias, $col): string => $alias === $col
-                    ? $this->quote($col)
-                    : "{$this->quote($col)} AS {$this->quote($alias)}",
-                array_keys($this->columns),
-                $this->columns
-            );
-
-            $columns = implode(", ", $columns);
-        }
-
-        $sql = ($this->distinct ? "SELECT DISTINCT" : "SELECT") . " $columns FROM {$this->from->sql}";
-
-        if (!empty($this->joins)) {
-            $sql .= " " . implode(" ", $this->joins);
-        }
-
-        if ($where = preg_replace("/^\s*(AND|OR)\s*/", "", implode(" ", $this->wheres->sql))) {
-            $sql .= " WHERE $where";
-        }
-
-        if (!empty($this->groupBy)) {
-            $grouped = array_map(fn($col): string => $this->quote($col), $this->groupBy);
-            $sql .= " GROUP BY " . implode(", ", $grouped);
-        }
-
-        if ($having = preg_replace("/^\s*(AND|OR)\s*/", "", implode(" ", $this->havings->sql))) {
-            $sql .= " HAVING $having";
-        }
-
-        if ($this->orderBy) {
-            $sql .= " ORDER BY $this->orderBy";
-        }
-
-        if ($this->limit !== null) {
-            $sql .= " LIMIT $this->limit";
-            if ($this->offset !== null) {
-                $sql .= " OFFSET $this->offset";
+            if (!empty($this->having)) {
+                $sql .= " HAVING {$this->clean($this->having)}";
             }
         }
 
-        if (!empty($this->unions->sql)) {
-            $sql = "($sql) " . implode(" ", $this->unions->sql);
+        if (!empty($this->orderBys)) {
+            $sql .= " ORDER BY " . implode(", ", $this->orderBys);
         }
 
-        return [$sql, array_merge($this->from->data, $this->wheres->data, $this->havings->data, $this->unions->data)];
+        if ($this->limit !== null) {
+            $sql .= " LIMIT {$this->limit}";
+
+            if ($this->offset !== null) {
+                $sql .= " OFFSET {$this->offset}";
+            }
+        }
+
+        return $sql;
     }
 
-    protected function compileConditional(
-        string $typeParam,
-        callable|string $column,
-        ?string $operator = null,
-        mixed $value = null,
-        string $boolean = "AND"
-    ): array {
-        if (is_callable($column)) {
-            $column($sub = new self($this->pdo));
-            return ($sql = preg_replace("/^\s*(AND|OR)\s*/", "", implode(" ", $this->{$typeParam}->sql)))
-                ? ["$boolean ($sql)", $sub->{$typeParam}->data]
-                : [];
-        }
-
-        $operator = strtoupper($operator ?? (is_array($value) ? "IN" : "="));
-
-        if (is_callable($value)) {
-            $value($sub = new self($this->pdo));
-            [$sql, $data] = $sub->compileSelectArray();
-            return empty($sql) ? [] : ["$boolean {$this->quote($column)} $operator ($sql)", $data];
-        }
-
-        if (is_null($value)) {
-            return match ($operator) {
-                "=", "IS", "IS NULL" => ["$boolean {$this->quote($column)} IS NULL", []],
-                "!=", "<>", "IS NOT", "IS NOT NULL" => ["$boolean {$this->quote($column)} IS NOT NULL", []],
-                default => throw new InvalidArgumentException("Unsupported NULL comparison operator: $operator"),
-            };
-        }
-
-        if (is_array($value)) {
-            $placeholders = fn($list) => implode(", ", array_fill(0, count($list), "?"));
-            return match ($operator) {
-                "BETWEEN", "NOT BETWEEN" => [
-                    "$boolean {$this->quote($column)} $operator ? AND ?",
-                    array_values($value),
-                ],
-                "IN", "NOT IN" => [
-                    "$boolean {$this->quote($column)} $operator ({$placeholders($value)})",
-                    array_values($value),
-                ],
-                default => throw new InvalidArgumentException("Unsupported operator '$operator' for array value."),
-            };
-        }
-
-        if (is_string($value) && preg_match('/^[a-zA-Z_][a-zA-Z0-9_\.]*$/', $value)) {
-            return ["$boolean {$this->quote($column)} $operator {$this->quote($value)}", []];
-        }
-
-        return ["$boolean {$this->quote($column)} $operator ?", [is_bool($value) ? (int) $value : $value]];
-    }
-
-    protected function quote(string $identifier): string
+    protected function clean(array $statements): string
     {
-        return '"' . str_replace('"', '""', $identifier) . '"';
+        return preg_replace("/^\s*(AND|OR)\s*/", "", implode(" ", $statements));
     }
 
-    public function __toString(): string
+    protected function getParams(): array
     {
-        [$sql] = $this->compileSelectArray();
-        return (string) $sql;
+        return array_merge($this->whereParams, $this->havingParams);
+    }
+
+    public function get(): Iterator
+    {
+        if ($this->pdo === null) {
+            throw new RuntimeException("No PDO to run query.");
+        }
+
+        $stmt = $this->pdo->prepare($this->selectSql());
+        $stmt->execute($this->getParams());
+
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            yield $row;
+        }
+    }
+
+    public function first(): array
+    {
+        $this->limit = 1;
+
+        foreach ($this->get() as $row) {
+            return $row;
+        }
+
+        return [];
+    }
+
+    public function insert(array $data): ?int
+    {
+        if (array_is_list($data)) {
+            throw new InvalidArgumentException("Data must be associative array.");
+        }
+
+        if (empty($this->table)) {
+            throw new RuntimeException("Table name not specified for insert.");
+        }
+
+        if ($this->pdo === null) {
+            throw new RuntimeException("No PDO to run insert.");
+        }
+
+        $columnList = implode(", ", array_keys($data));
+        $placeholders = implode(", ", array_fill(0, count($data), "?"));
+        $sql = "INSERT INTO {$this->table} ({$columnList}) VALUES ({$placeholders})";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute(array_values($data));
+
+        return $this->pdo->lastInsertId() ?: null;
+    }
+
+    public function update(array $data): bool
+    {
+        if (array_is_list($data)) {
+            throw new InvalidArgumentException("Data must be associative array.");
+        }
+
+        if (empty($this->table)) {
+            throw new RuntimeException("Table name not specified for update.");
+        }
+
+        if (empty($this->where)) {
+            throw new RuntimeException("Where clause missing for update.");
+        }
+
+        if ($this->pdo === null) {
+            throw new RuntimeException("No PDO to run update.");
+        }
+
+        $columnList = implode(", ", array_map(fn($column): string => "{$column} = ?", array_keys($data)));
+        $sql = "UPDATE {$this->table} SET {$columnList} WHERE {$this->clean($this->where)}";
+
+        $stmt = $this->pdo->prepare($sql);
+        return $stmt->execute([...array_values($data), ...$this->whereParams]);
+    }
+
+    public function delete(): bool
+    {
+        if (empty($this->table)) {
+            throw new RuntimeException("Table name not specified for delete.");
+        }
+
+        if (empty($this->where)) {
+            throw new RuntimeException("Where clause missing for delete.");
+        }
+
+        if ($this->pdo === null) {
+            throw new RuntimeException("No PDO to run delete.");
+        }
+
+        $sql = "DELETE FROM {$this->table} WHERE {$this->clean($this->where)}";
+        $stmt = $this->pdo->prepare($sql);
+
+        return $stmt->execute($this->whereParams);
     }
 }

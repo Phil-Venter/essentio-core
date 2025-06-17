@@ -8,7 +8,7 @@ use Exception;
 
 class Validate
 {
-    public function alpha(string $message = ""): Closure
+    public static function alpha(string $message = ""): Closure
     {
         return function (?string $input) use ($message): ?string {
             if ($input === null) {
@@ -23,7 +23,7 @@ class Validate
         };
     }
 
-    public function alphaDash(string $message = ""): Closure
+    public static function alphaDash(string $message = ""): Closure
     {
         return function (?string $input) use ($message): ?string {
             if ($input === null) {
@@ -38,7 +38,7 @@ class Validate
         };
     }
 
-    public function alphaNum(string $message = ""): Closure
+    public static function alphaNum(string $message = ""): Closure
     {
         return function (?string $input) use ($message): ?string {
             if ($input === null) {
@@ -53,7 +53,7 @@ class Validate
         };
     }
 
-    public function email(string $message = ""): Closure
+    public static function email(string $message = ""): Closure
     {
         return function (?string $input) use ($message): ?string {
             if ($input === null) {
@@ -68,7 +68,7 @@ class Validate
         };
     }
 
-    public function endsWith(array $suffixes, string $message = ""): Closure
+    public static function endsWith(array $suffixes, string $message = ""): Closure
     {
         return function (?string $input) use ($suffixes, $message): ?string {
             if ($input === null) {
@@ -85,7 +85,7 @@ class Validate
         };
     }
 
-    public function lowercase(string $message = ""): Closure
+    public static function lowercase(string $message = ""): Closure
     {
         return function (?string $input) use ($message): ?string {
             if ($input === null) {
@@ -100,7 +100,7 @@ class Validate
         };
     }
 
-    public function uppercase(string $message = ""): Closure
+    public static function uppercase(string $message = ""): Closure
     {
         return function (?string $input) use ($message): ?string {
             if ($input === null) {
@@ -115,7 +115,7 @@ class Validate
         };
     }
 
-    public function minLength(int $min, string $message = ""): Closure
+    public static function minLength(int $min, string $message = ""): Closure
     {
         return function (?string $input) use ($min, $message): ?string {
             if ($input === null) {
@@ -130,7 +130,7 @@ class Validate
         };
     }
 
-    public function maxLength(int $max, string $message = ""): Closure
+    public static function maxLength(int $max, string $message = ""): Closure
     {
         return function (?string $input) use ($max, $message): ?string {
             if ($input === null) {
@@ -145,7 +145,7 @@ class Validate
         };
     }
 
-    public function regex(string $pattern, string $message = ""): Closure
+    public static function regex(string $pattern, string $message = ""): Closure
     {
         return function (?string $input) use ($pattern, $message): ?string {
             if ($input === null) {
@@ -160,7 +160,7 @@ class Validate
         };
     }
 
-    public function between(
+    public static function between(
         DateTimeInterface|float|int $min,
         DateTimeInterface|float|int $max,
         string $message = ""
@@ -187,7 +187,7 @@ class Validate
         };
     }
 
-    public function gt(DateTimeInterface|float|int $min, string $message = ""): Closure
+    public static function gt(DateTimeInterface|float|int $min, string $message = ""): Closure
     {
         $min = $min instanceof DateTimeInterface ? $min->getTimestamp() : $min;
 
@@ -208,7 +208,7 @@ class Validate
         };
     }
 
-    public function gte(DateTimeInterface|float|int $min, string $message = ""): Closure
+    public static function gte(DateTimeInterface|float|int $min, string $message = ""): Closure
     {
         $min = $min instanceof DateTimeInterface ? $min->getTimestamp() : $min;
 
@@ -229,7 +229,7 @@ class Validate
         };
     }
 
-    public function lt(DateTimeInterface|float|int $max, string $message = ""): Closure
+    public static function lt(DateTimeInterface|float|int $max, string $message = ""): Closure
     {
         $max = $max instanceof DateTimeInterface ? $max->getTimestamp() : $max;
 
@@ -250,7 +250,7 @@ class Validate
         };
     }
 
-    public function lte(DateTimeInterface|float|int $max, string $message = ""): Closure
+    public static function lte(DateTimeInterface|float|int $max, string $message = ""): Closure
     {
         $max = $max instanceof DateTimeInterface ? $max->getTimestamp() : $max;
 
@@ -271,7 +271,7 @@ class Validate
         };
     }
 
-    public function required(string $message = ""): Closure
+    public static function required(string $message = ""): Closure
     {
         return function (mixed $input) use ($message): mixed {
             if (!isset($input) || (is_string($input) && trim($input) === "")) {
@@ -282,7 +282,7 @@ class Validate
         };
     }
 
-    public function inArray(array $allowed, bool $strict = true, string $message = ""): Closure
+    public static function inArray(array $allowed, bool $strict = true, string $message = ""): Closure
     {
         return function (mixed $input) use ($allowed, $strict, $message): mixed {
             if ($input === null) {

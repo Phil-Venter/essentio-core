@@ -54,6 +54,7 @@ class Response
             }
         }
 
+        header_remove("X-Powered-By");
         echo (string) $this->body;
     }
 }

@@ -75,6 +75,7 @@ class Request
 
     public function sanitize(array $rules): array|false
     {
+        $this->errors = [];
         $sanitized = [];
 
         foreach ($rules as $field => $chain) {

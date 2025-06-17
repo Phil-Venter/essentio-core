@@ -19,8 +19,8 @@ class Environment
                 continue;
             }
 
-            [$name, $value] = explode("=", $line, 2);
-            $name = trim($name);
+            [$key, $value] = explode("=", $line, 2);
+            $key = trim($key);
             $value = trim($value);
 
             if (preg_match('/^(["\']).*\1$/', $value)) {
@@ -36,7 +36,7 @@ class Environment
                 };
             }
 
-            $this->data[$name] = $value;
+            $this->data[$key] = $value;
         }
 
         return $this;

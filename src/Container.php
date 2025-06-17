@@ -48,9 +48,8 @@ class Container
             return $this->cache[$abstract];
         }
 
-        $resolved = is_callable($this->bindings[$abstract])
-            ? $this->bindings[$abstract](...$dependencies)
-            : new ($this->bindings[$abstract])(...$dependencies);
+        $concrete = $this->bindings[$abstract];
+        $resolved = is_string($concrete) ? new $concrete(...$dependencies) : $concrete(...$dependencies);
 
         if ($once) {
             $this->cache[$abstract] = $resolved;

@@ -6,12 +6,15 @@ use RuntimeException;
 
 class Jwt
 {
-    public function __construct(protected string $secret) {}
+    public function __construct(protected string $secret, protected string $issuer) {}
 
-    public static function create(?string $secret = null): static
+    public static function create(?string $secret = null, ?string $issuer = null): static
     {
+        $env = Application::$container->resolve(Environment::class);
+
         return new static(
-            $secret ?? (Application::$container->resolve(Environment::class)->get("JWT_SECRET") ?? "Essentio")
+            $secret ?? ($env->get("JWT_SECRET") ?? "Essentio"),
+            $issuer ?? ($env->get("JWT_ISSUER") ?? "Essentio")
         );
     }
 
@@ -38,8 +41,20 @@ class Jwt
 
         $payload = json_decode($this->base64url_decode($payload64), true);
 
+        if (isset($payload["iss"]) && $this->issuer !== $payload["iss"]) {
+            throw new RuntimeException("Invalid issuer");
+        }
+
         if (isset($payload["exp"]) && time() > $payload["exp"]) {
             throw new RuntimeException("Token has expired");
+        }
+
+        if (isset($payload["iat"]) && time() < $payload["iat"]) {
+            throw new RuntimeException("Token not valid yet");
+        }
+
+        if (isset($payload["nbf"]) && time() < $payload["nbf"]) {
+            throw new RuntimeException("Token not valid yet");
         }
 
         return $payload;

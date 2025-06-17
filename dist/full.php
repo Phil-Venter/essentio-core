@@ -3,61 +3,41 @@
 class Application
 {
     public static string $basePath;
+
     public static Container $container;
 
     public static function http(string $basePath): void
     {
-        static::initCommon($basePath);
+        static::$basePath = rtrim($basePath, "/");
+        static::$container = new Container();
 
+        static::$container->once(Environment::class);
         static::$container->once(Session::class, Session::create(...));
         static::$container->once(Jwt::class, Jwt::create(...));
         static::$container->once(Request::class, Request::create(...));
         static::$container->once(Response::class);
         static::$container->once(Router::class);
 
-        if (class_exists(Authenticated::class, true)) {
-            static::$container->once(Authenticated::class, Authenticated::create(...));
+        if (class_exists(Query::class, true)) {
+            static::$container->bind(Query::class, Query::create(...));
         }
 
-        if (class_exists(Cast::class, true)) {
-            static::$container->once(Cast::class);
-        }
-
-        if (class_exists(Validate::class, true)) {
-            static::$container->once(Validate::class);
-        }
+        static::$container->resolve(Environment::class)->load(static::fromBase(".env"));
     }
 
     public static function cli(string $basePath): void
-    {
-        static::initCommon($basePath);
-        static::$container->once(Argument::class, Argument::create(...));
-    }
-
-    protected static function initCommon(string $basePath): void
     {
         static::$basePath = rtrim($basePath, "/");
         static::$container = new Container();
 
         static::$container->once(Environment::class);
-        static::$container->resolve(Environment::class)->load(static::fromBase(".env"));
-
-        static::$container->once(PDO::class, function (
-            ?string $dsn = null,
-            ?string $user = null,
-            ?string $pass = null
-        ) {
-            $env = static::$container->resolve(Environment::class);
-            return new PDO($dsn ?? $env->get("DB_DSN"), $user ?? $env->get("DB_USER"), $pass ?? $env->get("DB_PASS"));
-        });
-
-        if (class_exists(Mailer::class, true)) {
-            static::$container->bind(Mailer::class, Mailer::create(...));
-        }
+        static::$container->once(Argument::class, Argument::create(...));
 
         if (class_exists(Query::class, true)) {
             static::$container->bind(Query::class, Query::create(...));
         }
+
+        static::$container->resolve(Environment::class)->load(static::fromBase(".env"));
     }
 
     public static function fromBase(string $path): string
@@ -75,7 +55,8 @@ class Application
         } catch (HttpException $e) {
             $status = $e->getCode() ?: 500;
             $response->setStatus($status)->setBody($e->getMessage())->send();
-        } catch (Throwable) {
+        } catch (Throwable $e) {
+            error_log("{$e->getMessage()}\n\n{$e->getTraceAsString()}");
             $response->setStatus(500)->setBody("Internal Server Error")->send();
         }
     }
@@ -83,11 +64,7 @@ class Application
 
 class Argument
 {
-    public function __construct(
-        public string $command = '',
-        public array $arguments = [],
-    ) {
-    }
+    public function __construct(public string $command = "", public array $arguments = []) {}
 
     public static function create(?array $argv = null): static
     {
@@ -178,11 +155,7 @@ class Argument
 
 class Container
 {
-    public function __construct(
-        public array $bindings = [],
-        public array $cache = [],
-    ) {
-    }
+    public function __construct(public array $bindings = [], public array $cache = []) {}
 
     public function bind(string $abstract, callable|string|null $concrete = null): self
     {
@@ -224,9 +197,8 @@ class Container
             return $this->cache[$abstract];
         }
 
-        $resolved = is_callable($this->bindings[$abstract])
-            ? $this->bindings[$abstract](...$dependencies)
-            : new ($this->bindings[$abstract])(...$dependencies);
+        $concrete = $this->bindings[$abstract];
+        $resolved = is_string($concrete) ? new $concrete(...$dependencies) : $concrete(...$dependencies);
 
         if ($once) {
             $this->cache[$abstract] = $resolved;
@@ -238,10 +210,7 @@ class Container
 
 class Environment
 {
-    public function __construct(
-        public array $data = [],
-    ) {
-    }
+    public function __construct(public array $data = []) {}
 
     public function load(string $file): static
     {
@@ -256,8 +225,8 @@ class Environment
                 continue;
             }
 
-            [$name, $value] = explode("=", $line, 2);
-            $name = trim($name);
+            [$key, $value] = explode("=", $line, 2);
+            $key = trim($key);
             $value = trim($value);
 
             if (preg_match('/^(["\']).*\1$/', $value)) {
@@ -273,7 +242,7 @@ class Environment
                 };
             }
 
-            $this->data[$name] = $value;
+            $this->data[$key] = $value;
         }
 
         return $this;
@@ -288,21 +257,28 @@ class Environment
 class HttpException extends Exception
 {
     public const HTTP_STATUS = [
-        200 => 'OK',
-        201 => 'Created',
-        202 => 'Accepted',
-        204 => 'No Content',
-        301 => 'Moved Permanently',
-        302 => 'Found',
-        303 => 'See Other',
-        307 => 'Temporary Redirect',
-        308 => 'Permanent Redirect',
-        400 => 'Bad Request',
-        401 => 'Unauthorized',
-        403 => 'Forbidden',
-        404 => 'Not Found',
-        405 => 'Method Not Allowed',
-        500 => 'Internal Server Error',
+        // Success
+        200 => "OK",
+        201 => "Created",
+        202 => "Accepted",
+        204 => "No Content",
+
+        // Redirection
+        301 => "Moved Permanently",
+        302 => "Found",
+        303 => "See Other",
+        307 => "Temporary Redirect",
+        308 => "Permanent Redirect",
+
+        // Client Errors
+        400 => "Bad Request",
+        401 => "Unauthorized",
+        403 => "Forbidden",
+        404 => "Not Found",
+        405 => "Method Not Allowed",
+
+        // Server Errors
+        500 => "Internal Server Error",
     ];
 
     public static function create(int $status, ?string $message = null, ?Throwable $previous = null): static
@@ -313,15 +289,15 @@ class HttpException extends Exception
 
 class Jwt
 {
-    public function __construct(
-        protected string $secret,
-    ) {
-    }
+    public function __construct(protected string $secret, protected string $issuer) {}
 
-    public static function create(?string $secret = null): static
+    public static function create(?string $secret = null, ?string $issuer = null): static
     {
+        $env = Application::$container->resolve(Environment::class);
+
         return new static(
-            $secret ?? (Application::$container->resolve(Environment::class)->get("JWT_SECRET") ?? "Essentio")
+            $secret ?? ($env->get("JWT_SECRET") ?? "Essentio"),
+            $issuer ?? ($env->get("JWT_ISSUER") ?? "Essentio")
         );
     }
 
@@ -348,8 +324,20 @@ class Jwt
 
         $payload = json_decode($this->base64url_decode($payload64), true);
 
+        if (isset($payload["iss"]) && $this->issuer !== $payload["iss"]) {
+            throw new RuntimeException("Invalid issuer");
+        }
+
         if (isset($payload["exp"]) && time() > $payload["exp"]) {
             throw new RuntimeException("Token has expired");
+        }
+
+        if (isset($payload["iat"]) && time() < $payload["iat"]) {
+            throw new RuntimeException("Token not valid yet");
+        }
+
+        if (isset($payload["nbf"]) && time() < $payload["nbf"]) {
+            throw new RuntimeException("Token not valid yet");
         }
 
         return $payload;
@@ -384,9 +372,8 @@ class Request
         public array $cookies,
         public array $files,
         public array $body,
-        public array $parameters,
-    ) {
-    }
+        public array $parameters
+    ) {}
 
     public static function create(
         ?array $server = null,
@@ -395,9 +382,8 @@ class Request
         ?array $post = null,
         ?array $cookies = null,
         ?array $files = null,
-        ?string $body = null,
-    ): static
-    {
+        ?string $body = null
+    ): static {
         $server ??= $_SERVER;
         $post ??= $_POST ?? [];
         $query ??= $_GET;
@@ -444,6 +430,7 @@ class Request
 
     public function sanitize(array $rules): array|false
     {
+        $this->errors = [];
         $sanitized = [];
 
         foreach ($rules as $field => $chain) {
@@ -469,9 +456,8 @@ class Response
     public function __construct(
         public int $status = 200,
         public array $headers = [],
-        public bool|float|int|string|Stringable|null $body = null,
-    ) {
-    }
+        public bool|float|int|string|Stringable|null $body = null
+    ) {}
 
     public function setStatus(int $status): static
     {
@@ -515,20 +501,22 @@ class Response
             }
         }
 
+        header_remove("X-Powered-By");
         echo (string) $this->body;
     }
 }
 
 class Router
 {
-    protected const LEAF = "\x00LEAF_NODE";
-    protected const PARAM = "\x00PARAMETER";
+    protected const LEAF = "\0LEAF_NODE";
+
+    protected const PARAM = "\0PARAMETER";
 
     public function __construct(
         protected array $middleware = [],
         protected array $routes = [],
-    ) {
-    }
+        protected array $named = []
+    ) {}
 
     public function middleware(callable $middleware): static
     {
@@ -536,8 +524,13 @@ class Router
         return $this;
     }
 
-    public function add(string $method, string $path, callable $handler, array $middleware = []): static
-    {
+    public function add(
+        string $method,
+        string $path,
+        callable $handler,
+        ?string $name = null,
+        array $middleware = []
+    ): static {
         $path = trim((string) preg_replace("#/+#", "/", $path), "/");
         $node = &$this->routes;
         $params = [];
@@ -551,8 +544,38 @@ class Router
             }
         }
 
+        if ($name) {
+            $this->named[$name] = $path;
+        }
+
         $node[static::LEAF][$method] = [$params, $middleware, $handler];
         return $this;
+    }
+
+    public function getUrl(string $name, array $params): string
+    {
+        if (!isset($this->named[$name])) {
+            throw new InvalidArgumentException("Route named '{$name}' not found.");
+        }
+
+        $consumed = [];
+        $url = preg_replace_callback(
+            "#:([\w]+)#",
+            function ($matches) use ($params, &$consumed, $name) {
+                if (!isset($params[$matches[1]])) {
+                    throw new InvalidArgumentException("Missing parameter '{$matches[1]}' for route '{$name}'.");
+                }
+
+                $consumed[$matches[1]] = true;
+                return rawurlencode((string) $params[$matches[1]]);
+            },
+            $this->named[$name]
+        );
+
+        $extra = array_diff_key($params, array_flip($consumed));
+        $query = $extra ? "?" . http_build_query($extra) : "";
+
+        return "/" . ltrim($url, "/") . $query;
     }
 
     public function dispatch(Request $req, Response $res): Response
@@ -600,9 +623,11 @@ class Router
 
 class Session
 {
-    protected const FLASH_OLD = "\x00FLASH_OLD";
-    protected const FLASH_NEW = "\x00FLASH_NEW";
-    protected const CSRF_KEY = "\x00CSRF_KEY";
+    protected const FLASH_OLD = "\0FLASH_OLD";
+
+    protected const FLASH_NEW = "\0FLASH_NEW";
+
+    protected const CSRF_KEY = "\0CSRF_KEY";
 
     public static function create(): static
     {
@@ -657,9 +682,8 @@ class Template
         public ?string $template = null,
         public array $segments = [],
         public ?self $layout = null,
-        public array $stack = [],
-    ) {
-    }
+        public array $stack = []
+    ) {}
 
     protected function layout(string $template): void
     {
@@ -706,72 +730,12 @@ class Template
     }
 }
 
-class Authenticated
-{
-    protected const USER_KEY = '\0USER';
-
-    public function __construct(
-        protected PDO $pdo,
-        protected Session $session,
-    ) {
-    }
-
-    public static function create(?PDO $pdo = null, ?Session $session = null): static
-    {
-        return new static(
-            $pdo ?? Application::$container->resolve(PDO::class),
-            $session ?? Application::$container->resolve(Session::class)
-        );
-    }
-
-    public function user(): ?object
-    {
-        return ($user = $this->session->get(static::USER_KEY)) ? (object) $user : null;
-    }
-
-    public function login(
-        string $username,
-        #[SensitiveParameter]
-        string $password,
-    ): bool
-    {
-        if ($this->session->get(static::USER_KEY)) {
-            return true;
-        }
-
-        $stmt = $this->pdo->prepare("SELECT * FROM users WHERE username = ? LIMIT 1");
-
-        if (!$stmt) {
-            return false;
-        }
-
-        $stmt->bindValue(1, $username, PDO::PARAM_STR);
-        $stmt->execute();
-        $row = $stmt->fetch();
-
-        if (!$row || !password_verify($password, (string) $row["password"])) {
-            return false;
-        }
-
-        unset($row["password"]);
-        session_regenerate_id(true);
-        $this->session->set(static::USER_KEY, $row);
-        return true;
-    }
-
-    public function logout(): void
-    {
-        $this->session->set(static::USER_KEY, null);
-        session_regenerate_id(true);
-    }
-}
-
 class Cast
 {
-    public function bool(string $message = ''): Closure
+    public static function bool(string $message = ""): Closure
     {
         return function (string $input) use ($message): ?bool {
-            $input = $this->nullOnEmpty($input);
+            $input = static::nullOnEmpty($input);
 
             if ($input === null) {
                 return null;
@@ -787,10 +751,10 @@ class Cast
         };
     }
 
-    public function date(string $message = ''): Closure
+    public static function date(string $message = ""): Closure
     {
         return function (string $input) use ($message): ?DateTimeInterface {
-            $input = $this->nullOnEmpty($input);
+            $input = static::nullOnEmpty($input);
 
             if ($input === null) {
                 return null;
@@ -804,7 +768,7 @@ class Cast
         };
     }
 
-    public function enum(string $enumClass, string $message = ''): Closure
+    public static function enum(string $enumClass, string $message = ""): Closure
     {
         if (!enum_exists($enumClass)) {
             throw new Exception("Invalid enum class: $enumClass");
@@ -815,7 +779,7 @@ class Cast
         }
 
         return function (string $input) use ($enumClass, $message): ?BackedEnum {
-            $input = $this->nullOnEmpty($input);
+            $input = static::nullOnEmpty($input);
 
             if ($input === null) {
                 return null;
@@ -831,16 +795,16 @@ class Cast
         };
     }
 
-    public function float(string $message = ''): Closure
+    public static function float(string $message = ""): Closure
     {
         return function (string $input) use ($message): ?float {
-            $input = $this->nullOnEmpty($input);
+            $input = static::nullOnEmpty($input);
 
             if ($input === null) {
                 return null;
             }
 
-            $value = $this->normalizeNumber($input, $message);
+            $value = static::normalizeNumber($input, $message);
             $floatVal = filter_var($value, FILTER_VALIDATE_FLOAT);
 
             if ($floatVal === false) {
@@ -851,16 +815,16 @@ class Cast
         };
     }
 
-    public function int(string $message = ''): Closure
+    public static function int(string $message = ""): Closure
     {
         return function (string $input) use ($message): ?int {
-            $input = $this->nullOnEmpty($input);
+            $input = static::nullOnEmpty($input);
 
             if ($input === null) {
                 return null;
             }
 
-            $value = $this->normalizeNumber($input, $message);
+            $value = static::normalizeNumber($input, $message);
             $intVal = filter_var($value, FILTER_VALIDATE_INT);
 
             if ($intVal === false) {
@@ -871,16 +835,16 @@ class Cast
         };
     }
 
-    public function numeric(string $message = ''): Closure
+    public static function number(string $message = ""): Closure
     {
         return function (string $input) use ($message): int|float|null {
-            $input = $this->nullOnEmpty($input);
+            $input = static::nullOnEmpty($input);
 
             if ($input === null) {
                 return null;
             }
 
-            $value = $this->normalizeNumber($input, $message);
+            $value = static::normalizeNumber($input, $message);
 
             if (($intVal = filter_var($value, FILTER_VALIDATE_INT)) !== false) {
                 return $intVal;
@@ -894,7 +858,7 @@ class Cast
         };
     }
 
-    public function string(bool $trim = false): Closure
+    public static function string(bool $trim = false): Closure
     {
         return function (string $input) use ($trim): string {
             if ($trim) {
@@ -905,7 +869,7 @@ class Cast
         };
     }
 
-    protected function nullOnEmpty(string $input): mixed
+    protected static function nullOnEmpty(string $input): mixed
     {
         if (trim($input) === "") {
             return null;
@@ -914,7 +878,7 @@ class Cast
         return $input;
     }
 
-    protected function normalizeNumber(string $input, string $message): string
+    protected static function normalizeNumber(string $input, string $message): string
     {
         preg_match_all("/-?\d+(\.\d+)?/", $input, $matches);
 
@@ -926,548 +890,304 @@ class Cast
     }
 }
 
-class Mailer
+class Query
 {
-    protected string $url;
-    public string $from = '';
-    public array $to = [];
-    public string $subject = '';
-    public string $text = '';
-    public string $html = '';
+    protected string $bool = "AND";
 
-    public function __construct(
-        string $url,
-        protected string $user,
-        protected string $pass,
-        int $port = 587,
-    ) {
-        $this->url = sprintf("smtp://%s:%s", $url, $port);
-    }
-
-    public static function create(
-        ?string $url = null,
-        ?string $user = null,
-        ?string $pass = null,
-        ?int $port = null,
-    ): static
-    {
-        $env = Application::$container->resolve(Environment::class);
-
-        return new static(
-            $url ?? $env->get("MAILER_URL"),
-            $user ?? $env->get("MAILER_USER"),
-            $pass ?? $env->get("MAILER_PASS"),
-            $port ?? 587
-        );
-    }
-
-    public function setFrom(string $email): static
-    {
-        $this->from = $email;
-        return $this;
-    }
-
-    public function addTo(string $email): static
-    {
-        $this->to[] = $email;
-        return $this;
-    }
-
-    public function setTo(array|string $emails): static
-    {
-        $this->to = (array) $emails;
-        return $this;
-    }
-
-    public function setSubject(string $subject): static
-    {
-        $this->subject = $subject;
-        return $this;
-    }
-
-    public function setText(string $text): static
-    {
-        $this->text = $text;
-        return $this;
-    }
-
-    public function setHtml(string $html): static
-    {
-        $this->html = $html;
-        return $this;
-    }
-
-    public function send(): true
-    {
-        if (empty($this->from) || empty($this->to) || empty($this->subject)) {
-            throw new RuntimeException("Required data missing.");
-        }
-
-        $stream = fopen("php://temp", "r+");
-        if (!$stream) {
-            throw new RuntimeException("Failed to open in-memory stream.");
-        }
-
-        fwrite($stream, $this->buildEmail());
-        rewind($stream);
-
-        $ch = curl_init();
-        curl_setopt_array($ch, [
-            CURLOPT_URL => $this->url,
-            CURLOPT_MAIL_FROM => sprintf("<%s>", $this->from),
-            CURLOPT_MAIL_RCPT => array_map(fn($to): string => sprintf("<%s>", $to), $this->to),
-            CURLOPT_USERNAME => $this->user,
-            CURLOPT_PASSWORD => $this->pass,
-            CURLOPT_USE_SSL => CURLUSESSL_ALL,
-            CURLOPT_READFUNCTION => fn($ch, $stream, $length): string|false => fread($stream, $length),
-            CURLOPT_INFILE => $stream,
-            CURLOPT_UPLOAD => true,
-            CURLOPT_VERBOSE => true,
-        ]);
-
-        $result = curl_exec($ch);
-        $error = curl_error($ch);
-        $errno = curl_errno($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-
-        curl_close($ch);
-        fclose($stream);
-
-        if ($errno !== 0 || $result === false) {
-            throw new RuntimeException("cURL error ({$errno}): {$error}");
-        }
-
-        if ($httpCode >= 400) {
-            throw new RuntimeException("Email send failed with HTTP status code: {$httpCode}");
-        }
-
-        return true;
-    }
-
-    protected function buildEmail(): string
-    {
-        $headers = [
-            sprintf("From: %s", $this->from),
-            sprintf("To: %s", implode(", ", $this->to)),
-            sprintf("Date: %s", date("r")),
-            sprintf("Subject: %s", $this->subject),
-            "MIME-Version: 1.0",
-        ];
-
-        if (!empty($this->text) && !empty($this->html)) {
-            $boundary = uniqid("np");
-            $headers[] = sprintf("Content-Type: multipart/alternative; boundary=%s", $boundary);
-            $body = sprintf(
-                <<<'EOT'
-        --%s\r
-        Content-Type: text/plain; charset=utf-8\r
-        \r
-        %s\r
-        \r
-        --%s\r
-        Content-Type: text/html; charset=utf-8\r
-        \r
-        %s\r
-        \r
-        --%s--\r
-        EOT
-                ,
-                $boundary,
-                $this->text,
-                $boundary,
-                $this->html,
-                $boundary
-            );
-        } elseif (!empty($this->html)) {
-            $headers[] = "Content-Type: text/html; charset=utf-8";
-            $body = $this->html;
-        } else {
-            $headers[] = "Content-Type: text/plain; charset=utf-8";
-            $body = $this->text;
-        }
-
-        return sprintf("%s\r\n\r\n%s", implode("\r\n", $headers), $body);
-    }
-}
-
-class Query implements Stringable
-{
-    protected bool $distinct = false;
     protected array $columns = [];
-    protected array $groupBy = [];
-    protected object $from;
-    protected array $joins = [];
-    protected object $wheres;
-    protected object $havings;
-    protected ?string $orderBy = null;
-    protected ?int $limit = null;
-    protected ?int $offset = null;
-    protected object $unions;
 
-    public function __construct(
-        protected PDO $pdo,
-    ) {
-        $this->from = (object) ["sql" => "", "data" => []];
-        $this->wheres = (object) ["sql" => [], "data" => []];
-        $this->havings = (object) ["sql" => [], "data" => []];
-        $this->unions = (object) ["sql" => [], "data" => []];
-    }
+    protected string $table = "";
+
+    protected array $where = [];
+
+    protected array $whereParams = [];
+
+    protected array $groupBys = [];
+
+    protected array $having = [];
+
+    protected array $havingParams = [];
+
+    protected array $orderBys = [];
+
+    protected ?int $limit = null;
+
+    protected ?int $offset = null;
+
+    public function __construct(protected ?PDO $pdo = null) {}
 
     public static function create(?PDO $pdo = null): static
     {
         return new static($pdo ?? Application::$container->resolve(PDO::class));
     }
 
-    public function distinct(bool $on = true): static
+    public function or(): static
     {
-        $this->distinct = $on;
+        $this->bool = "OR";
         return $this;
     }
 
-    public function select(string|array ...$columns): static
+    protected function consumeBool(): string
     {
-        if (is_array($columns[0])) {
-            $columns = $columns[0];
-        }
+        $bool = $this->bool;
+        $this->bool = "AND";
+        return " $bool ";
+    }
 
-        if (array_is_list($columns)) {
-            $columns = array_combine($columns, $columns);
-        }
-
+    public function select(array|string ...$columns): static
+    {
+        $columns = array_values((array) $columns);
         $this->columns = array_merge($this->columns, $columns);
         return $this;
     }
 
-    public function from(callable|string $from, ?string $alias = null): static
+    public function table(string $table): static
     {
-        if (!is_callable($from)) {
-            $this->from->sql = $this->quote($from) . ($alias ? " AS " . $this->quote($alias) : "");
-            return $this;
-        }
-
-        $alias ??= "sub";
-        $from($subQuery = new static($this->pdo));
-        [$sql, $data] = $subQuery->compileSelectArray();
-        $this->from->sql = "($sql) AS " . $this->quote($alias);
-        $this->from->data = $data;
-
+        $this->table = $table;
         return $this;
     }
 
-    public function join(
-        string $table,
-        ?string $first = null,
-        ?string $operator = null,
-        ?string $second = null,
-        string $type = '',
-    ): static
+    public function where(string|Closure $column, ?string $operator = null, mixed $value = null): static
     {
-        $type = strtoupper(trim($type ?: "INNER"));
-
-        if (in_array($type, ["CROSS", "NATURAL"])) {
-            $this->joins[] = "$type JOIN " . $this->quote($table);
-            return $this;
+        if ($column instanceof Closure) {
+            $column($query = new static());
+            return $this->whereRaw("({$this->clean($query->where)})", $query->whereParams);
         }
 
-        if ($operator !== null && strtolower($first ?? "") === "using") {
-            $columns = array_map([$this, "quote"], array_map("trim", explode(",", $operator)));
-            $this->joins[] = "$type JOIN {$this->quote($table)} USING (" . implode(", ", $columns) . ")";
-            return $this;
+        if ($value === null) {
+            $sql = match (true) {
+                in_array(strtolower((string) $operator), ["=", "is"], true) => "{$column} IS NULL",
+                in_array(strtolower((string) $operator), ["!=", "<>", "is not", "not"], true) => "{$column} IS NOT NULL",
+                default => throw new InvalidArgumentException("Invalid where condition."),
+            };
+
+            return $this->whereRaw($sql);
         }
 
-        if ($operator !== null && $second === null) {
-            $second = $operator;
-            $operator = "=";
+        $formatValue = fn($val) => match (true) {
+            $val instanceof DateTimeInterface => $val->format("Y-m-d H:i:s"),
+            $val instanceof Stringable => (string) $val,
+            default => $val,
+        };
+
+        $value = $formatValue($value);
+
+        if (is_scalar($value)) {
+            $operator ??= "=";
+            return $this->whereRaw("{$column} {$operator} ?", [$value]);
         }
 
-        $extract = fn($sql): array => preg_match('/^(.+?)\s+AS\s+(.+)$/i', (string) $sql, $m)
-            ? [$m[1], $m[2]]
-            : [$sql, null];
-        [$joinTable, $joinAlias] = $extract($table);
+        $operator ??= "IN";
 
-        if ($first === null || $second === null) {
-            [$mainTable, $mainAlias] = $extract($this->from->sql);
-            $first ??= ($mainAlias ?? $mainTable) . ".id";
-            $second ??= ($joinAlias ?? $joinTable) . "." . $mainTable . "_id";
+        if (strtolower(trim($operator)) === "not") {
+            $operator = "NOT IN";
         }
 
-        $as = $joinAlias ? " AS $joinAlias" : "";
-        $quoteId = fn($identifier): string => implode(
-            ".",
-            array_map([$this, "quote"], explode(".", (string) $identifier))
-        );
-        $this->joins[] = "{$type} JOIN {$this->quote($table)}{$as} ON {$quoteId($first)} {$operator} {$quoteId(
-            $second
-        )}";
+        if ($value instanceof Closure) {
+            $value($query = new static());
+            return $this->whereRaw("{$column} {$operator} ({$query->selectSql()})", $query->getParams());
+        }
 
+        if (!is_array($value)) {
+            throw new InvalidArgumentException("Invalid where condition.");
+        }
+
+        if (mb_stripos($operator, "between") === false) {
+            $placeholders = implode(", ", array_fill(0, count($value), "?"));
+            return $this->whereRaw("{$column} {$operator} ({$placeholders})", $value);
+        }
+
+        if (count($value) !== 2) {
+            throw new InvalidArgumentException("Invalid where condition.");
+        }
+
+        $value[0] = $formatValue($value[0]);
+        $value[1] = $formatValue($value[1]);
+
+        if (!is_scalar($value[0]) || !is_scalar($value[1])) {
+            throw new InvalidArgumentException("Invalid where condition.");
+        }
+
+        return $this->whereRaw("{$column} {$operator} ? AND ?", $value);
+    }
+
+    public function whereRaw(string $statement, array $data = []): static
+    {
+        $this->where[] = "{$this->consumeBool()} {$statement}";
+        $this->whereParams = array_merge($this->whereParams, $data);
         return $this;
     }
 
-    public function whereRaw(string $sql, array $data = [], string $boolean = 'AND'): static
+    public function groupBy(array|string ...$groupBys): static
     {
-        $this->wheres->sql[] = "$boolean $sql";
-        $this->wheres->data = array_merge($this->wheres->data, $data);
+        $groupBys = array_values((array) $groupBys);
+        $this->groupBys = array_merge($this->groupBys, $groupBys);
         return $this;
     }
 
-    public function orWhereRaw(string $sql, array $data = []): static
+    public function havingRaw(string $statement, array $data = []): static
     {
-        return $this->whereRaw($sql, $data, "OR");
-    }
-
-    public function where(
-        callable|string $column,
-        ?string $operator = null,
-        mixed $value = null,
-        string $boolean = 'AND',
-    ): static
-    {
-        if (!empty(($compiled = $this->compileConditional("wheres", $column, $operator, $value, $boolean)))) {
-            $this->wheres->sql[] = $compiled[0];
-            $this->wheres->data = array_merge($this->wheres->data, $compiled[1]);
-        }
-
+        $this->having[] = "{$this->consumeBool()} {$statement}";
+        $this->havingParams = array_merge($this->havingParams, $data);
         return $this;
     }
 
-    public function orWhere(callable|string|self $column, ?string $operator = null, mixed $value = null): static
+    public function orderBy(string $column, string $direction = "ASC"): static
     {
-        return $this->where($column, $operator, $value, "OR");
-    }
-
-    public function groupBy(string|array ...$columns): static
-    {
-        $this->groupBy = array_merge($this->groupBy, is_array($columns[0]) ? $columns[0] : $columns);
+        $this->orderBys[] = "{$column} {$direction}";
         return $this;
     }
 
-    public function havingRaw(string $sql, array $data = [], string $boolean = 'AND'): static
-    {
-        $this->havings->sql[] = "$boolean $sql";
-        $this->havings->data = array_merge($this->havings->data, $data);
-        return $this;
-    }
-
-    public function orHavingRaw(string $sql, array $data = []): static
-    {
-        return $this->havingRaw($sql, $data, "OR");
-    }
-
-    public function having(
-        callable|string $column,
-        ?string $operator = null,
-        mixed $value = null,
-        string $boolean = 'AND',
-    ): static
-    {
-        if (!empty(($compiled = $this->compileConditional("havings", $column, $operator, $value, $boolean)))) {
-            $this->havings->sql[] = $compiled[0];
-            $this->havings->data = array_merge($this->havings->data, $compiled[1]);
-        }
-
-        return $this;
-    }
-
-    public function orHaving(callable|string|self $column, ?string $operator = null, mixed $value = null): static
-    {
-        return $this->having($column, $operator, $value, "OR");
-    }
-
-    public function orderBy(string|array $column, string $direction = 'ASC'): static
-    {
-        if (is_array($column)) {
-            $clauses = [];
-            foreach ($column as $col => $dir) {
-                $clauses[] = $this->quote($col) . " " . strtoupper((string) $dir);
-            }
-
-            $this->orderBy = implode(", ", $clauses);
-        } else {
-            $this->orderBy = $this->quote($column) . " " . strtoupper($direction);
-        }
-
-        return $this;
-    }
-
-    public function limit(int $limit): static
+    public function limit(int $limit, ?int $offset = null): static
     {
         $this->limit = $limit;
-        return $this;
-    }
-
-    public function offset(int $offset): static
-    {
         $this->offset = $offset;
         return $this;
     }
 
-    public function union(callable $callback, string $type = ''): static
+    protected function selectSql(): string
     {
-        $type = strtoupper(trim($type));
-        if (!in_array($type, ["", "ALL", "DISTINCT"], true)) {
-            throw new InvalidArgumentException("Invalid UNION type: $type");
+        if (empty($this->table)) {
+            throw new RuntimeException("Table name not specified for query.");
         }
 
-        $callback($query = new static($this->pdo));
-        [$sql, $data] = $query->compileSelectArray();
-        $this->unions->sql[] = "UNION {$type} ($sql)";
-        $this->unions->data = array_merge($this->unions->data, $data);
+        $sql = "SELECT " . implode(", ", $this->columns ?: ["*"]) . " FROM {$this->table}";
 
-        return $this;
-    }
-
-    public function get(): iterable
-    {
-        [$sql, $data] = $this->compileSelectArray();
-        $stmt = $this->pdo->prepare($sql);
-
-        foreach (array_values($data) as $idx => $value) {
-            $stmt->bindValue(
-                $idx + 1,
-                $value,
-                match (true) {
-                    is_int($value) => PDO::PARAM_INT,
-                    is_bool($value) => PDO::PARAM_BOOL,
-                    is_null($value) => PDO::PARAM_NULL,
-                    default => PDO::PARAM_STR,
-                }
-            );
+        if (!empty($this->where)) {
+            $sql .= " WHERE {$this->clean($this->where)}";
         }
 
-        $stmt->execute();
-        return $stmt->getIterator();
-    }
+        if (!empty($this->groupBys)) {
+            $sql .= " GROUP BY " . implode(", ", $this->groupBys);
 
-    public function first(): ?object
-    {
-        $this->limit(1);
-        foreach ($this->get() as $row) {
-            return (object) $row;
-        }
-
-        return null;
-    }
-
-    protected function compileSelectArray(): array
-    {
-        $columns = "*";
-        if (!empty($this->columns)) {
-            $columns = array_map(
-                fn($alias, $col): string => $alias === $col
-                    ? $this->quote($col)
-                    : "{$this->quote($col)} AS {$this->quote($alias)}",
-                array_keys($this->columns),
-                $this->columns
-            );
-
-            $columns = implode(", ", $columns);
-        }
-
-        $sql = ($this->distinct ? "SELECT DISTINCT" : "SELECT") . " $columns FROM {$this->from->sql}";
-
-        if (!empty($this->joins)) {
-            $sql .= " " . implode(" ", $this->joins);
-        }
-
-        if ($where = preg_replace("/^\s*(AND|OR)\s*/", "", implode(" ", $this->wheres->sql))) {
-            $sql .= " WHERE $where";
-        }
-
-        if (!empty($this->groupBy)) {
-            $grouped = array_map(fn($col): string => $this->quote($col), $this->groupBy);
-            $sql .= " GROUP BY " . implode(", ", $grouped);
-        }
-
-        if ($having = preg_replace("/^\s*(AND|OR)\s*/", "", implode(" ", $this->havings->sql))) {
-            $sql .= " HAVING $having";
-        }
-
-        if ($this->orderBy) {
-            $sql .= " ORDER BY $this->orderBy";
-        }
-
-        if ($this->limit !== null) {
-            $sql .= " LIMIT $this->limit";
-            if ($this->offset !== null) {
-                $sql .= " OFFSET $this->offset";
+            if (!empty($this->having)) {
+                $sql .= " HAVING {$this->clean($this->having)}";
             }
         }
 
-        if (!empty($this->unions->sql)) {
-            $sql = "($sql) " . implode(" ", $this->unions->sql);
+        if (!empty($this->orderBys)) {
+            $sql .= " ORDER BY " . implode(", ", $this->orderBys);
         }
 
-        return [$sql, array_merge($this->from->data, $this->wheres->data, $this->havings->data, $this->unions->data)];
+        if ($this->limit !== null) {
+            $sql .= " LIMIT {$this->limit}";
+
+            if ($this->offset !== null) {
+                $sql .= " OFFSET {$this->offset}";
+            }
+        }
+
+        return $sql;
     }
 
-    protected function compileConditional(
-        string $typeParam,
-        callable|string $column,
-        ?string $operator = null,
-        mixed $value = null,
-        string $boolean = 'AND',
-    ): array
+    protected function clean(array $statements): string
     {
-        if (is_callable($column)) {
-            $column($sub = new self($this->pdo));
-            return ($sql = preg_replace("/^\s*(AND|OR)\s*/", "", implode(" ", $this->{$typeParam}->sql)))
-                ? ["$boolean ($sql)", $sub->{$typeParam}->data]
-                : [];
-        }
-
-        $operator = strtoupper($operator ?? (is_array($value) ? "IN" : "="));
-
-        if (is_callable($value)) {
-            $value($sub = new self($this->pdo));
-            [$sql, $data] = $sub->compileSelectArray();
-            return empty($sql) ? [] : ["$boolean {$this->quote($column)} $operator ($sql)", $data];
-        }
-
-        if (is_null($value)) {
-            return match ($operator) {
-                "=", "IS", "IS NULL" => ["$boolean {$this->quote($column)} IS NULL", []],
-                "!=", "<>", "IS NOT", "IS NOT NULL" => ["$boolean {$this->quote($column)} IS NOT NULL", []],
-                default => throw new InvalidArgumentException("Unsupported NULL comparison operator: $operator"),
-            };
-        }
-
-        if (is_array($value)) {
-            $placeholders = fn($list) => implode(", ", array_fill(0, count($list), "?"));
-            return match ($operator) {
-                "BETWEEN", "NOT BETWEEN" => [
-                    "$boolean {$this->quote($column)} $operator ? AND ?",
-                    array_values($value),
-                ],
-                "IN", "NOT IN" => [
-                    "$boolean {$this->quote($column)} $operator ({$placeholders($value)})",
-                    array_values($value),
-                ],
-                default => throw new InvalidArgumentException("Unsupported operator '$operator' for array value."),
-            };
-        }
-
-        if (is_string($value) && preg_match('/^[a-zA-Z_][a-zA-Z0-9_\.]*$/', $value)) {
-            return ["$boolean {$this->quote($column)} $operator {$this->quote($value)}", []];
-        }
-
-        return ["$boolean {$this->quote($column)} $operator ?", [is_bool($value) ? (int) $value : $value]];
+        return preg_replace("/^\s*(AND|OR)\s*/", "", implode(" ", $statements));
     }
 
-    protected function quote(string $identifier): string
+    protected function getParams(): array
     {
-        return '"' . str_replace('"', '""', $identifier) . '"';
+        return array_merge($this->whereParams, $this->havingParams);
     }
 
-    public function __toString(): string
+    public function get(): Iterator
     {
-        [$sql] = $this->compileSelectArray();
-        return (string) $sql;
+        if ($this->pdo === null) {
+            throw new RuntimeException("No PDO to run query.");
+        }
+
+        $stmt = $this->pdo->prepare($this->selectSql());
+        $stmt->execute($this->getParams());
+
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            yield $row;
+        }
+    }
+
+    public function first(): array
+    {
+        $this->limit = 1;
+
+        foreach ($this->get() as $row) {
+            return $row;
+        }
+
+        return [];
+    }
+
+    public function insert(array $data): ?int
+    {
+        if (array_is_list($data)) {
+            throw new InvalidArgumentException("Data must be associative array.");
+        }
+
+        if (empty($this->table)) {
+            throw new RuntimeException("Table name not specified for insert.");
+        }
+
+        if ($this->pdo === null) {
+            throw new RuntimeException("No PDO to run insert.");
+        }
+
+        $columnList = implode(", ", array_keys($data));
+        $placeholders = implode(", ", array_fill(0, count($data), "?"));
+        $sql = "INSERT INTO {$this->table} ({$columnList}) VALUES ({$placeholders})";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute(array_values($data));
+
+        return $this->pdo->lastInsertId() ?: null;
+    }
+
+    public function update(array $data): bool
+    {
+        if (array_is_list($data)) {
+            throw new InvalidArgumentException("Data must be associative array.");
+        }
+
+        if (empty($this->table)) {
+            throw new RuntimeException("Table name not specified for update.");
+        }
+
+        if (empty($this->where)) {
+            throw new RuntimeException("Where clause missing for update.");
+        }
+
+        if ($this->pdo === null) {
+            throw new RuntimeException("No PDO to run update.");
+        }
+
+        $columnList = implode(", ", array_map(fn($column): string => "{$column} = ?", array_keys($data)));
+        $sql = "UPDATE {$this->table} SET {$columnList} WHERE {$this->clean($this->where)}";
+
+        $stmt = $this->pdo->prepare($sql);
+        return $stmt->execute([...array_values($data), ...$this->whereParams]);
+    }
+
+    public function delete(): bool
+    {
+        if (empty($this->table)) {
+            throw new RuntimeException("Table name not specified for delete.");
+        }
+
+        if (empty($this->where)) {
+            throw new RuntimeException("Where clause missing for delete.");
+        }
+
+        if ($this->pdo === null) {
+            throw new RuntimeException("No PDO to run delete.");
+        }
+
+        $sql = "DELETE FROM {$this->table} WHERE {$this->clean($this->where)}";
+        $stmt = $this->pdo->prepare($sql);
+
+        return $stmt->execute($this->whereParams);
     }
 }
 
 class Validate
 {
-    public function alpha(string $message = ''): Closure
+    public static function alpha(string $message = ""): Closure
     {
         return function (?string $input) use ($message): ?string {
             if ($input === null) {
@@ -1482,7 +1202,7 @@ class Validate
         };
     }
 
-    public function alphaDash(string $message = ''): Closure
+    public static function alphaDash(string $message = ""): Closure
     {
         return function (?string $input) use ($message): ?string {
             if ($input === null) {
@@ -1497,7 +1217,7 @@ class Validate
         };
     }
 
-    public function alphaNum(string $message = ''): Closure
+    public static function alphaNum(string $message = ""): Closure
     {
         return function (?string $input) use ($message): ?string {
             if ($input === null) {
@@ -1512,7 +1232,7 @@ class Validate
         };
     }
 
-    public function email(string $message = ''): Closure
+    public static function email(string $message = ""): Closure
     {
         return function (?string $input) use ($message): ?string {
             if ($input === null) {
@@ -1527,7 +1247,7 @@ class Validate
         };
     }
 
-    public function endsWith(array $suffixes, string $message = ''): Closure
+    public static function endsWith(array $suffixes, string $message = ""): Closure
     {
         return function (?string $input) use ($suffixes, $message): ?string {
             if ($input === null) {
@@ -1544,7 +1264,7 @@ class Validate
         };
     }
 
-    public function lowercase(string $message = ''): Closure
+    public static function lowercase(string $message = ""): Closure
     {
         return function (?string $input) use ($message): ?string {
             if ($input === null) {
@@ -1559,7 +1279,7 @@ class Validate
         };
     }
 
-    public function uppercase(string $message = ''): Closure
+    public static function uppercase(string $message = ""): Closure
     {
         return function (?string $input) use ($message): ?string {
             if ($input === null) {
@@ -1574,7 +1294,7 @@ class Validate
         };
     }
 
-    public function minLength(int $min, string $message = ''): Closure
+    public static function minLength(int $min, string $message = ""): Closure
     {
         return function (?string $input) use ($min, $message): ?string {
             if ($input === null) {
@@ -1589,7 +1309,7 @@ class Validate
         };
     }
 
-    public function maxLength(int $max, string $message = ''): Closure
+    public static function maxLength(int $max, string $message = ""): Closure
     {
         return function (?string $input) use ($max, $message): ?string {
             if ($input === null) {
@@ -1604,7 +1324,7 @@ class Validate
         };
     }
 
-    public function regex(string $pattern, string $message = ''): Closure
+    public static function regex(string $pattern, string $message = ""): Closure
     {
         return function (?string $input) use ($pattern, $message): ?string {
             if ($input === null) {
@@ -1619,12 +1339,11 @@ class Validate
         };
     }
 
-    public function between(
+    public static function between(
         DateTimeInterface|float|int $min,
         DateTimeInterface|float|int $max,
-        string $message = '',
-    ): Closure
-    {
+        string $message = ""
+    ): Closure {
         $min = $min instanceof DateTimeInterface ? $min->getTimestamp() : $min;
         $max = $max instanceof DateTimeInterface ? $max->getTimestamp() : $max;
 
@@ -1647,7 +1366,7 @@ class Validate
         };
     }
 
-    public function gt(DateTimeInterface|float|int $min, string $message = ''): Closure
+    public static function gt(DateTimeInterface|float|int $min, string $message = ""): Closure
     {
         $min = $min instanceof DateTimeInterface ? $min->getTimestamp() : $min;
 
@@ -1668,7 +1387,7 @@ class Validate
         };
     }
 
-    public function gte(DateTimeInterface|float|int $min, string $message = ''): Closure
+    public static function gte(DateTimeInterface|float|int $min, string $message = ""): Closure
     {
         $min = $min instanceof DateTimeInterface ? $min->getTimestamp() : $min;
 
@@ -1689,7 +1408,7 @@ class Validate
         };
     }
 
-    public function lt(DateTimeInterface|float|int $max, string $message = ''): Closure
+    public static function lt(DateTimeInterface|float|int $max, string $message = ""): Closure
     {
         $max = $max instanceof DateTimeInterface ? $max->getTimestamp() : $max;
 
@@ -1710,7 +1429,7 @@ class Validate
         };
     }
 
-    public function lte(DateTimeInterface|float|int $max, string $message = ''): Closure
+    public static function lte(DateTimeInterface|float|int $max, string $message = ""): Closure
     {
         $max = $max instanceof DateTimeInterface ? $max->getTimestamp() : $max;
 
@@ -1731,7 +1450,7 @@ class Validate
         };
     }
 
-    public function required(string $message = ''): Closure
+    public static function required(string $message = ""): Closure
     {
         return function (mixed $input) use ($message): mixed {
             if (!isset($input) || (is_string($input) && trim($input) === "")) {
@@ -1742,7 +1461,7 @@ class Validate
         };
     }
 
-    public function inArray(array $allowed, bool $strict = true, string $message = ''): Closure
+    public static function inArray(array $allowed, bool $strict = true, string $message = ""): Closure
     {
         return function (mixed $input) use ($allowed, $strict, $message): mixed {
             if ($input === null) {
@@ -1815,7 +1534,7 @@ function command(string $name, callable $handle): void
     exit(is_int($result = $handle($argument)) ? $result : 0);
 }
 
-function request(string $key = ''): mixed
+function request(string $key = ""): mixed
 {
     return func_num_args() ? app(Request::class) : app(Request::class)->get($key);
 }
@@ -1840,7 +1559,7 @@ function flash(string $key, mixed $value = null): mixed
     return func_num_args() === 1 ? app(Session::class)->getFlash($key) : app(Session::class)->setFlash($key, $value);
 }
 
-function csrf(string $csrf = ''): string|bool
+function csrf(string $csrf = ""): string|bool
 {
     return func_num_args() ? app(Session::class)->verifyCsrf($csrf) : app(Session::class)->getCsrf();
 }
@@ -1855,29 +1574,34 @@ function middleware(callable $middleware): void
     app(Router::class)->middleware($middleware);
 }
 
-function get(string $path, callable $handle, array $middleware = []): void
+function get(string $path, callable $handle, ?string $name = null, array $middleware = []): void
 {
-    app(Router::class)->add("GET", $path, $handle, $middleware);
+    app(Router::class)->add("GET", $path, $handle, $name, $middleware);
 }
 
-function post(string $path, callable $handle, array $middleware = []): void
+function post(string $path, callable $handle, ?string $name = null, array $middleware = []): void
 {
-    app(Router::class)->add("POST", $path, $handle, $middleware);
+    app(Router::class)->add("POST", $path, $handle, $name, $middleware);
 }
 
-function put(string $path, callable $handle, array $middleware = []): void
+function put(string $path, callable $handle, ?string $name = null, array $middleware = []): void
 {
-    app(Router::class)->add("PUT", $path, $handle, $middleware);
+    app(Router::class)->add("PUT", $path, $handle, $name, $middleware);
 }
 
-function patch(string $path, callable $handle, array $middleware = []): void
+function patch(string $path, callable $handle, ?string $name = null, array $middleware = []): void
 {
-    app(Router::class)->add("PATCH", $path, $handle, $middleware);
+    app(Router::class)->add("PATCH", $path, $handle, $name, $middleware);
 }
 
-function delete(string $path, callable $handle, array $middleware = []): void
+function delete(string $path, callable $handle, ?string $name = null, array $middleware = []): void
 {
-    app(Router::class)->add("DELETE", $path, $handle, $middleware);
+    app(Router::class)->add("DELETE", $path, $handle, $name, $middleware);
+}
+
+function url(string $name, array $params = []): string
+{
+    return app(Router::class)->getUrl($name, $params);
 }
 
 function render(string $template, array $data = []): string
@@ -1928,32 +1652,7 @@ function throw_if(bool $condition, Throwable|string $e): void
     }
 }
 
-function auth(): Authenticated
+function query(): Query
 {
-    return app(Authenticated::class);
-}
-
-function user(): ?object
-{
-    return auth()->user();
-}
-
-function cast(): Cast
-{
-    return app(Cast::class);
-}
-
-function mailer(?string $url = null, ?string $user = null, ?string $pass = null, ?int $port = null): Mailer
-{
-    return map(Mailer::class, compact("url", "user", "pass", "port"));
-}
-
-function query(?PDO $pdo = null): Query
-{
-    return map(Query::class, compact("pdo"));
-}
-
-function validate(): Validate
-{
-    return app(Validate::class);
+    return app(Query::class);
 }

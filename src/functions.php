@@ -99,29 +99,34 @@ function middleware(callable $middleware): void
     app(Router::class)->middleware($middleware);
 }
 
-function get(string $path, callable $handle, array $middleware = []): void
+function get(string $path, callable $handle, ?string $name = null, array $middleware = []): void
 {
-    app(Router::class)->add("GET", $path, $handle, $middleware);
+    app(Router::class)->add("GET", $path, $handle, $name, $middleware);
 }
 
-function post(string $path, callable $handle, array $middleware = []): void
+function post(string $path, callable $handle, ?string $name = null, array $middleware = []): void
 {
-    app(Router::class)->add("POST", $path, $handle, $middleware);
+    app(Router::class)->add("POST", $path, $handle, $name, $middleware);
 }
 
-function put(string $path, callable $handle, array $middleware = []): void
+function put(string $path, callable $handle, ?string $name = null, array $middleware = []): void
 {
-    app(Router::class)->add("PUT", $path, $handle, $middleware);
+    app(Router::class)->add("PUT", $path, $handle, $name, $middleware);
 }
 
-function patch(string $path, callable $handle, array $middleware = []): void
+function patch(string $path, callable $handle, ?string $name = null, array $middleware = []): void
 {
-    app(Router::class)->add("PATCH", $path, $handle, $middleware);
+    app(Router::class)->add("PATCH", $path, $handle, $name, $middleware);
 }
 
-function delete(string $path, callable $handle, array $middleware = []): void
+function delete(string $path, callable $handle, ?string $name = null, array $middleware = []): void
 {
-    app(Router::class)->add("DELETE", $path, $handle, $middleware);
+    app(Router::class)->add("DELETE", $path, $handle, $name, $middleware);
+}
+
+function url(string $name, array $params = []): string
+{
+    return app(Router::class)->getUrl($name, $params);
 }
 
 function render(string $template, array $data = []): string
