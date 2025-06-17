@@ -1,7 +1,3 @@
-Here is your **updated README**, fully integrated with the latest philosophy, accurate class/function listings, corrected features, and cleaned-up extras—while **preserving the original tone** and sharpening the clarity.
-
----
-
 # Essentio — Minimalist PHP Framework
 
 Essentio isn’t here to impress with design patterns or win internet debates. It’s raw, minimal PHP—for developers who want clarity, speed, and control. No abstractions, no ceremony. Just the essentials.
