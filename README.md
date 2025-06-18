@@ -34,10 +34,10 @@ No dependencies. No build steps. Just download and go:
 
 ```bash
 # Full version with extras
-curl -L https://raw.githubusercontent.com/Phil-Venter/essentio_core/main/dist/full.php -o framework.php
+curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/full.php -o framework.php
 
 # Base version, leanest setup
-curl -L https://raw.githubusercontent.com/Phil-Venter/essentio_core/main/dist/base.php -o framework.php
+curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/base.php -o framework.php
 ```
 
 Then scaffold a minimal app:
@@ -116,7 +116,7 @@ Whether you’re building tools, APIs, internal apps, or microservices—Essenti
 
 ### 🧩 Core (`base.php` and `full.php`)
 
-#### Classes
+#### 📦 Classes
 
 | Class           | Purpose                        |
 | --------------- | ------------------------------ |
@@ -130,75 +130,164 @@ Whether you’re building tools, APIs, internal apps, or microservices—Essenti
 | `Jwt`           | Stateless JWT handling         |
 | `Environment`   | Typed `.env` loader            |
 | `HttpException` | HTTP errors                    |
-| `Cast`          | Input coercion                 |
-| `Validate`      | Input rules                    |
 
-#### Global Helpers
+### 🌍 Global Helpers
+
+#### 🧱 Dependency Injection
+
+| Function              | Purpose               |
+| --------------------- | --------------------- |
+| `app()`, `map()`      | Resolve services      |
+| `bind()`, `once()`    | Register services     |
+
+#### ⚙️ Environment & Path
+
+| Function     | Purpose             |
+| ------------ | ------------------- |
+| `base()`     | Base path resolver  |
+| `env()`      | Environment values  |
+
+#### 🌐 Routing & Requests
 
 | Function                                          | Purpose               |
 | ------------------------------------------------- | --------------------- |
-| `get()`, `post()`, `put()`, `patch()`, `delete()` | Routing               |
-| `input()`, `request()`                            | Request values        |
+| `get()`, `post()`, `put()`, `patch()`, `delete()` | Route registration    |
+| `request()`, `input()`                            | Access input values   |
 | `sanitize()`                                      | Validate + cast input |
-| `env()`                                           | Config values         |
-| `session()`, `flash()`                            | Session state         |
-| `csrf()`                                          | CSRF token utils      |
-| `render()`, `view()`                              | Templates             |
-| `json()`, `text()`, `html()`, `redirect()`        | Responses             |
-| `throw_if()`                                      | Assert/throw shortcut |
-| `app()`, `bind()`, `once()`, `map()`              | DI                    |
-| `base()`                                          | Base path resolver    |
 
----
+#### 🗂️ Session & CSRF
+
+| Function              | Purpose              |
+| --------------------- | -------------------- |
+| `session()`, `flash()`| Session state        |
+| `csrf()`              | CSRF token utilities |
+
+#### 📤 Response Helpers
+
+| Function                           | Purpose         |
+| ---------------------------------- | --------------- |
+| `render()`                         | Render template |
+| `json()`, `text()`, `html()`       | Send responses  |
+| `redirect()`                       | Issue redirect  |
+| `view()`                           | Template view   |
+
+#### 🛠️ Utilities
+
+| Function        | Purpose              |
+| --------------- | -------------------- |
+| `throw_if()`    | Conditional throw    |
+| `jwt()`         | JWT encode/decode    |
 
 ### ➕ Extras (`full.php` only)
 
-#### Extra Classes
+#### 📦 Extra Classes
 
-| Class      | Purpose            |
-| ---------- | ------------------ |
-| `Query`    | Fluent SQL builder |
-| `Argument` | CLI arg parser     |
+| Class      | Purpose                           |
+| ---------- | --------------------------------- |
+| `Cast`     | Input casting for sanitization    |
+| `Query`    | Fluent SQL builder                |
+| `Validate` | Declarative validation rules      |
 
-#### Extra Global Helpers
+#### 🌍 Extra Global Helpers
 
 | Function    | Purpose                |
 | ----------- | ---------------------- |
-| `command()` | Define CLI commands    |
-| `arg()`     | Get CLI arguments      |
 | `query()`   | SQL builder entrypoint |
 
 ---
 
 ## 🧾 Example App
 
+A simple starting point for more advanced apps
+
 ```php
 Application::http(__DIR__);
 
-get('/', fn() =>
-    view(base('template/home.tmpl.php'), [
-        'name' => input('name', 'Guest')
-    ])
-);
+// CONTAINER
+once(PDO::class, fn() => new PDO("sqlite:" . base("database.sqlite")));
+bind(Query::class, Query::create(...));
 
-post('/submit', function () {
-    $data = sanitize([
-        'email' => [
-            Validate::required('Email address is required.'),
-            Validate::email('Invalid email address.')
-        ],
-        'age' => [
-            Cast::int('Not an int'),
-            Validate::gte(18, 'Not old enough.')
-        ]
-    ]);
+// LOGGING MIDDLEWARE
+middleware(function ($req, $res, $next) {
+    try {
+        return $next($req, $res);
+    } catch (Throwable $e) {
+        error_log("[{$req->method}] {$req->path} - {$e->getMessage()}");
+        throw $e;
+    }
+});
 
-    if ($data === false) {
-        return json(['errors' => request()->errors], 422);
+// CSRF MIDDLEWARE
+middleware(function ($req, $res, $next) {
+    if (
+        explode(";", $req->headers["Content-Type"] ?? "", 2)[0] !== "application/json" &&
+        in_array($req->method, ["POST", "PUT", "PATCH", "DELETE"]) &&
+        !csrf(input("_csrf") ?? ($req->headers["X-CSRF-TOKEN"] ?? ""))
+    ) {
+        throw HttpException::create(403, "CSRF token mismatch");
     }
 
-    return json($data);
+    return $next($req, $res);
 });
+
+// JWT MIDDLEWARE ON api/
+middleware(function ($req, $res, $next) {
+    if (
+        explode(";", $req->headers["Content-Type"] ?? "", 2)[0] === "application/json" &&
+        str_starts_with(trim($req->path, "/"), "api/")
+    ) {
+        $res->addHeaders(["Content-Type" => "application/json"]);
+
+        try {
+            jwt(trim(str_replace("Bearer ", "", $req->headers["Authorization"] ?? "")));
+        } catch (Throwable) {
+            throw HttpException::create(401, "Unauthorized");
+        }
+    }
+
+    return $next($req, $res);
+});
+
+// SECURITY HEADERS
+middleware(function ($req, $res, $next) {
+    return $next($req, $res)->addHeaders([
+        "X-Content-Type-Options" => "nosniff",
+        "X-Frame-Options" => "DENY",
+        "X-XSS-Protection" => "1; mode=block",
+        "Referrer-Policy" => "strict-origin-when-cross-origin",
+        "Content-Security-Policy" => "default-src 'self'; object-src 'none'; frame-ancestors 'none';",
+    ]);
+});
+
+// ROUTES
+get("/assets/:file", function ($req, $res) {
+    $file = base("assets/" . basename($req->get("file")));
+
+    if (!is_file($file)) {
+        throw HttpException::create(404, "Asset not found.");
+    }
+
+    $lastModified = gmdate("D, d M Y H:i:s", filemtime($file)) . " GMT";
+    $etag = '"' . md5_file($file) . '"';
+
+    $ifModifiedSince = $_SERVER["HTTP_IF_MODIFIED_SINCE"] ?? null;
+    $ifNoneMatch = $_SERVER["HTTP_IF_NONE_MATCH"] ?? null;
+
+    if ($ifModifiedSince === $lastModified && $ifNoneMatch === $etag) {
+        return $res->setStatus(304);
+    }
+
+    return $res
+        ->addHeaders([
+            "Content-Type" => mime_content_type($file),
+            "Last-Modified" => $lastModified,
+            "ETag" => $etag,
+            "Cache-Control" => "public, max-age=31536000",
+        ])
+        ->setBody(file_get_contents($file));
+});
+
+get("/__ping", fn() => text("pong"));
 
 Application::run();
 ```
