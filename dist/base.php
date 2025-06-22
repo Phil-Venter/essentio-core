@@ -55,7 +55,7 @@ class Application
 
 class Argument
 {
-    public function __construct(public string $command = "", public array $arguments = []) {}
+    public function __construct(public readonly string $command = "", protected array $arguments = []) {}
 
     public static function create(Helper $helper, ?array $argv = null): static
     {
@@ -130,7 +130,7 @@ class Container
 
     protected array $cache = [];
 
-    public function bind(string $abstract, callable|string|null $concrete = null): self
+    public function bind(string $abstract, callable|string|null $concrete = null): static
     {
         $concrete ??= $abstract;
 
@@ -142,7 +142,7 @@ class Container
         return $this;
     }
 
-    public function once(string $abstract, callable|string|null $concrete = null): self
+    public function once(string $abstract, callable|string|null $concrete = null): static
     {
         $this->cache[$abstract] = null;
         return $this->bind($abstract, $concrete);
@@ -283,6 +283,7 @@ class Jwt
     public function encode(array $payload): string
     {
         $header = ["alg" => "HS256", "typ" => "JWT"];
+        $payload["iss"] = $this->issuer;
         $segments = [$this->base64url_encode(json_encode($header)), $this->base64url_encode(json_encode($payload))];
         $signingInput = implode(".", $segments);
         $signature = $this->sign($signingInput);
@@ -343,14 +344,15 @@ class Request
     public array $errors = [];
 
     public function __construct(
-        public string $method,
-        public int $port,
-        public string $path,
-        public array $query,
-        public array $headers,
-        public array $cookies,
-        public array $files,
-        public array $body,
+        public readonly string $method,
+        public readonly int $port,
+        public readonly string $path,
+        protected array $query,
+        public readonly string $contentType,
+        public readonly array $headers,
+        public readonly array $cookies,
+        public readonly array $files,
+        protected array $body,
         public array $parameters
     ) {}
 
@@ -390,7 +392,7 @@ class Request
             default => $post,
         };
 
-        return new static($method, $port, $path, $query, $headers, $cookies, $files, $parsedBody, []);
+        return new static($method, $port, $path, $query, $contentType, $headers, $cookies, $files, $parsedBody, []);
     }
 
     public function get(string $field): mixed
@@ -485,14 +487,9 @@ class Response
 
 class Route
 {
-    protected array $middleware = [];
+    public array $middleware = [];
 
-    public function __construct(
-        protected string $path,
-        protected array $params,
-        protected $handler,
-        protected $setName
-    ) {}
+    public function __construct(protected string $path, public readonly array $params, public $handler, protected $setName) {}
 
     public function name(string $name): static
     {
@@ -504,15 +501,6 @@ class Route
     {
         $this->middleware[] = $middleware;
         return $this;
-    }
-
-    public function getInternals(): object
-    {
-        return (object) [
-            "params" => $this->params,
-            "handler" => $this->handler,
-            "middleware" => $this->middleware,
-        ];
     }
 }
 
@@ -583,11 +571,10 @@ class Router
             throw HttpException::create(405);
         }
 
-        $instance = $routes[$request->method]->getInternals();
-        $request->parameters = array_combine($instance->params, $values);
-        $handler = $instance->handler;
+        $request->parameters = array_combine($routes[$request->method]->params, $values);
+        $handler = $routes[$request->method]->handler;
 
-        foreach (array_reverse($instance->middleware) as $mw) {
+        foreach (array_reverse($routes[$request->method]->middleware) as $mw) {
             $handler = fn(Request $req) => $mw($req, $handler);
         }
 

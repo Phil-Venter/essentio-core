@@ -4,14 +4,9 @@ namespace Essentio\Core;
 
 class Route
 {
-    protected array $middleware = [];
+    public array $middleware = [];
 
-    public function __construct(
-        protected string $path,
-        protected array $params,
-        protected $handler,
-        protected $setName
-    ) {}
+    public function __construct(protected string $path, public readonly array $params, public $handler, protected $setName) {}
 
     public function name(string $name): static
     {
@@ -23,14 +18,5 @@ class Route
     {
         $this->middleware[] = $middleware;
         return $this;
-    }
-
-    public function getInternals(): object
-    {
-        return (object) [
-            "params" => $this->params,
-            "handler" => $this->handler,
-            "middleware" => $this->middleware,
-        ];
     }
 }

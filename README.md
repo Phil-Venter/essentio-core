@@ -201,26 +201,78 @@ Whether you’re building tools, APIs, internal apps, or microservices—Essenti
 | ----------- | ---------------------- |
 | `query()`   | SQL builder entrypoint |
 
+You need to explicitly bind the query builder to the container before using it.
+
+```php
+once(PDO::class, fn() => new PDO("sqlite:" . base("database.sqlite")));
+bind(Query::class, fn() => new Query(app(PDO::class)));
+```
+
 ---
 
 ## 🧾 Example App
 
 A simple starting point for more advanced apps
 
-```php
-Application::http(__DIR__);
+```bash
+curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/full.php -o framework.php
+```
 
+`public/index.php`
+```php
+require_once __DIR__ . '/../framework.php';
+
+Application::http(__DIR__ . '/..');
+
+require_once base('bootstrap.php');
+require_once base('app.php');
+
+Application::run();
+```
+
+`app.php`
+```php
+get("/assets/:file", function (Request $req) {
+    $file = base("assets/" . basename($req->get("file")));
+
+    if (!is_file($file)) {
+        throw HttpException::create(404, "Asset not found.");
+    }
+
+    $lastModified = gmdate("D, d M Y H:i:s", filemtime($file)) . " GMT";
+    $etag = '"' . md5_file($file) . '"';
+
+    $ifModifiedSince = $_SERVER["HTTP_IF_MODIFIED_SINCE"] ?? null;
+    $ifNoneMatch = $_SERVER["HTTP_IF_NONE_MATCH"] ?? null;
+
+    if ($ifModifiedSince === $lastModified || $ifNoneMatch === $etag) {
+        return app(Response::class)->setStatus(304);
+    }
+
+    return app(Response::class)
+        ->addHeaders([
+            "Content-Type" => mime_content_type($file),
+            "Last-Modified" => $lastModified,
+            "ETag" => $etag,
+            "Cache-Control" => "public, max-age=31536000",
+        ])
+        ->setBody(file_get_contents($file));
+});
+```
+
+`bootstrap.php`
+```php
 # CONTAINER
 once(PDO::class, fn() => new PDO("sqlite:" . base("database.sqlite")));
-bind(Query::class, fn() => Query::create(app(PDO::class)));
+bind(Query::class, fn() => new Query(app(PDO::class)));
 
-# LOGGING MIDDLEWARE
+# ERROR LOGGING MIDDLEWARE
 middleware(function (Request $req, $next) {
     try {
         return $next($req);
     } catch (Throwable $e) {
         foreach ($e->getTrace() as $frame) {
-            if (isset($frame["file"]) && !str_contains($frame["file"], "full.php") && !str_contains($frame["file"], "base.php")) {
+            if (isset($frame["file"]) && !str_contains($frame["file"], "framework.php") && !str_contains($frame["file"], "bootstrap.php")) {
                 $file = $frame["file"];
                 $line = $frame["line"];
                 break;
@@ -250,7 +302,7 @@ middleware(function (Request $req, $next) {
 
 # JWT MIDDLEWARE ON api/
 middleware(function (Request $req, $next) {
-    if (explode(";", $req->headers["Content-Type"] ?? "", 2)[0] === "application/json" && str_starts_with(trim($req->path, "/"), "api/")) {
+    if (explode(";", $req->headers["Content-Type"] ?? "", 2)[0] === "application/json" && str_starts_with($req->path, "api/")) {
         try {
             jwt(trim(str_replace("Bearer ", "", $req->headers["Authorization"] ?? "")));
         } catch (Throwable) {
@@ -274,37 +326,7 @@ middleware(function (Request $req, $next) {
     ]);
 });
 
-# ROUTES
-get("/assets/:file", function (Request $req) {
-    $file = base("assets/" . basename($req->get("file")));
-
-    if (!is_file($file)) {
-        throw HttpException::create(404, "Asset not found.");
-    }
-
-    $lastModified = gmdate("D, d M Y H:i:s", filemtime($file)) . " GMT";
-    $etag = '"' . md5_file($file) . '"';
-
-    $ifModifiedSince = $_SERVER["HTTP_IF_MODIFIED_SINCE"] ?? null;
-    $ifNoneMatch = $_SERVER["HTTP_IF_NONE_MATCH"] ?? null;
-
-    if ($ifModifiedSince === $lastModified || $ifNoneMatch === $etag) {
-        return app(Response::class)->setStatus(304);
-    }
-
-    return app(Response::class)
-        ->addHeaders([
-            "Content-Type" => mime_content_type($file),
-            "Last-Modified" => $lastModified,
-            "ETag" => $etag,
-            "Cache-Control" => "public, max-age=31536000",
-        ])
-        ->setBody(file_get_contents($file));
-});
-
 get("/__ping", fn() => text("pong"));
-
-Application::run();
 ```
 
 ---
@@ -334,7 +356,7 @@ Measured using [cloc](https://github.com/AlDanial/cloc):
 -------------------------------------------------------------------------------
 Language                     files          blank        comment           code
 -------------------------------------------------------------------------------
-PHP                              1            182             69            710
+PHP                              1            181             69            698
 -------------------------------------------------------------------------------
 ```
 
@@ -344,7 +366,7 @@ PHP                              1            182             69            710
 -------------------------------------------------------------------------------
 Language                     files          blank        comment           code
 -------------------------------------------------------------------------------
-PHP                              1            351             69           1273
+PHP                              1            350             69           1261
 -------------------------------------------------------------------------------
 ```
 

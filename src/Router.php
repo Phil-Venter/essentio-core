@@ -85,11 +85,10 @@ class Router
             throw HttpException::create(405);
         }
 
-        $instance = $routes[$request->method]->getInternals();
-        $request->parameters = array_combine($instance->params, $values);
-        $handler = $instance->handler;
+        $request->parameters = array_combine($routes[$request->method]->params, $values);
+        $handler = $routes[$request->method]->handler;
 
-        foreach (array_reverse($instance->middleware) as $mw) {
+        foreach (array_reverse($routes[$request->method]->middleware) as $mw) {
             $handler = fn(Request $req) => $mw($req, $handler);
         }
 

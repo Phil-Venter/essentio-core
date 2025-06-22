@@ -12,7 +12,7 @@ use function substr;
 
 class Argument
 {
-    public function __construct(public string $command = "", public array $arguments = []) {}
+    public function __construct(public readonly string $command = "", protected array $arguments = []) {}
 
     public static function create(Helper $helper, ?array $argv = null): static
     {

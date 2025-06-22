@@ -14,7 +14,7 @@ class Container
 
     protected array $cache = [];
 
-    public function bind(string $abstract, callable|string|null $concrete = null): self
+    public function bind(string $abstract, callable|string|null $concrete = null): static
     {
         $concrete ??= $abstract;
 
@@ -26,7 +26,7 @@ class Container
         return $this;
     }
 
-    public function once(string $abstract, callable|string|null $concrete = null): self
+    public function once(string $abstract, callable|string|null $concrete = null): static
     {
         $this->cache[$abstract] = null;
         return $this->bind($abstract, $concrete);

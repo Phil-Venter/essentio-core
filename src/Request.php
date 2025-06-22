@@ -22,14 +22,15 @@ class Request
     public array $errors = [];
 
     public function __construct(
-        public string $method,
-        public int $port,
-        public string $path,
-        public array $query,
-        public array $headers,
-        public array $cookies,
-        public array $files,
-        public array $body,
+        public readonly string $method,
+        public readonly int $port,
+        public readonly string $path,
+        protected array $query,
+        public readonly string $contentType,
+        public readonly array $headers,
+        public readonly array $cookies,
+        public readonly array $files,
+        protected array $body,
         public array $parameters
     ) {}
 
@@ -69,7 +70,7 @@ class Request
             default => $post,
         };
 
-        return new static($method, $port, $path, $query, $headers, $cookies, $files, $parsedBody, []);
+        return new static($method, $port, $path, $query, $contentType, $headers, $cookies, $files, $parsedBody, []);
     }
 
     public function get(string $field): mixed

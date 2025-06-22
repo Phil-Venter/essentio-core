@@ -23,6 +23,7 @@ class Jwt
     public function encode(array $payload): string
     {
         $header = ["alg" => "HS256", "typ" => "JWT"];
+        $payload["iss"] = $this->issuer;
         $segments = [$this->base64url_encode(json_encode($header)), $this->base64url_encode(json_encode($payload))];
         $signingInput = implode(".", $segments);
         $signature = $this->sign($signingInput);
