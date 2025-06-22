@@ -2,6 +2,11 @@
 
 namespace Essentio\Core;
 
+use function array_pop;
+use function extract;
+use function ob_get_clean;
+use function ob_start;
+
 class Template
 {
     protected array $segments = [];
@@ -24,11 +29,11 @@ class Template
 
     protected function segment(string $name, ?string $value = null): void
     {
-        if (func_num_args() === 2) {
-            $this->segments[$name] = $value;
-        } else {
+        if ($value === null) {
             $this->stack[] = $name;
             ob_start();
+        } else {
+            $this->segments[$name] = $value;
         }
     }
 

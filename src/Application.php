@@ -4,6 +4,8 @@ namespace Essentio\Core;
 
 use Throwable;
 
+use function rtrim;
+
 class Application
 {
     public static Container $container;

@@ -6,6 +6,16 @@ use Closure;
 use DateTimeInterface;
 use Exception;
 
+use function filter_var;
+use function in_array;
+use function is_string;
+use function mb_strlen;
+use function mb_strtolower;
+use function mb_strtoupper;
+use function preg_match;
+use function str_ends_with;
+use function trim;
+
 class Validate
 {
     public static function alpha(string $message = ""): Closure
@@ -160,19 +170,12 @@ class Validate
         };
     }
 
-    public static function between(
-        DateTimeInterface|float|int $min,
-        DateTimeInterface|float|int $max,
-        string $message = ""
-    ): Closure {
+    public static function between(DateTimeInterface|float|int $min, DateTimeInterface|float|int $max, string $message = ""): Closure
+    {
         $min = $min instanceof DateTimeInterface ? $min->getTimestamp() : $min;
         $max = $max instanceof DateTimeInterface ? $max->getTimestamp() : $max;
 
-        return function (DateTimeInterface|float|int|null $input) use (
-            $min,
-            $max,
-            $message
-        ): DateTimeInterface|float|int|null {
+        return function (DateTimeInterface|float|int|null $input) use ($min, $max, $message): DateTimeInterface|float|int|null {
             if ($input === null) {
                 return null;
             }
@@ -191,9 +194,7 @@ class Validate
     {
         $min = $min instanceof DateTimeInterface ? $min->getTimestamp() : $min;
 
-        return function (
-            DateTimeInterface|float|int|null $input
-        ) use ($min, $message): DateTimeInterface|float|int|null {
+        return function (DateTimeInterface|float|int|null $input) use ($min, $message): DateTimeInterface|float|int|null {
             if ($input === null) {
                 return null;
             }
@@ -212,9 +213,7 @@ class Validate
     {
         $min = $min instanceof DateTimeInterface ? $min->getTimestamp() : $min;
 
-        return function (
-            DateTimeInterface|float|int|null $input
-        ) use ($min, $message): DateTimeInterface|float|int|null {
+        return function (DateTimeInterface|float|int|null $input) use ($min, $message): DateTimeInterface|float|int|null {
             if ($input === null) {
                 return null;
             }
@@ -233,9 +232,7 @@ class Validate
     {
         $max = $max instanceof DateTimeInterface ? $max->getTimestamp() : $max;
 
-        return function (
-            DateTimeInterface|float|int|null $input
-        ) use ($max, $message): DateTimeInterface|float|int|null {
+        return function (DateTimeInterface|float|int|null $input) use ($max, $message): DateTimeInterface|float|int|null {
             if ($input === null) {
                 return null;
             }
@@ -254,9 +251,7 @@ class Validate
     {
         $max = $max instanceof DateTimeInterface ? $max->getTimestamp() : $max;
 
-        return function (
-            DateTimeInterface|float|int|null $input
-        ) use ($max, $message): DateTimeInterface|float|int|null {
+        return function (DateTimeInterface|float|int|null $input) use ($max, $message): DateTimeInterface|float|int|null {
             if ($input === null) {
                 return null;
             }

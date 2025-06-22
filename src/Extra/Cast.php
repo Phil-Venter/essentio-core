@@ -8,6 +8,12 @@ use DateTimeImmutable;
 use DateTimeInterface;
 use Exception;
 
+use function enum_exists;
+use function filter_var;
+use function is_subclass_of;
+use function preg_match_all;
+use function trim;
+
 class Cast
 {
     public static function bool(string $message = ""): Closure

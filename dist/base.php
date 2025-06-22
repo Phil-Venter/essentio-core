@@ -78,7 +78,7 @@ class Argument
             if (str_starts_with((string) $arg, "--")) {
                 $option = substr((string) $arg, 2);
 
-                if (str_contains($option, "=")) {
+                if (mb_stripos($option, "=") === false) {
                     [$key, $value] = explode("=", $option, 2);
                 } elseif (isset($argv[0]) && $argv[0][0] !== "-") {
                     $key = $option;
@@ -386,9 +386,7 @@ class Request
 
         $parsedBody = match ($contentType) {
             "application/json" => json_decode($rawInput, true) ?? [],
-            "application/xml", "text/xml" => ($xml = simplexml_load_string($rawInput))
-                ? json_decode(json_encode($xml), true)
-                : [],
+            "application/xml", "text/xml" => ($xml = simplexml_load_string($rawInput)) ? json_decode(json_encode($xml), true) : [],
             default => $post,
         };
 
@@ -579,8 +577,7 @@ class Router
 
     public function dispatch(Request $request): Response
     {
-        [$values, $routes] =
-            $this->match($this->routes, explode("/", $request->path)) ?? throw HttpException::create(404);
+        [$values, $routes] = $this->match($this->routes, explode("/", $request->path)) ?? throw HttpException::create(404);
 
         if (!isset($routes[$request->method])) {
             throw HttpException::create(405);
@@ -707,11 +704,11 @@ class Template
 
     protected function segment(string $name, ?string $value = null): void
     {
-        if (func_num_args() === 2) {
-            $this->segments[$name] = $value;
-        } else {
+        if ($value === null) {
             $this->stack[] = $name;
             ob_start();
+        } else {
+            $this->segments[$name] = $value;
         }
     }
 

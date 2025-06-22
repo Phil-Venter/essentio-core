@@ -2,6 +2,13 @@
 
 namespace Essentio\Core;
 
+use function is_numeric;
+use function is_string;
+use function ltrim;
+use function preg_match;
+use function strtolower;
+use function substr;
+
 class Helper
 {
     public function __construct(protected string $basePath) {}

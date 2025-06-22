@@ -4,6 +4,19 @@ namespace Essentio\Core;
 
 use Throwable;
 
+use function explode;
+use function file_get_contents;
+use function function_exists;
+use function getallheaders;
+use function in_array;
+use function json_decode;
+use function json_encode;
+use function parse_url;
+use function simplexml_load_string;
+use function str_contains;
+use function strtoupper;
+use function trim;
+
 class Request
 {
     public array $errors = [];
@@ -52,9 +65,7 @@ class Request
 
         $parsedBody = match ($contentType) {
             "application/json" => json_decode($rawInput, true) ?? [],
-            "application/xml", "text/xml" => ($xml = simplexml_load_string($rawInput))
-                ? json_decode(json_encode($xml), true)
-                : [],
+            "application/xml", "text/xml" => ($xml = simplexml_load_string($rawInput)) ? json_decode(json_encode($xml), true) : [],
             default => $post,
         };
 

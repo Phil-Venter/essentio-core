@@ -2,7 +2,11 @@
 
 namespace Essentio\Core;
 
-use RuntimeException;
+use function explode;
+use function file;
+use function file_exists;
+use function str_contains;
+use function trim;
 
 class Environment
 {

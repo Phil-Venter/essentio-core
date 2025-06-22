@@ -2,10 +2,11 @@
 
 namespace Essentio\Core;
 
+use function array_map;
 use function array_merge;
 use function array_shift;
 use function explode;
-use function str_contains;
+use function mb_stripos;
 use function str_starts_with;
 use function substr;
 
@@ -34,7 +35,7 @@ class Argument
             if (str_starts_with((string) $arg, "--")) {
                 $option = substr((string) $arg, 2);
 
-                if (str_contains($option, "=")) {
+                if (mb_stripos($option, "=") === false) {
                     [$key, $value] = explode("=", $option, 2);
                 } elseif (isset($argv[0]) && $argv[0][0] !== "-") {
                     $key = $option;

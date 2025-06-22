@@ -4,6 +4,18 @@ namespace Essentio\Core;
 
 use RuntimeException;
 
+use function base64_decode;
+use function base64_encode;
+use function explode;
+use function hash_equals;
+use function hash_hmac;
+use function implode;
+use function json_decode;
+use function json_encode;
+use function rtrim;
+use function strtr;
+use function time;
+
 class Jwt
 {
     public function __construct(protected string $secret, protected string $issuer) {}

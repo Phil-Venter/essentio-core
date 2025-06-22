@@ -70,16 +70,22 @@ For projects using Composer (or if you prefer that):
 composer require essentio/core
 ```
 
-```php
-use Essentio\Core\Application;
+```bash
+mkdir public
+
+cat <<'EOF' > public/index.php
+<?php
 
 require __DIR__ . '/../vendor/autoload.php';
 
-Application::http(__DIR__ . '/..');
+Essentio\Core\Application::http(__DIR__ . '/..');
 
 get('/', fn() => text('Hello, Essentio!'));
 
-Application::run();
+Essentio\Core\Application::run();
+EOF
+
+php -S localhost:8080 -t public
 ```
 
 ---
@@ -123,7 +129,7 @@ Whether you’re building tools, APIs, internal apps, or microservices—Essenti
 | `Application`   | Bootstaps HTTP/CLI lifecycle   |
 | `Container`     | Bindings, singleton resolution |
 | `Router`        | Routes + middleware            |
-| `Route`         | Routes + middleware            |
+| `Route`         | Router leaf node               |
 | `Request`       | Unified input                  |
 | `Response`      | Output handler                 |
 | `Session`       | Session + flash + CSRF         |
@@ -156,12 +162,13 @@ Whether you’re building tools, APIs, internal apps, or microservices—Essenti
 | `request()`, `input()`                            | Access input values   |
 | `sanitize()`                                      | Validate + cast input |
 
-#### 🗂️ Session & CSRF
+#### 🗂️ Session & Protection
 
 | Function              | Purpose              |
 | --------------------- | -------------------- |
 | `session()`, `flash()`| Session state        |
 | `csrf()`              | CSRF token utilities |
+| `jwt()`               | JWT encode/decode    |
 
 #### 📤 Response Helpers
 
@@ -177,7 +184,6 @@ Whether you’re building tools, APIs, internal apps, or microservices—Essenti
 | Function        | Purpose              |
 | --------------- | -------------------- |
 | `throw_if()`    | Conditional throw    |
-| `jwt()`         | JWT encode/decode    |
 
 ### ➕ Extras (`full.php` only)
 
@@ -204,22 +210,33 @@ A simple starting point for more advanced apps
 ```php
 Application::http(__DIR__);
 
-// CONTAINER
+# CONTAINER
 once(PDO::class, fn() => new PDO("sqlite:" . base("database.sqlite")));
-bind(Query::class, Query::create(...));
+bind(Query::class, fn() => Query::create(app(PDO::class)));
 
-// LOGGING MIDDLEWARE
-middleware(function ($req, $res, $next) {
+# LOGGING MIDDLEWARE
+middleware(function (Request $req, $next) {
     try {
-        return $next($req, $res);
+        return $next($req);
     } catch (Throwable $e) {
-        error_log("[{$req->method}] {$req->path} - {$e->getMessage()}");
+        foreach ($e->getTrace() as $frame) {
+            if (isset($frame["file"]) && !str_contains($frame["file"], "full.php") && !str_contains($frame["file"], "base.php")) {
+                $file = $frame["file"];
+                $line = $frame["line"];
+                break;
+            }
+        }
+
+        $file ??= $e->getFile();
+        $line ??= $e->getLine();
+
+        error_log("[{$req->method}] /{$req->path} - {$e->getMessage()} {$file}:{$line}");
         throw $e;
     }
 });
 
-// CSRF MIDDLEWARE
-middleware(function ($req, $res, $next) {
+# CSRF MIDDLEWARE
+middleware(function (Request $req, $next) {
     if (
         explode(";", $req->headers["Content-Type"] ?? "", 2)[0] !== "application/json" &&
         in_array($req->method, ["POST", "PUT", "PATCH", "DELETE"]) &&
@@ -228,30 +245,27 @@ middleware(function ($req, $res, $next) {
         throw HttpException::create(403, "CSRF token mismatch");
     }
 
-    return $next($req, $res);
+    return $next($req);
 });
 
-// JWT MIDDLEWARE ON api/
-middleware(function ($req, $res, $next) {
-    if (
-        explode(";", $req->headers["Content-Type"] ?? "", 2)[0] === "application/json" &&
-        str_starts_with(trim($req->path, "/"), "api/")
-    ) {
-        $res->addHeaders(["Content-Type" => "application/json"]);
-
+# JWT MIDDLEWARE ON api/
+middleware(function (Request $req, $next) {
+    if (explode(";", $req->headers["Content-Type"] ?? "", 2)[0] === "application/json" && str_starts_with(trim($req->path, "/"), "api/")) {
         try {
             jwt(trim(str_replace("Bearer ", "", $req->headers["Authorization"] ?? "")));
         } catch (Throwable) {
             throw HttpException::create(401, "Unauthorized");
         }
+
+        return app(Response::class)->addHeaders(["Content-Type" => "application/json"]);
     }
 
-    return $next($req, $res);
+    return $next($req);
 });
 
-// SECURITY HEADERS
-middleware(function ($req, $res, $next) {
-    return $next($req, $res)->addHeaders([
+# SECURITY HEADERS
+middleware(function (Request $req, $next) {
+    return $next($req)->addHeaders([
         "X-Content-Type-Options" => "nosniff",
         "X-Frame-Options" => "DENY",
         "X-XSS-Protection" => "1; mode=block",
@@ -260,8 +274,8 @@ middleware(function ($req, $res, $next) {
     ]);
 });
 
-// ROUTES
-get("/assets/:file", function ($req, $res) {
+# ROUTES
+get("/assets/:file", function (Request $req) {
     $file = base("assets/" . basename($req->get("file")));
 
     if (!is_file($file)) {
@@ -274,11 +288,11 @@ get("/assets/:file", function ($req, $res) {
     $ifModifiedSince = $_SERVER["HTTP_IF_MODIFIED_SINCE"] ?? null;
     $ifNoneMatch = $_SERVER["HTTP_IF_NONE_MATCH"] ?? null;
 
-    if ($ifModifiedSince === $lastModified && $ifNoneMatch === $etag) {
-        return $res->setStatus(304);
+    if ($ifModifiedSince === $lastModified || $ifNoneMatch === $etag) {
+        return app(Response::class)->setStatus(304);
     }
 
-    return $res
+    return app(Response::class)
         ->addHeaders([
             "Content-Type" => mime_content_type($file),
             "Last-Modified" => $lastModified,
@@ -320,7 +334,7 @@ Measured using [cloc](https://github.com/AlDanial/cloc):
 -------------------------------------------------------------------------------
 Language                     files          blank        comment           code
 -------------------------------------------------------------------------------
-PHP                              1            183             69            714
+PHP                              1            182             69            710
 -------------------------------------------------------------------------------
 ```
 
@@ -330,7 +344,7 @@ PHP                              1            183             69            714
 -------------------------------------------------------------------------------
 Language                     files          blank        comment           code
 -------------------------------------------------------------------------------
-PHP                              1            353             69           1296
+PHP                              1            351             69           1273
 -------------------------------------------------------------------------------
 ```
 

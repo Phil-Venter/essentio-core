@@ -4,6 +4,10 @@ namespace Essentio\Core;
 
 use RuntimeException;
 
+use function array_key_exists;
+use function class_exists;
+use function is_string;
+
 class Container
 {
     protected array $bindings = [];

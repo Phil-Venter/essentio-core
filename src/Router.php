@@ -4,6 +4,20 @@ namespace Essentio\Core;
 
 use InvalidArgumentException;
 
+use function array_combine;
+use function array_key_exists;
+use function array_reverse;
+use function array_shift;
+use function explode;
+use function http_build_query;
+use function ltrim;
+use function preg_replace;
+use function preg_replace_callback;
+use function rawurlencode;
+use function str_starts_with;
+use function substr;
+use function trim;
+
 class Router
 {
     protected const LEAF = "\0LEAF_NODE";
@@ -65,8 +79,7 @@ class Router
 
     public function dispatch(Request $request): Response
     {
-        [$values, $routes] =
-            $this->match($this->routes, explode("/", $request->path)) ?? throw HttpException::create(404);
+        [$values, $routes] = $this->match($this->routes, explode("/", $request->path)) ?? throw HttpException::create(404);
 
         if (!isset($routes[$request->method])) {
             throw HttpException::create(405);

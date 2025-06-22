@@ -4,12 +4,27 @@ namespace Essentio\Core\Extra;
 
 use Closure;
 use DateTimeInterface;
-use Essentio\Core\Application;
 use InvalidArgumentException;
 use Iterator;
 use PDO;
 use RuntimeException;
 use Stringable;
+
+use function array_fill;
+use function array_is_list;
+use function array_keys;
+use function array_map;
+use function array_merge;
+use function array_values;
+use function count;
+use function implode;
+use function in_array;
+use function is_array;
+use function is_scalar;
+use function mb_stripos;
+use function preg_replace;
+use function strtolower;
+use function trim;
 
 class Query
 {
@@ -36,11 +51,6 @@ class Query
     protected ?int $offset = null;
 
     public function __construct(protected ?PDO $pdo = null) {}
-
-    public static function create(?PDO $pdo = null): static
-    {
-        return new static($pdo ?? Application::$container->resolve(PDO::class));
-    }
 
     public function or(): static
     {

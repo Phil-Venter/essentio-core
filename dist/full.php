@@ -78,7 +78,7 @@ class Argument
             if (str_starts_with((string) $arg, "--")) {
                 $option = substr((string) $arg, 2);
 
-                if (str_contains($option, "=")) {
+                if (mb_stripos($option, "=") === false) {
                     [$key, $value] = explode("=", $option, 2);
                 } elseif (isset($argv[0]) && $argv[0][0] !== "-") {
                     $key = $option;
@@ -386,9 +386,7 @@ class Request
 
         $parsedBody = match ($contentType) {
             "application/json" => json_decode($rawInput, true) ?? [],
-            "application/xml", "text/xml" => ($xml = simplexml_load_string($rawInput))
-                ? json_decode(json_encode($xml), true)
-                : [],
+            "application/xml", "text/xml" => ($xml = simplexml_load_string($rawInput)) ? json_decode(json_encode($xml), true) : [],
             default => $post,
         };
 
@@ -579,8 +577,7 @@ class Router
 
     public function dispatch(Request $request): Response
     {
-        [$values, $routes] =
-            $this->match($this->routes, explode("/", $request->path)) ?? throw HttpException::create(404);
+        [$values, $routes] = $this->match($this->routes, explode("/", $request->path)) ?? throw HttpException::create(404);
 
         if (!isset($routes[$request->method])) {
             throw HttpException::create(405);
@@ -707,11 +704,11 @@ class Template
 
     protected function segment(string $name, ?string $value = null): void
     {
-        if (func_num_args() === 2) {
-            $this->segments[$name] = $value;
-        } else {
+        if ($value === null) {
             $this->stack[] = $name;
             ob_start();
+        } else {
+            $this->segments[$name] = $value;
         }
     }
 
@@ -925,11 +922,6 @@ class Query
     protected ?int $offset = null;
 
     public function __construct(protected ?PDO $pdo = null) {}
-
-    public static function create(?PDO $pdo = null): static
-    {
-        return new static($pdo ?? Application::$container->resolve(PDO::class));
-    }
 
     public function or(): static
     {
@@ -1349,19 +1341,12 @@ class Validate
         };
     }
 
-    public static function between(
-        DateTimeInterface|float|int $min,
-        DateTimeInterface|float|int $max,
-        string $message = ""
-    ): Closure {
+    public static function between(DateTimeInterface|float|int $min, DateTimeInterface|float|int $max, string $message = ""): Closure
+    {
         $min = $min instanceof DateTimeInterface ? $min->getTimestamp() : $min;
         $max = $max instanceof DateTimeInterface ? $max->getTimestamp() : $max;
 
-        return function (DateTimeInterface|float|int|null $input) use (
-            $min,
-            $max,
-            $message
-        ): DateTimeInterface|float|int|null {
+        return function (DateTimeInterface|float|int|null $input) use ($min, $max, $message): DateTimeInterface|float|int|null {
             if ($input === null) {
                 return null;
             }
@@ -1380,9 +1365,7 @@ class Validate
     {
         $min = $min instanceof DateTimeInterface ? $min->getTimestamp() : $min;
 
-        return function (
-            DateTimeInterface|float|int|null $input
-        ) use ($min, $message): DateTimeInterface|float|int|null {
+        return function (DateTimeInterface|float|int|null $input) use ($min, $message): DateTimeInterface|float|int|null {
             if ($input === null) {
                 return null;
             }
@@ -1401,9 +1384,7 @@ class Validate
     {
         $min = $min instanceof DateTimeInterface ? $min->getTimestamp() : $min;
 
-        return function (
-            DateTimeInterface|float|int|null $input
-        ) use ($min, $message): DateTimeInterface|float|int|null {
+        return function (DateTimeInterface|float|int|null $input) use ($min, $message): DateTimeInterface|float|int|null {
             if ($input === null) {
                 return null;
             }
@@ -1422,9 +1403,7 @@ class Validate
     {
         $max = $max instanceof DateTimeInterface ? $max->getTimestamp() : $max;
 
-        return function (
-            DateTimeInterface|float|int|null $input
-        ) use ($max, $message): DateTimeInterface|float|int|null {
+        return function (DateTimeInterface|float|int|null $input) use ($max, $message): DateTimeInterface|float|int|null {
             if ($input === null) {
                 return null;
             }
@@ -1443,9 +1422,7 @@ class Validate
     {
         $max = $max instanceof DateTimeInterface ? $max->getTimestamp() : $max;
 
-        return function (
-            DateTimeInterface|float|int|null $input
-        ) use ($max, $message): DateTimeInterface|float|int|null {
+        return function (DateTimeInterface|float|int|null $input) use ($max, $message): DateTimeInterface|float|int|null {
             if ($input === null) {
                 return null;
             }
