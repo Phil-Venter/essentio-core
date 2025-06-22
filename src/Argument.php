@@ -13,7 +13,7 @@ class Argument
 {
     public function __construct(public string $command = "", public array $arguments = []) {}
 
-    public static function create(?array $argv = null): static
+    public static function create(Helper $helper, ?array $argv = null): static
     {
         $argv ??= $_SERVER["argv"] ?? [];
         array_shift($argv);
@@ -27,7 +27,7 @@ class Argument
 
         while (($arg = array_shift($argv)) !== null) {
             if ($arg === "--") {
-                $arguments = array_merge($arguments, array_map(static::cast(...), $argv));
+                $arguments = array_merge($arguments, array_map($helper->autoCast(...), $argv));
                 break;
             }
 
@@ -44,7 +44,7 @@ class Argument
                     $value = true;
                 }
 
-                $arguments[$key] = static::cast($value);
+                $arguments[$key] = $helper->autoCast($value);
                 continue;
             }
 
@@ -60,14 +60,14 @@ class Argument
                     }
                 }
 
-                $arguments[$key] = static::cast($value);
+                $arguments[$key] = $helper->autoCast($value);
                 continue;
             }
 
             if (empty($command)) {
                 $command = $arg;
             } else {
-                $arguments[] = static::cast($arg);
+                $arguments[] = $helper->autoCast($arg);
             }
         }
 
@@ -77,25 +77,5 @@ class Argument
     public function get(int|string $key): mixed
     {
         return $this->arguments[$key] ?? null;
-    }
-
-    protected static function cast(mixed $value): mixed
-    {
-        if (!is_string($value)) {
-            return $value;
-        }
-
-        if (preg_match('/^(["\']).*\1$/', $value)) {
-            return substr($value, 1, -1);
-        }
-
-        $lower = strtolower($value);
-        return match (true) {
-            $lower === "true" => true,
-            $lower === "false" => false,
-            $lower === "null" => null,
-            is_numeric($value) => preg_match("/[e\.]/", $value) ? (float) $value : (int) $value,
-            default => $value,
-        };
     }
 }

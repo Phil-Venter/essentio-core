@@ -1,6 +1,16 @@
 <?php
 
-use Essentio\Core\{Application, Argument, Environment, Jwt, Request, Response, Router, Session, Template};
+use Essentio\Core\Application;
+use Essentio\Core\Argument;
+use Essentio\Core\Environment;
+use Essentio\Core\Helper;
+use Essentio\Core\Jwt;
+use Essentio\Core\Request;
+use Essentio\Core\Response;
+use Essentio\Core\Route;
+use Essentio\Core\Router;
+use Essentio\Core\Session;
+use Essentio\Core\Template;
 
 /**
  * @template T
@@ -35,7 +45,7 @@ function once(string $abstract, callable|string|null $concrete = null): void
 
 function base(string $path): string
 {
-    return Application::fromBase($path);
+    return app(Helper::class)->fromBase($path);
 }
 
 function env(string $key): mixed
@@ -59,6 +69,11 @@ function command(string $name, callable $handle): void
     exit(is_int($result = $handle($argument)) ? $result : 0);
 }
 
+/**
+ * @template T as string
+ * @param T $key
+ * @return (T is '' ? Request : mixed)
+ */
 function request(string $key = ""): mixed
 {
     return func_num_args() ? app(Request::class) : app(Request::class)->get($key);
@@ -69,6 +84,11 @@ function input(string $field): mixed
     return app(Request::class)->input($field);
 }
 
+/**
+ * @template T as string
+ * @param array<T, callable(mixed): mixed> $rules
+ * @return array<T, mixed>|false
+ */
 function sanitize(array $rules): array|false
 {
     return app(Request::class)->sanitize($rules);
@@ -84,49 +104,87 @@ function flash(string $key, mixed $value = null): mixed
     return func_num_args() === 1 ? app(Session::class)->getFlash($key) : app(Session::class)->setFlash($key, $value);
 }
 
+/**
+ * @template T as string
+ * @param T $csrf
+ * @return (T is '' ? string : bool)
+ */
 function csrf(string $csrf = ""): string|bool
 {
     return func_num_args() ? app(Session::class)->verifyCsrf($csrf) : app(Session::class)->getCsrf();
 }
 
+/**
+ * @template T of array|string
+ * @param T $payload
+ * @return (T is string ? array : string)
+ */
 function jwt(array|string $payload): array|string
 {
     return is_string($payload) ? app(Jwt::class)->decode($payload) : app(Jwt::class)->encode($payload);
 }
 
+/**
+ * @param callable(Request, callable(Request): Response): Response $middleware
+ */
 function middleware(callable $middleware): void
 {
     app(Router::class)->middleware($middleware);
 }
 
-function get(string $path, callable $handle, ?string $name = null, array $middleware = []): void
+/**
+ * @param string $path
+ * @param callable $handle
+ * @return Route
+ */
+function get(string $path, callable $handle): Route
 {
-    app(Router::class)->add("GET", $path, $handle, $name, $middleware);
+    return app(Router::class)->add("GET", $path, $handle);
 }
 
-function post(string $path, callable $handle, ?string $name = null, array $middleware = []): void
+/**
+ * @param string $path
+ * @param callable $handle
+ * @return Route
+ */
+function post(string $path, callable $handle): Route
 {
-    app(Router::class)->add("POST", $path, $handle, $name, $middleware);
+    return app(Router::class)->add("POST", $path, $handle);
 }
 
-function put(string $path, callable $handle, ?string $name = null, array $middleware = []): void
+/**
+ * @param string $path
+ * @param callable $handle
+ * @return Route
+ */
+function put(string $path, callable $handle): Route
 {
-    app(Router::class)->add("PUT", $path, $handle, $name, $middleware);
+    return app(Router::class)->add("PUT", $path, $handle);
 }
 
-function patch(string $path, callable $handle, ?string $name = null, array $middleware = []): void
+/**
+ * @param string $path
+ * @param callable $handle
+ * @return Route
+ */
+function patch(string $path, callable $handle): Route
 {
-    app(Router::class)->add("PATCH", $path, $handle, $name, $middleware);
+    return app(Router::class)->add("PATCH", $path, $handle);
 }
 
-function delete(string $path, callable $handle, ?string $name = null, array $middleware = []): void
+/**
+ * @param string $path
+ * @param callable $handle
+ * @return Route
+ */
+function delete(string $path, callable $handle): Route
 {
-    app(Router::class)->add("DELETE", $path, $handle, $name, $middleware);
+    return app(Router::class)->add("DELETE", $path, $handle);
 }
 
-function url(string $name, array $params = []): string
+function named_url(string $name, array $params = []): string
 {
-    return app(Router::class)->getUrl($name, $params);
+    return app(Router::class)->makeUrlByName($name, $params);
 }
 
 function render(string $template, array $data = []): string

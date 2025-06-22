@@ -8,16 +8,6 @@ class Jwt
 {
     public function __construct(protected string $secret, protected string $issuer) {}
 
-    public static function create(?string $secret = null, ?string $issuer = null): static
-    {
-        $env = Application::$container->resolve(Environment::class);
-
-        return new static(
-            $secret ?? ($env->get("JWT_SECRET") ?? "Essentio"),
-            $issuer ?? ($env->get("JWT_ISSUER") ?? "Essentio")
-        );
-    }
-
     public function encode(array $payload): string
     {
         $header = ["alg" => "HS256", "typ" => "JWT"];

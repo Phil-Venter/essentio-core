@@ -6,11 +6,11 @@ use Stringable;
 
 class Response
 {
-    public function __construct(
-        public int $status = 200,
-        public array $headers = [],
-        public bool|float|int|string|Stringable|null $body = null
-    ) {}
+    protected int $status = 200;
+
+    protected array $headers = [];
+
+    protected bool|float|int|string|Stringable|null $body = null;
 
     public function setStatus(int $status): static
     {

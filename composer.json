@@ -16,8 +16,6 @@
         "php": "^8.4"
     },
     "require-dev": {
-        "nette/php-generator": "^4.1",
-        "nikic/php-parser": "^5.4",
         "pestphp/pest": "^3.8",
         "rector/rector": "^2.0"
     },
@@ -26,8 +24,8 @@
         "runner": "composer format && composer test && composer build:base 'dist/base.php' && composer build:full 'dist/full.php'",
         "format": "./vendor/bin/rector",
         "test": "./vendor/bin/pest",
-        "build:base": "php bin/build.php --",
-        "build:full": "php bin/build.php --extra --"
+        "build:base": "php bin/build.php",
+        "build:full": "php bin/build.php --extra"
     },
     "config": {
         "allow-plugins": {

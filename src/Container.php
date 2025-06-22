@@ -6,7 +6,9 @@ use RuntimeException;
 
 class Container
 {
-    public function __construct(public array $bindings = [], public array $cache = []) {}
+    protected array $bindings = [];
+
+    protected array $cache = [];
 
     public function bind(string $abstract, callable|string|null $concrete = null): self
     {

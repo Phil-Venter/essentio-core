@@ -4,12 +4,13 @@ namespace Essentio\Core;
 
 class Template
 {
-    public function __construct(
-        public ?string $template = null,
-        public array $segments = [],
-        public ?self $layout = null,
-        public array $stack = []
-    ) {}
+    protected array $segments = [];
+
+    protected ?self $layout = null;
+
+    protected array $stack = [];
+
+    public function __construct(protected ?string $template = null) {}
 
     protected function layout(string $template): void
     {

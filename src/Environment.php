@@ -2,17 +2,20 @@
 
 namespace Essentio\Core;
 
+use RuntimeException;
+
 class Environment
 {
-    public function __construct(public array $data = []) {}
+    public function __construct(protected array $data = []) {}
 
-    public function load(string $file): static
+    public static function create(Helper $helper, ?string $file = null): static
     {
-        if (!file_exists($file)) {
-            return $this;
+        if (!file_exists($file = $helper->fromBase($file ?? ".env"))) {
+            return new static();
         }
 
         $lines = file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+        $data = [];
 
         foreach ($lines as $line) {
             if (trim($line)[0] === "#" || !str_contains($line, "=")) {
@@ -20,26 +23,10 @@ class Environment
             }
 
             [$key, $value] = explode("=", $line, 2);
-            $key = trim($key);
-            $value = trim($value);
-
-            if (preg_match('/^(["\']).*\1$/', $value)) {
-                $value = substr($value, 1, -1);
-            } else {
-                $lower = strtolower($value);
-                $value = match (true) {
-                    $lower === "true" => true,
-                    $lower === "false" => false,
-                    $lower === "null" => null,
-                    is_numeric($value) => preg_match("/[e\.]/", $value) ? (float) $value : (int) $value,
-                    default => $value,
-                };
-            }
-
-            $this->data[$key] = $value;
+            $data[trim($key)] = $helper->autoCast(trim($value));
         }
 
-        return $this;
+        return new static($data);
     }
 
     public function get(string $key): mixed

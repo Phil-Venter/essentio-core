@@ -2,44 +2,43 @@
 
 namespace Essentio\Core;
 
-use Essentio\Core\Extra\Query;
 use Throwable;
 
 class Application
 {
-    public static string $basePath;
-
     public static Container $container;
 
     public static function http(string $basePath): void
     {
-        static::$basePath = rtrim($basePath, "/");
-        static::$container = new Container();
+        [$container, , $environment] = static::bootstrap($basePath);
 
-        static::$container->once(Environment::class);
-        static::$container->once(Session::class, Session::create(...));
-        static::$container->once(Jwt::class, Jwt::create(...));
-        static::$container->once(Request::class, Request::create(...));
-        static::$container->once(Response::class);
-        static::$container->once(Router::class);
+        $container->once(Session::class, fn(): Session => Session::create());
+        $container->once(Jwt::class, fn(): Jwt => new Jwt($environment->get("JWT_SECRET"), $environment->get("JWT_ISSUER")));
+        $container->once(Request::class, fn(): Request => Request::create());
+        $container->once(Response::class);
+        $container->once(Router::class);
 
-        static::$container->resolve(Environment::class)->load(static::fromBase(".env"));
+        static::$container = $container;
     }
 
     public static function cli(string $basePath): void
     {
-        static::$basePath = rtrim($basePath, "/");
-        static::$container = new Container();
+        [$container, $helper] = static::bootstrap($basePath);
+        $container->once(Argument::class, fn(): Argument => Argument::create($helper));
 
-        static::$container->once(Environment::class);
-        static::$container->once(Argument::class, Argument::create(...));
-
-        static::$container->resolve(Environment::class)->load(static::fromBase(".env"));
+        static::$container = $container;
     }
 
-    public static function fromBase(string $path): string
+    protected static function bootstrap(string $basePath): array
     {
-        return static::$basePath . "/" . ltrim($path, "/");
+        $container = new Container();
+        $helper = new Helper(rtrim($basePath, "/"));
+        $environment = Environment::create($helper);
+
+        $container->once(Helper::class, fn(): Helper => $helper);
+        $container->once(Environment::class, fn(): Environment => $environment);
+
+        return [$container, $helper, $environment];
     }
 
     public static function run(): void
@@ -48,7 +47,7 @@ class Application
         $response = static::$container->resolve(Response::class);
 
         try {
-            static::$container->resolve(Router::class)->dispatch($request, $response)->send();
+            static::$container->resolve(Router::class)->dispatch($request)->send();
         } catch (HttpException $e) {
             $status = $e->getCode() ?: 500;
             $response->setStatus($status)->setBody($e->getMessage())->send();

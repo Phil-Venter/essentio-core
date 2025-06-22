@@ -120,9 +120,10 @@ Whether you’re building tools, APIs, internal apps, or microservices—Essenti
 
 | Class           | Purpose                        |
 | --------------- | ------------------------------ |
-| `Application`   | Starts HTTP/CLI lifecycle      |
+| `Application`   | Bootstaps HTTP/CLI lifecycle   |
 | `Container`     | Bindings, singleton resolution |
 | `Router`        | Routes + middleware            |
+| `Route`         | Routes + middleware            |
 | `Request`       | Unified input                  |
 | `Response`      | Output handler                 |
 | `Session`       | Session + flash + CSRF         |
@@ -319,7 +320,7 @@ Measured using [cloc](https://github.com/AlDanial/cloc):
 -------------------------------------------------------------------------------
 Language                     files          blank        comment           code
 -------------------------------------------------------------------------------
-PHP                              1            157             17            703
+PHP                              1            183             69            714
 -------------------------------------------------------------------------------
 ```
 
@@ -329,7 +330,7 @@ PHP                              1            157             17            703
 -------------------------------------------------------------------------------
 Language                     files          blank        comment           code
 -------------------------------------------------------------------------------
-PHP                              1            356             18           1585
+PHP                              1            353             69           1296
 -------------------------------------------------------------------------------
 ```
 
