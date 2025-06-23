@@ -365,11 +365,11 @@ class Request
         ?array $files = null,
         ?string $body = null
     ): static {
-        $server ??= $_SERVER;
+        $server ??= $_SERVER ?? [];
         $post ??= $_POST ?? [];
-        $query ??= $_GET;
-        $cookies ??= $_COOKIE;
-        $files ??= $_FILES;
+        $query ??= $_GET ?? [];
+        $cookies ??= $_COOKIE ?? [];
+        $files ??= $_FILES ?? [];
         $headers ??= function_exists("getallheaders") ? getallheaders() : [];
         $rawInput = $body ?? file_get_contents("php://input");
 
@@ -386,13 +386,37 @@ class Request
 
         $contentType = explode(";", $headers["Content-Type"] ?? "", 2)[0];
 
+        $flatFiles = [];
+        foreach ($files as $info) {
+            if (!is_array($info["name"] ?? null)) {
+                if (($info["error"] ?? null) === UPLOAD_ERR_OK) {
+                    $flatFiles[] = $info;
+                }
+
+                continue;
+            }
+
+            for ($i = 0; $i < count($info["name"]); $i++) {
+                if ($info["error"][$i] !== UPLOAD_ERR_OK) {
+                    continue;
+                }
+
+                $temp = [];
+                foreach ($info as $key => $vals) {
+                    $temp[$key] = $vals[$i];
+                }
+
+                $flatFiles[] = $temp;
+            }
+        }
+
         $parsedBody = match ($contentType) {
             "application/json" => json_decode($rawInput, true) ?? [],
             "application/xml", "text/xml" => ($xml = simplexml_load_string($rawInput)) ? json_decode(json_encode($xml), true) : [],
             default => $post,
         };
 
-        return new static($method, $port, $path, $query, $contentType, $headers, $cookies, $files, $parsedBody, []);
+        return new static($method, $port, $path, $query, $contentType, $headers, $cookies, $flatFiles, $parsedBody, []);
     }
 
     public function get(string $field): mixed
