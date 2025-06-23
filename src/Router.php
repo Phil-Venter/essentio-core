@@ -3,6 +3,7 @@
 namespace Essentio\Core;
 
 use InvalidArgumentException;
+use Stringable;
 
 use function array_combine;
 use function array_key_exists;
@@ -77,7 +78,7 @@ class Router
         return "/" . ltrim($url, "/") . (empty($params) ? "" : "?" . http_build_query($params));
     }
 
-    public function dispatch(Request $request): Response
+    public function dispatch(Request $request, Response $response): Response
     {
         [$values, $routes] = $this->match($this->routes, explode("/", $request->path)) ?? throw HttpException::create(404);
 
@@ -98,6 +99,10 @@ class Router
 
         if (($result = $handler($request)) instanceof Response) {
             return $result;
+        }
+
+        if (($result instanceof Stringable || is_scalar($result)) && !empty(trim((string) $result))) {
+            return $response->setBody($result);
         }
 
         throw HttpException::create(204);

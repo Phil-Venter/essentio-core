@@ -15,7 +15,7 @@ class Application
         [$container, , $environment] = static::bootstrap($basePath);
 
         $container->once(Session::class, fn(): Session => Session::create());
-        $container->once(Jwt::class, fn(): Jwt => new Jwt($environment->get("JWT_SECRET"), $environment->get("JWT_ISSUER")));
+        $container->once(Jwt::class, fn(): Jwt => new Jwt($environment->get("JWT_SECRET") ?? "", $environment->get("JWT_ISSUER")));
         $container->once(Request::class, fn(): Request => Request::create());
         $container->once(Response::class);
         $container->once(Router::class);
@@ -49,7 +49,7 @@ class Application
         $response = static::$container->resolve(Response::class);
 
         try {
-            static::$container->resolve(Router::class)->dispatch($request)->send();
+            static::$container->resolve(Router::class)->dispatch($request, $response)->send();
         } catch (HttpException $e) {
             $status = $e->getCode() ?: 500;
             $response->setStatus($status)->setBody($e->getMessage())->send();

@@ -2,170 +2,77 @@
 
 use Essentio\Core\Extra\Query;
 
-// beforeEach(function () {
-//     $this->pdo = new PDO("sqlite::memory:");
-//     $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+function setupDatabase(): PDO
+{
+    $pdo = new PDO("sqlite::memory:");
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $pdo->exec("
+        CREATE TABLE users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT,
+            active INTEGER
+        );
+    ");
+    return $pdo;
+}
 
-//     $this->pdo->exec("
-//         CREATE TABLE users (
-//             id INTEGER PRIMARY KEY AUTOINCREMENT,
-//             name TEXT,
-//             email TEXT,
-//             status TEXT
-//         );
-//     ");
+it("inserts a row and returns its ID", function () {
+    $pdo = setupDatabase();
 
-//     $this->pdo->exec("
-//         CREATE TABLE posts (
-//             id INTEGER PRIMARY KEY AUTOINCREMENT,
-//             user_id INTEGER,
-//             title TEXT
-//         );
-//     ");
-// });
+    $query = new Query($pdo);
+    $query->table("users");
+    $id = $query->insert(["name" => "Alice", "active" => 1]);
 
-// describe(Query::class, function () {
-//     it("can insert and fetch a row", function () {
-//         $id = new Query($this->pdo)->from("users")->insert([
-//             "name" => "Grug",
-//             "email" => "grug@cave.hut",
-//             "status" => "active",
-//         ]);
+    expect($id)->toBe(1);
+});
 
-//         expect($id)->toBeInt();
+it("retrieves a single row with where clause", function () {
+    $pdo = setupDatabase();
+    $pdo->exec("INSERT INTO users (name, active) VALUES ('Bob', 1)");
 
-//         $user = new Query($this->pdo)->select("id", "name")->from("users")->first();
-//         expect($user)->toHaveKeys(["id", "name"]);
-//         expect($user["name"])->toBe("Grug");
-//     });
+    $query = new Query($pdo);
+    $row = $query->table("users")->where("name", "=", "Bob")->first();
 
-//     it("can update data", function () {
-//         $id = new Query($this->pdo)->from("users")->insert([
-//             "name" => "Grug",
-//             "email" => "grug@cave.hut",
-//             "status" => "asleep",
-//         ]);
+    expect($row["name"])->toBe("Bob");
+    expect((int) $row["active"])->toBe(1);
+});
 
-//         $count = new Query($this->pdo)
-//             ->from("users")
-//             ->where("id", $id)
-//             ->update([
-//                 "status" => "awake",
-//             ]);
+it("updates rows based on condition", function () {
+    $pdo = setupDatabase();
+    $pdo->exec("INSERT INTO users (name, active) VALUES ('Charlie', 0)");
 
-//         expect($count)->toBe(1);
+    $query = new Query($pdo);
+    $success = $query
+        ->table("users")
+        ->where("name", "=", "Charlie")
+        ->update(["active" => 1]);
 
-//         $status = new Query($this->pdo)->select("status")->from("users")->where("id", $id)->first();
-//         expect($status["status"])->toBe("awake");
-//     });
+    expect($success)->toBeTrue();
 
-//     it("can delete data", function () {
-//         $id = new Query($this->pdo)->from("users")->insert([
-//             "name" => "Ugluk",
-//             "email" => "ugluk@orc.net",
-//             "status" => "frozen",
-//         ]);
+    $row = $query->table("users")->where("name", "=", "Charlie")->first();
+    expect((int) $row["active"])->toBe(1);
+});
 
-//         $deleted = new Query($this->pdo)->from("users")->where("id", $id)->delete();
-//         expect($deleted)->toBe(1);
+it("deletes a row", function () {
+    $pdo = setupDatabase();
+    $pdo->exec("INSERT INTO users (name, active) VALUES ('Dave', 1)");
 
-//         $user = new Query($this->pdo)->from("users")->where("id", $id)->first();
-//         expect($user)->toBeEmpty();
-//     });
+    $query = new Query($pdo);
+    $success = $query->table("users")->where("name", "=", "Dave")->delete();
 
-//     it("can build query with joins and group by", function () {
-//         $userId = new Query($this->pdo)->from("users")->insert([
-//             "name" => "Grug",
-//             "email" => "grug@cave.hut",
-//             "status" => "active",
-//         ]);
+    expect($success)->toBeTrue();
 
-//         new Query($this->pdo)->from('posts')->insert(['user_id' => $userId, 'title' => 'Hello']);
-//         new Query($this->pdo)->from('posts')->insert(['user_id' => $userId, 'title' => 'Again']);
+    $row = $query->table("users")->where("name", "=", "Dave")->first();
+    expect($row)->toBe([]);
+});
 
-//         $result = (new Query($this->pdo))
-//             ->select("u.name", "COUNT(p.id) AS count")
-//             ->from("users u")
-//             ->join("posts p", second: 'p.user_id')
-//             ->group("u.id")
-//             ->having('COUNT(p.id)', '>=', 2)
-//             ->first();
+it("supports limit and ordering", function () {
+    $pdo = setupDatabase();
+    $pdo->exec("INSERT INTO users (name, active) VALUES ('Eve', 1), ('Zoe', 0), ('Alan', 1)");
 
-//         expect($result)->not()->toBeNull();
-//         expect($result["name"])->toBe("Grug");
-//     });
+    $query = new Query($pdo);
+    $rows = iterator_to_array($query->table("users")->orderBy("name", "ASC")->limit(2)->get());
 
-//     it("can use subquery in from()", function () {
-//         new Query($this->pdo)->from("users")->insert([
-//             "name" => "Subgrug",
-//             "email" => "sub@grug.com",
-//             "status" => "nested",
-//         ]);
-
-//         $result = new Query($this->pdo)
-//             ->from(function ($q) {
-//                 $q->select("name")->from("users")->where("status", "=", "nested");
-//             }, "u")
-//             ->select("name")
-//             ->first();
-
-//         expect($result["name"])->toBe("Subgrug");
-//     });
-
-//     it("can do union query", function () {
-//         new Query($this->pdo)->from("users")->insert([
-//             "name" => "One",
-//             "email" => "1@hut.com",
-//             "status" => "active",
-//         ]);
-
-//         new Query($this->pdo)->from("users")->insert([
-//             "name" => "Two",
-//             "email" => "2@hut.com",
-//             "status" => "inactive",
-//         ]);
-
-//         $main = (new Query($this->pdo))
-//             ->select("name")
-//             ->from("users")
-//             ->where("status", "=", "active")
-//             ->union(function ($q) {
-//                 $q->select("name")->from("users")->where("status", "=", "inactive");
-//             });
-
-//         $result = $main->get();
-//         expect(iterator_count($result))->toBe(2);
-//     });
-
-//     it("returns correct bindings for where and having", function () {
-//         $query = new Query($this->pdo)->select("*")->from("users")->where("status", "=", "alive")->having("COUNT(id)", ">", 1);
-//         expect($query->getBindings())->toBe(["alive", 1]);
-//     });
-
-//     it("can use where with IN array", function () {
-//         new Query($this->pdo)->from("users")->insert([
-//             "name" => "G",
-//             "email" => "g@hut.com",
-//             "status" => "alive",
-//         ]);
-
-//         $users = new Query($this->pdo)
-//             ->select("id")
-//             ->from("users")
-//             ->where("status", "IN", ["alive", "asleep"])
-//             ->get();
-
-//         expect(iterator_count($users))->toBeGreaterThan(0);
-//     });
-
-//     it("can get only first row", function () {
-//         new Query($this->pdo)->from("users")->insert([
-//             "name" => "GrugFirst",
-//             "email" => "first@grug.com",
-//             "status" => "test",
-//         ]);
-
-//         $row = new Query($this->pdo)->select("*")->from("users")->first();
-//         expect($row)->toBeArray();
-//     });
-// });
+    expect(count($rows))->toBe(2);
+    expect($rows[0]["name"])->toBe("Alan");
+});

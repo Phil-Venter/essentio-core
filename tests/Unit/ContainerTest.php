@@ -2,60 +2,82 @@
 
 use Essentio\Core\Container;
 
-// describe(Container::class, function (): void {
-//     it("binds and retrieves a service instance", function (): void {
-//         $container = new Container();
-//         $container->bind("stdClass", fn() => new stdClass());
-//         $instance = $container->resolve("stdClass");
+class DummyService
+{
+    public string $value = "default";
+}
 
-//         expect($instance)->toBeInstanceOf(stdClass::class);
-//     });
+class ParamService
+{
+    public function __construct(public string $name) {}
+}
 
-//     it("throws an exception when retrieving an unbound service", function (): void {
-//         $container = new Container();
+it("binds and resolves a class by default name", function () {
+    $container = new Container();
 
-//         expect(fn() => $container->resolve("nonexistent"))->toThrow(
-//             RuntimeException::class,
-//             "Service [nonexistent] is not bound and cannot be instantiated."
-//         );
-//     });
+    $container->bind(DummyService::class);
+    $instance = $container->resolve(DummyService::class);
 
-//     it("returns the same instance when the binding is marked as once (singleton)", function (): void {
-//         $container = new Container();
-//         $container->once("singleton", fn() => new stdClass());
+    expect($instance)->toBeInstanceOf(DummyService::class);
+});
 
-//         $instance1 = $container->resolve("singleton");
-//         $instance2 = $container->resolve("singleton");
+it("binds using a custom factory", function () {
+    $container = new Container();
 
-//         expect($instance1)->toBe($instance2);
-//     });
+    $container->bind("custom", fn() => new DummyService());
+    $resolved = $container->resolve("custom");
 
-//     it("returns different instances when the binding is not marked as once (prototype)", function (): void {
-//         $container = new Container();
-//         $container->bind("prototype", fn() => new stdClass());
+    expect($resolved)->toBeInstanceOf(DummyService::class);
+});
 
-//         $instance1 = $container->resolve("prototype");
-//         $instance2 = $container->resolve("prototype");
+test("once() creates a singleton instance", function () {
+    $container = new Container();
 
-//         expect($instance1)->not->toBe($instance2);
-//     });
+    $container->once(DummyService::class, fn() => new DummyService());
+    $a = $container->resolve(DummyService::class);
+    $b = $container->resolve(DummyService::class);
 
-//     it("can bind and retrieve multiple services independently", function (): void {
-//         $container = new Container();
-//         $container->bind("serviceA", fn() => new stdClass());
-//         $container->bind(
-//             "serviceB",
-//             fn() => new class {
-//                 public $value = "serviceB";
-//             }
-//         );
+    expect($a)->toBe($b); // same instance
+});
 
-//         $instanceA = $container->resolve("serviceA");
-//         $instanceB = $container->resolve("serviceB");
+test("resolve() instantiates class directly if unbound", function () {
+    $container = new Container();
 
-//         expect($instanceA)->toBeInstanceOf(stdClass::class);
-//         expect($instanceB)->toBeInstanceOf(get_class($instanceB));
-//         expect(property_exists($instanceB, "value"))->toBeTrue();
-//         expect($instanceB->value)->toBe("serviceB");
-//     });
-// });
+    $instance = $container->resolve(DummyService::class);
+
+    expect($instance)->toBeInstanceOf(DummyService::class);
+});
+
+test("resolve() passes constructor parameters", function () {
+    $container = new Container();
+
+    $instance = $container->resolve(ParamService::class, ["John"]);
+
+    expect($instance)->toBeInstanceOf(ParamService::class)->and($instance->name)->toBe("John");
+});
+
+it("throws if class does not exist in bind", function () {
+    $container = new Container();
+
+    expect(fn() => $container->bind("test", "NonExistentClass"))
+        ->toThrow(RuntimeException::class)
+        ->and(fn($e) => expect($e->getMessage())->toContain("Cannot bind"));
+});
+
+it("throws if resolve fails for unknown non-class", function () {
+    $container = new Container();
+
+    expect(fn() => $container->resolve("not_bound_and_invalid_class"))
+        ->toThrow(RuntimeException::class)
+        ->and(fn($e) => expect($e->getMessage())->toContain("Service [not_bound_and_invalid_class] is not bound"));
+});
+
+test("resolve() returns new instance for bind each time", function () {
+    $container = new Container();
+
+    $container->bind(DummyService::class, fn() => new DummyService());
+    $a = $container->resolve(DummyService::class);
+    $b = $container->resolve(DummyService::class);
+
+    expect($a)->not()->toBe($b);
+});

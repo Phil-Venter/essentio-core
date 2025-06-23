@@ -1,131 +1,202 @@
 <?php
 
-use Essentio\Core\HttpException;
+use Essentio\Core\Router;
 use Essentio\Core\Request;
 use Essentio\Core\Response;
-use Essentio\Core\Router;
+use Essentio\Core\HttpException;
 
-// describe(Router::class, function (): void {
-//     it("dispatches a static route successfully", function (): void {
-//         $router = new Router();
-//         $router->add("GET", "home", function ($req, $res) {
-//             return $res->withBody("Welcome Home");
-//         });
+function createRequest(string $method, string $path): Request
+{
+    return new Request(
+        method: $method,
+        port: 80,
+        path: trim($path, "/"),
+        query: [],
+        contentType: "text/plain",
+        headers: [],
+        cookies: [],
+        files: [],
+        body: [],
+        parameters: []
+    );
+}
 
-//         $server = [
-//             "REQUEST_METHOD" => "GET",
-//             "REQUEST_URI" => "/home",
-//         ];
-//         $request = Request::create($server);
-//         $response = $router->dispatch($request, new Response());
-//         expect($response->body)->toBe("Welcome Home");
-//     });
+function createResponse(): Response
+{
+    return new Response();
+}
 
-//     it("dispatches a dynamic route and extracts parameters", function (): void {
-//         $router = new Router();
-//         $router->add("GET", "user/:id", function ($req, $res) {
-//             return $res->withBody("User " . $req->get("id"));
-//         });
+it("matches static route and sends response", function () {
+    $router = new Router();
 
-//         $server = [
-//             "REQUEST_METHOD" => "GET",
-//             "REQUEST_URI" => "/user/42",
-//         ];
-//         $request = Request::create($server);
-//         $response = $router->dispatch($request, new Response());
-//         expect($response->body)->toBe("User 42");
-//     });
+    $router->add("GET", "hello/world", fn() => createResponse()->setBody("Hello"));
 
-//     it("throws a 404 HttpException for a non-existent route", function (): void {
-//         $router = new Router();
-//         $server = [
-//             "REQUEST_METHOD" => "GET",
-//             "REQUEST_URI" => "/nonexistent",
-//         ];
-//         $request = Request::create($server);
-//         expect(fn() => $router->dispatch($request, new Response()))->toThrow(HttpException::class, "Not Found");
-//     });
+    $req = createRequest("GET", "hello/world");
+    $res = $router->dispatch($req, createResponse());
 
-//     it("throws a 405 HttpException when the method is not allowed", function (): void {
-//         $router = new Router();
-//         $router->add("GET", "about", function ($req, $res) {
-//             return $res->withBody("About");
-//         });
-//         $server = [
-//             "REQUEST_METHOD" => "POST",
-//             "REQUEST_URI" => "/about",
-//         ];
-//         $request = Request::create($server);
-//         expect(fn() => $router->dispatch($request, new Response()))->toThrow(
-//             HttpException::class,
-//             "Method Not Allowed"
-//         );
-//     });
+    ob_start();
+    $res->send();
+    $output = ob_get_clean();
 
-//     it("executes middleware pipeline correctly for a static route", function (): void {
-//         $router = new Router();
-//         $middleware = function ($req, $res, $next) {
-//             $res = $next($req, $res);
-//             return $res->withBody($res->body . " with middleware");
-//         };
-//         $router->add(
-//             "GET",
-//             "test",
-//             function ($req, $res) {
-//                 return $res->withBody("Base");
-//             },
-//             [$middleware]
-//         );
+    expect($output)->toBe("Hello");
+});
 
-//         $server = [
-//             "REQUEST_METHOD" => "GET",
-//             "REQUEST_URI" => "/test",
-//         ];
-//         $request = Request::create($server);
-//         $response = $router->dispatch($request, new Response());
-//         expect($response->body)->toBe("Base with middleware");
-//     });
+it("matches parameterized route and sends id", function () {
+    $router = new Router();
 
-//     it("dispatches a dynamic route with multiple parameters", function (): void {
-//         $router = new Router();
-//         $router->add("GET", "post/:postId/comment/:commentId", function ($req, $res) {
-//             return $res->withBody("Post " . $req->get("postId") . ", Comment " . $req->get("commentId"));
-//         });
+    $router->add("GET", "users/:id", fn(Request $r) => createResponse()->setBody($r->parameters["id"]));
 
-//         $server = [
-//             "REQUEST_METHOD" => "GET",
-//             "REQUEST_URI" => "/post/10/comment/99",
-//         ];
-//         $request = Request::create($server);
-//         $response = $router->dispatch($request, new Response());
-//         expect($response->body)->toBe("Post 10, Comment 99");
-//     });
+    $req = createRequest("GET", "users/123");
+    $res = $router->dispatch($req, createResponse());
 
-//     it("executes multiple middleware in the correct order", function (): void {
-//         $router = new Router();
-//         $middleware1 = function ($req, $res, $next) {
-//             $res = $next($req, $res);
-//             return $res->withBody($res->body . " first");
-//         };
-//         $middleware2 = function ($req, $res, $next) {
-//             $res = $next($req, $res);
-//             return $res->withBody($res->body . " second");
-//         };
-//         $router->add(
-//             "GET",
-//             "chain",
-//             function ($req, $res) {
-//                 return $res->withBody("Start");
-//             },
-//             [$middleware1, $middleware2]
-//         );
+    ob_start();
+    $res->send();
+    $output = ob_get_clean();
 
-//         $server = [
-//             "REQUEST_METHOD" => "GET",
-//             "REQUEST_URI" => "/chain",
-//         ];
-//         $request = Request::create($server);
-//         $response = $router->dispatch($request, new Response());
-//         expect($response->body)->toBe("Start second first");
-//     });
-// });
+    expect($output)->toBe("123");
+});
+
+it("wraps scalar return into Response body", function () {
+    $router = new Router();
+
+    $router->add("GET", "text", fn() => "hello text");
+
+    $req = createRequest("GET", "text");
+    $res = $router->dispatch($req, createResponse());
+
+    ob_start();
+    $res->send();
+    $output = ob_get_clean();
+
+    expect($output)->toBe("hello text");
+});
+
+it("wraps Stringable return into Response body", function () {
+    $router = new Router();
+
+    $router->add(
+        "GET",
+        "stringable",
+        fn() => new class {
+            public function __toString(): string
+            {
+                return "stringable content";
+            }
+        }
+    );
+
+    $req = createRequest("GET", "stringable");
+    $res = $router->dispatch($req, createResponse());
+
+    ob_start();
+    $res->send();
+    $output = ob_get_clean();
+
+    expect($output)->toBe("stringable content");
+});
+
+it("throws 204 if result is null or empty", function () {
+    $router = new Router();
+
+    $router->add("GET", "empty", fn() => null);
+
+    $req = createRequest("GET", "empty");
+
+    expect(fn() => $router->dispatch($req, createResponse()))->toThrow(HttpException::class)->and(fn($e) => expect($e->getCode())->toBe(204));
+});
+
+it("throws 404 if path not matched", function () {
+    $router = new Router();
+
+    $router->add("GET", "found", fn() => "yes");
+
+    $req = createRequest("GET", "not-found");
+
+    expect(fn() => $router->dispatch($req, createResponse()))->toThrow(HttpException::class)->and(fn($e) => expect($e->getCode())->toBe(404));
+});
+
+it("throws 405 if method not matched", function () {
+    $router = new Router();
+
+    $router->add("GET", "only/get", fn() => "nope");
+
+    $req = createRequest("POST", "only/get");
+
+    expect(fn() => $router->dispatch($req, createResponse()))->toThrow(HttpException::class)->and(fn($e) => expect($e->getCode())->toBe(405));
+});
+
+it("applies global middleware in correct order", function () {
+    $router = new Router();
+    $trace = [];
+
+    $router->middleware(function (Request $r, callable $next) use (&$trace) {
+        $trace[] = "before";
+        $res = $next($r);
+        $trace[] = "after";
+        return $res;
+    });
+
+    $router->add("GET", "mw", fn() => "ok");
+
+    $req = createRequest("GET", "mw");
+    $res = $router->dispatch($req, createResponse());
+
+    ob_start();
+    $res->send();
+    ob_end_clean();
+
+    expect($trace)->toBe(["before", "after"]);
+});
+
+it("applies route-specific middleware", function () {
+    $router = new Router();
+    $trace = [];
+
+    $router->add("GET", "route/mw", fn() => "done")->middleware(function (Request $r, callable $next) use (&$trace) {
+        $trace[] = "route-mw";
+        return $next($r);
+    });
+
+    $req = createRequest("GET", "route/mw");
+    $res = $router->dispatch($req, createResponse());
+
+    ob_start();
+    $res->send();
+    ob_end_clean();
+
+    expect($trace)->toBe(["route-mw"]);
+});
+
+it("builds named route URL", function () {
+    $router = new Router();
+
+    $router->add("GET", "users/:id", fn() => "irrelevant")->name("user.view");
+
+    $url = $router->makeUrlByName("user.view", ["id" => 7]);
+
+    expect($url)->toBe("/users/7");
+});
+
+it("throws for unknown named route", function () {
+    $router = new Router();
+
+    expect(fn() => $router->makeUrlByName("missing", []))->toThrow(InvalidArgumentException::class);
+});
+
+it("throws if named route param missing", function () {
+    $router = new Router();
+
+    $router->add("GET", "articles/:slug", fn() => "")->name("article.view");
+
+    expect(fn() => $router->makeUrlByName("article.view", []))->toThrow(InvalidArgumentException::class);
+});
+
+it("adds query string for extra params in named route", function () {
+    $router = new Router();
+
+    $router->add("GET", "search/:term", fn() => "")->name("search");
+
+    $url = $router->makeUrlByName("search", ["term" => "cat", "page" => 3]);
+
+    expect($url)->toBe("/search/cat?page=3");
+});

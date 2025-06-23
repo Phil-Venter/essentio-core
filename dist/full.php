@@ -9,7 +9,7 @@ class Application
         [$container, , $environment] = static::bootstrap($basePath);
 
         $container->once(Session::class, fn(): Session => Session::create());
-        $container->once(Jwt::class, fn(): Jwt => new Jwt($environment->get("JWT_SECRET"), $environment->get("JWT_ISSUER")));
+        $container->once(Jwt::class, fn(): Jwt => new Jwt($environment->get("JWT_SECRET") ?? "", $environment->get("JWT_ISSUER")));
         $container->once(Request::class, fn(): Request => Request::create());
         $container->once(Response::class);
         $container->once(Router::class);
@@ -43,7 +43,7 @@ class Application
         $response = static::$container->resolve(Response::class);
 
         try {
-            static::$container->resolve(Router::class)->dispatch($request)->send();
+            static::$container->resolve(Router::class)->dispatch($request, $response)->send();
         } catch (HttpException $e) {
             $status = $e->getCode() ?: 500;
             $response->setStatus($status)->setBody($e->getMessage())->send();
@@ -78,7 +78,7 @@ class Argument
             if (str_starts_with((string) $arg, "--")) {
                 $option = substr((string) $arg, 2);
 
-                if (mb_stripos($option, "=") === false) {
+                if (mb_stripos($option, "=") !== false) {
                     [$key, $value] = explode("=", $option, 2);
                 } elseif (isset($argv[0]) && $argv[0][0] !== "-") {
                     $key = $option;
@@ -195,7 +195,7 @@ class Environment
         $data = [];
 
         foreach ($lines as $line) {
-            if (trim($line)[0] === "#" || !str_contains($line, "=")) {
+            if (empty($line) || $line[0] === "#" || !str_contains($line, "=")) {
                 continue;
             }
 
@@ -278,12 +278,12 @@ class HttpException extends Exception
 
 class Jwt
 {
-    public function __construct(protected string $secret, protected string $issuer) {}
+    public function __construct(protected string $secret, protected ?string $issuer = null) {}
 
     public function encode(array $payload): string
     {
         $header = ["alg" => "HS256", "typ" => "JWT"];
-        $payload["iss"] = $this->issuer;
+        $this->issuer !== null and ($payload["iss"] = $this->issuer);
         $segments = [$this->base64url_encode(json_encode($header)), $this->base64url_encode(json_encode($payload))];
         $signingInput = implode(".", $segments);
         $signature = $this->sign($signingInput);
@@ -304,7 +304,7 @@ class Jwt
 
         $payload = json_decode($this->base64url_decode($payload64), true);
 
-        if (isset($payload["iss"]) && $this->issuer !== $payload["iss"]) {
+        if ($this->issuer !== null && (!isset($payload["iss"]) || $this->issuer !== $payload["iss"])) {
             throw new RuntimeException("Invalid issuer");
         }
 
@@ -587,7 +587,7 @@ class Router
         return "/" . ltrim($url, "/") . (empty($params) ? "" : "?" . http_build_query($params));
     }
 
-    public function dispatch(Request $request): Response
+    public function dispatch(Request $request, Response $response): Response
     {
         [$values, $routes] = $this->match($this->routes, explode("/", $request->path)) ?? throw HttpException::create(404);
 
@@ -608,6 +608,10 @@ class Router
 
         if (($result = $handler($request)) instanceof Response) {
             return $result;
+        }
+
+        if (($result instanceof Stringable || is_scalar($result)) && !empty(trim((string) $result))) {
+            return $response->setBody($result);
         }
 
         throw HttpException::create(204);

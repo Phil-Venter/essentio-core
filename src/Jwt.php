@@ -18,12 +18,12 @@ use function time;
 
 class Jwt
 {
-    public function __construct(protected string $secret, protected string $issuer) {}
+    public function __construct(protected string $secret, protected ?string $issuer = null) {}
 
     public function encode(array $payload): string
     {
         $header = ["alg" => "HS256", "typ" => "JWT"];
-        $payload["iss"] = $this->issuer;
+        $this->issuer !== null and ($payload["iss"] = $this->issuer);
         $segments = [$this->base64url_encode(json_encode($header)), $this->base64url_encode(json_encode($payload))];
         $signingInput = implode(".", $segments);
         $signature = $this->sign($signingInput);
@@ -44,7 +44,7 @@ class Jwt
 
         $payload = json_decode($this->base64url_decode($payload64), true);
 
-        if (isset($payload["iss"]) && $this->issuer !== $payload["iss"]) {
+        if ($this->issuer !== null && (!isset($payload["iss"]) || $this->issuer !== $payload["iss"])) {
             throw new RuntimeException("Invalid issuer");
         }
 

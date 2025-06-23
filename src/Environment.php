@@ -22,7 +22,7 @@ class Environment
         $data = [];
 
         foreach ($lines as $line) {
-            if (trim($line)[0] === "#" || !str_contains($line, "=")) {
+            if (empty($line) || $line[0] === "#" || !str_contains($line, "=")) {
                 continue;
             }
 
