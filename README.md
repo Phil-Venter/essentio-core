@@ -1,5 +1,5 @@
 ![License](https://img.shields.io/badge/license-0BSD-lightgrey)
-![PHP](https://img.shields.io/badge/php-%3E%3D8.1-blue)
+![PHP](https://img.shields.io/badge/php-%3E%3D8.2-blue)
 
 # Essentio — Minimalist PHP Framework
 
