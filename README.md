@@ -1,5 +1,8 @@
 ![License](https://img.shields.io/badge/license-0BSD-lightgrey)
 ![PHP](https://img.shields.io/badge/php-%3E%3D8.2-blue)
+![CI](https://github.com/Phil-Venter/essentio-core/actions/workflows/php.yml/badge.svg)
+![Last Commit](https://img.shields.io/github/last-commit/Phil-Venter/essentio-core)
+![Stars](https://img.shields.io/github/stars/Phil-Venter/essentio-core?style=social)
 
 # Essentio — Minimalist PHP Framework
 
