@@ -1,3 +1,6 @@
+![License](https://img.shields.io/badge/license-0BSD-lightgrey)
+![PHP](https://img.shields.io/badge/php-%3E%3D8.1-blue)
+
 # Essentio — Minimalist PHP Framework
 
 Essentio isn’t here to impress with design patterns or win internet debates. It’s raw, minimal PHP—for developers who want clarity, speed, and control. No abstractions, no ceremony. Just the essentials.
