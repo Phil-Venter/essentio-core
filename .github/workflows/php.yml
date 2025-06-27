@@ -66,11 +66,22 @@ jobs:
             - name: Run Rector (format)
               run: php ./vendor/bin/rector
 
+            - name: Ensure clean dist
+              run: rm -rf dist && mkdir -p dist
+
             - name: Build base dist
               run: php bin/build.php dist/base.php
 
             - name: Build full dist
               run: php bin/build.php --extra dist/full.php
+
+            - name: Confirm build output
+              run: |
+                  echo "Built dist contents:"
+                  find dist/ -type f -exec ls -l {} \;
+
+            - name: Checksum of dist files
+              run: find dist/ -type f -exec sha256sum {} \;
 
             - name: Upload dist files
               uses: actions/upload-artifact@v4
