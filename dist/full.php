@@ -2,6 +2,12 @@
 
 class Application
 {
+    /**
+     * Bootstrap the application for CLI mode.
+     *
+     * @param string $basePath
+     * @return void
+     */
     public static function cli(string $basePath): void
     {
         Container::instance()->once(Argument::class, fn() => Argument::create(Container::instance()->get(Helper::class)));
@@ -9,6 +15,12 @@ class Application
         Container::instance()->once(Helper::class, fn() => Helper::create($basePath));
     }
 
+    /**
+     * Bootstrap the application for HTTP mode.
+     *
+     * @param string $basePath
+     * @return void
+     */
     public static function http(string $basePath): void
     {
         Container::instance()->once(Environment::class, fn() => Environment::create(Container::instance()->get(Helper::class)));
@@ -19,6 +31,11 @@ class Application
         Container::instance()->once(Session::class, fn() => Session::create());
     }
 
+    /**
+     * Run the application and handle the request.
+     *
+     * @return void
+     */
     public static function run(): void
     {
         $request = Container::instance()->get(Request::class);
@@ -39,6 +56,13 @@ class Argument
 {
     public function __construct(public readonly string $command = "", protected array $arguments = []) {}
 
+    /**
+     * Parse CLI arguments into command and options.
+     *
+     * @param Helper $helper
+     * @param list<string>|null $argv
+     * @return static
+     */
     public static function create(Helper $helper, ?array $argv = null): static
     {
         $argv ??= $_SERVER["argv"] ?? [];
@@ -100,6 +124,12 @@ class Argument
         return new static($command, $arguments);
     }
 
+    /**
+     * Get an argument by key or index.
+     *
+     * @param int|string $key
+     * @return mixed
+     */
     public function get(int|string $key): mixed
     {
         return $this->arguments[$key] ?? null;
@@ -114,12 +144,19 @@ class Container
 
     protected array $cache = [];
 
+    /**
+     * Get the container singleton instance.
+     *
+     * @return static
+     */
     public static function instance(): static
     {
         return static::$instance ??= new static();
     }
 
     /**
+     * Bind a class or factory to the container.
+     *
      * @template T
      * @param class-string<T> $id
      * @param callable():T|class-string<T>|null $concrete
@@ -136,6 +173,8 @@ class Container
     }
 
     /**
+     * Bind a singleton to the container.
+     *
      * @template T
      * @param class-string<T> $id
      * @param callable():T|class-string<T>|null $concrete
@@ -148,9 +187,11 @@ class Container
     }
 
     /**
+     * Resolve a class or binding from the container.
+     *
      * @template T
      * @param class-string<T> $id
-     * @param array<string,mixed>|list<mixed> $dependencies
+     * @param array<string, mixed>|list<mixed> $dependencies
      * @return T
      */
     public function get(string $id, array $dependencies = []): object
@@ -180,6 +221,8 @@ class Container
     }
 
     /**
+     * Check if a class is bound.
+     *
      * @param class-string $id
      * @return bool
      */
@@ -193,6 +236,13 @@ class Environment
 {
     public function __construct(protected array $data = []) {}
 
+    /**
+     * Load and parse environment variables from a .env file.
+     *
+     * @param Helper $helper
+     * @param string|null $file
+     * @return static
+     */
     public static function create(Helper $helper, ?string $file = null): static
     {
         if (!file_exists($file = $helper->fromBase($file ?? ".env"))) {
@@ -213,6 +263,12 @@ class Environment
         return new static($data);
     }
 
+    /**
+     * Get a value from the environment data.
+     *
+     * @param string $key
+     * @return mixed
+     */
     public function get(string $key): mixed
     {
         return $this->data[$key] ?? null;
@@ -223,16 +279,34 @@ class Helper
 {
     public function __construct(protected string $basePath) {}
 
+    /**
+     * Create a new Helper with the given base path.
+     *
+     * @param string $basePath
+     * @return static
+     */
     public static function create(string $basePath): static
     {
         return new static(rtrim($basePath, "/"));
     }
 
+    /**
+     * Resolve a relative path from the base path.
+     *
+     * @param string $path
+     * @return string
+     */
     public function fromBase(string $path): string
     {
         return $this->basePath . "/" . ltrim($path, "/");
     }
 
+    /**
+     * Convert a string to a native type if possible.
+     *
+     * @param mixed $value
+     * @return mixed
+     */
     public function autoCast(mixed $value): mixed
     {
         if (!is_string($value)) {
@@ -282,6 +356,14 @@ class HttpException extends Exception
         500 => "Internal Server Error",
     ];
 
+    /**
+     * Create a new HTTP exception with status and optional message.
+     *
+     * @param int $status
+     * @param string|null $message
+     * @param Throwable|null $previous
+     * @return static
+     */
     public static function create(int $status, ?string $message = null, ?Throwable $previous = null): static
     {
         return new static($message ?? (static::HTTP_STATUS[$status] ?? "Unknown Error"), $status, $previous);
@@ -292,11 +374,23 @@ class Jwt
 {
     public function __construct(protected string $secret, protected ?string $issuer = null) {}
 
+    /**
+     * Create a new Jwt instance from environment values.
+     *
+     * @param Environment $env
+     * @return static
+     */
     public static function create(Environment $env): static
     {
         return new static($env->get("JWT_SECRET") ?? "", $env->get("JWT_ISSUER"));
     }
 
+    /**
+     * Encode a payload into a JWT string.
+     *
+     * @param array $payload
+     * @return string
+     */
     public function encode(array $payload): string
     {
         if ($this->issuer !== null) {
@@ -311,6 +405,12 @@ class Jwt
         return implode(".", $segments);
     }
 
+    /**
+     * Decode and validate a JWT string.
+     *
+     * @param string $token
+     * @return array
+     */
     public function decode(string $token): array
     {
         [$header64, $payload64, $signature64] = explode(".", $token);
@@ -351,11 +451,23 @@ class Jwt
         return $payload;
     }
 
+    /**
+     * Encode data to base64url format.
+     *
+     * @param string $data
+     * @return string
+     */
     protected function base64url_encode(string $data): string
     {
         return rtrim(strtr(base64_encode($data), "+/", "-_"), "=");
     }
 
+    /**
+     * Decode data from base64url format.
+     *
+     * @param string $data
+     * @return string
+     */
     protected function base64url_decode(string $data): string
     {
         if ($remainder = strlen($data) % 4) {
@@ -365,6 +477,12 @@ class Jwt
         return base64_decode(strtr($data, "-_", "+/"));
     }
 
+    /**
+     * Sign input string using HMAC-SHA256.
+     *
+     * @param string $input
+     * @return string
+     */
     protected function sign(string $input): string
     {
         return hash_hmac("sha256", $input, $this->secret, true);
@@ -388,6 +506,18 @@ class Request
         public array $parameters
     ) {}
 
+    /**
+     * Create a Request from global or custom input.
+     *
+     * @param array<string, mixed>|null $server
+     * @param array<string, string>|null $headers
+     * @param array<string, mixed>|null $query
+     * @param array<string, mixed>|null $post
+     * @param array<string, mixed>|null $cookies
+     * @param array<string, mixed>|null $files
+     * @param string|null $body
+     * @return static
+     */
     public static function create(
         ?array $server = null,
         ?array $headers = null,
@@ -451,11 +581,23 @@ class Request
         return new static($method, $port, $path, $query, $contentType, $headers, $cookies, $flatFiles, $parsedBody, []);
     }
 
+    /**
+     * Get a query or path parameter.
+     *
+     * @param string $field
+     * @return mixed
+     */
     public function get(string $field): mixed
     {
         return $this->parameters[$field] ?? ($this->query[$field] ?? null);
     }
 
+    /**
+     * Get a value from the request body or parameters.
+     *
+     * @param string $field
+     * @return mixed
+     */
     public function input(string $field): mixed
     {
         return in_array($this->method, ["GET", "HEAD", "OPTIONS", "TRACE"], true)
@@ -463,6 +605,12 @@ class Request
             : $this->body[$field] ?? ($this->parameters[$field] ?? null);
     }
 
+    /**
+     * Sanitize and validate input fields.
+     *
+     * @param array<string, callable(mixed): mixed>|array<string, list<callable(mixed): mixed>> $rules
+     * @return array<string, mixed>|false
+     */
     public function sanitize(array $rules): array|false
     {
         $this->errors = [];
@@ -494,30 +642,59 @@ class Response
 
     protected bool|float|int|string|Stringable|null $body = null;
 
+    /**
+     * Set the HTTP status code.
+     *
+     * @param int $status
+     * @return static
+     */
     public function setStatus(int $status): static
     {
         $this->status = $status;
         return $this;
     }
 
+    /**
+     * Add headers to the response.
+     *
+     * @param array<string, string|list<string>> $headers
+     * @return static
+     */
     public function addHeaders(array $headers): static
     {
         $this->headers = array_merge($this->headers, $headers);
         return $this;
     }
 
+    /**
+     * Replace all response headers.
+     *
+     * @param array<string, string|list<string>> $headers
+     * @return static
+     */
     public function setHeaders(array $headers): static
     {
         $this->headers = $headers;
         return $this;
     }
 
+    /**
+     * Set the response body.
+     *
+     * @param bool|float|int|string|Stringable|null $body
+     * @return static
+     */
     public function setBody(bool|float|int|string|Stringable|null $body): static
     {
         $this->body = $body;
         return $this;
     }
 
+    /**
+     * Send the HTTP response to the client.
+     *
+     * @return void
+     */
     public function send(): void
     {
         if (headers_sent()) {
@@ -562,11 +739,24 @@ class Router
 
     protected static array $lookup = [];
 
+    /**
+     * Register middleware for current route scope.
+     *
+     * @param callable(Request, callable(Request): Response): Response $middleware
+     * @return void
+     */
     public static function middleware(callable $middleware): void
     {
         static::$middleware[] = $middleware;
     }
 
+    /**
+     * Group routes under a common prefix and middleware.
+     *
+     * @param string $prefix
+     * @param callable(): void $group
+     * @return void
+     */
     public static function group(string $prefix, callable $group): void
     {
         [$oldPrefix, $oldMiddleware] = [static::$prefix, static::$middleware];
@@ -575,6 +765,14 @@ class Router
         [static::$prefix, static::$middleware] = [$oldPrefix, $oldMiddleware];
     }
 
+    /**
+     * Register a route handler for a method and path.
+     *
+     * @param string $method
+     * @param string $path
+     * @param callable(Request): mixed $handler
+     * @return RouteInterface
+     */
     public static function route(string $method, string $path, callable $handler): RouteInterface
     {
         $path = trim((string) preg_replace("#/+#", "/", static::$prefix . $path), "/");
@@ -609,11 +807,25 @@ class Router
         };
     }
 
+    /**
+     * Assign a name to a route path.
+     *
+     * @param string $name
+     * @param string $path
+     * @return void
+     */
     public static function setName(string $name, string $path): void
     {
         static::$lookup[$name] = $path;
     }
 
+    /**
+     * Generate a URL for a named route with parameters.
+     *
+     * @param string $name
+     * @param array<string, scalar> $params
+     * @return string
+     */
     public static function makeUrlByName(string $name, array $params): string
     {
         if (!isset(static::$lookup[$name])) {
@@ -638,6 +850,13 @@ class Router
         return "/{$url}{$query}";
     }
 
+    /**
+     * Match a request and execute the route handler.
+     *
+     * @param Request $request
+     * @param Response $response
+     * @return Response
+     */
     public static function dispatch(Request $request, Response $response): Response
     {
         $segments = explode("/", $request->path);
@@ -699,6 +918,11 @@ class Session
 
     protected const CSRF_KEY = "\0CSRF_KEY";
 
+    /**
+     * Start the session and initialize flash data.
+     *
+     * @return static
+     */
     public static function create(): static
     {
         if (session_status() !== PHP_SESSION_ACTIVE) {
@@ -710,31 +934,68 @@ class Session
         return new static();
     }
 
+    /**
+     * Set a session value.
+     *
+     * @param string $key
+     * @param mixed $value
+     * @return mixed
+     */
     public function set(string $key, mixed $value): mixed
     {
         return $_SESSION[$key] = $value;
     }
 
+    /**
+     * Get a session value.
+     *
+     * @param string $key
+     * @return mixed
+     */
     public function get(string $key): mixed
     {
         return $_SESSION[$key] ?? null;
     }
 
+    /**
+     * Set flash data for the next request.
+     *
+     * @param string $key
+     * @param mixed $value
+     * @return mixed
+     */
     public function setFlash(string $key, mixed $value): mixed
     {
         return $_SESSION[static::FLASH_NEW][$key] = $value;
     }
 
+    /**
+     * Get flash data from the previous request.
+     *
+     * @param string $key
+     * @return mixed
+     */
     public function getFlash(string $key): mixed
     {
         return $_SESSION[static::FLASH_OLD][$key] ?? null;
     }
 
+    /**
+     * Get or generate a CSRF token.
+     *
+     * @return string
+     */
     public function getCsrf(): string
     {
         return $_SESSION[static::CSRF_KEY] ??= bin2hex(random_bytes(32));
     }
 
+    /**
+     * Validate and rotate a CSRF token.
+     *
+     * @param string $csrf
+     * @return bool
+     */
     public function verifyCsrf(string $csrf): bool
     {
         if ($valid = hash_equals($_SESSION[static::CSRF_KEY] ?? "", $csrf)) {
@@ -755,16 +1016,35 @@ class Template
 
     public function __construct(protected ?string $template = null) {}
 
+    /**
+     * Set a parent layout template.
+     *
+     * @param string $template
+     * @return void
+     */
     protected function layout(string $template): void
     {
         $this->layout = new static($template);
     }
 
+    /**
+     * Get the content of a named segment.
+     *
+     * @param string $name
+     * @return string|null
+     */
     protected function yield(string $name): ?string
     {
         return $this->segments[$name] ?? null;
     }
 
+    /**
+     * Start or set a segment's content.
+     *
+     * @param string $name
+     * @param string|null $value
+     * @return void
+     */
     protected function segment(string $name, ?string $value = null): void
     {
         if ($value === null) {
@@ -775,12 +1055,23 @@ class Template
         }
     }
 
+    /**
+     * End the current segment buffer.
+     *
+     * @return void
+     */
     protected function end(): void
     {
         $name = array_pop($this->stack);
         $this->segments[$name] = ob_get_clean();
     }
 
+    /**
+     * Render the view and optional layout.
+     *
+     * @param array<string, mixed> $data
+     * @return string
+     */
     public function render(array $data = []): string
     {
         $content = (function (array $data) {
@@ -802,6 +1093,12 @@ class Template
 
 class Cast
 {
+    /**
+     * Cast input to bool or throw.
+     *
+     * @param string $message
+     * @return Closure(string): ?bool
+     */
     public static function bool(string $message = ""): Closure
     {
         return function (string $input) use ($message): ?bool {
@@ -821,6 +1118,12 @@ class Cast
         };
     }
 
+    /**
+     * Cast input to DateTimeImmutable or throw.
+     *
+     * @param string $message
+     * @return Closure(string): ?DateTimeInterface
+     */
     public static function date(string $message = ""): Closure
     {
         return function (string $input) use ($message): ?DateTimeInterface {
@@ -838,6 +1141,13 @@ class Cast
         };
     }
 
+    /**
+     * Cast input to enum value or throw.
+     *
+     * @param class-string<BackedEnum> $enumClass
+     * @param string $message
+     * @return Closure(string): ?BackedEnum
+     */
     public static function enum(string $enumClass, string $message = ""): Closure
     {
         if (!enum_exists($enumClass)) {
@@ -865,6 +1175,12 @@ class Cast
         };
     }
 
+    /**
+     * Cast input to float or throw.
+     *
+     * @param string $message
+     * @return Closure(string): ?float
+     */
     public static function float(string $message = ""): Closure
     {
         return function (string $input) use ($message): ?float {
@@ -885,6 +1201,12 @@ class Cast
         };
     }
 
+    /**
+     * Cast input to int or throw.
+     *
+     * @param string $message
+     * @return Closure(string): ?int
+     */
     public static function int(string $message = ""): Closure
     {
         return function (string $input) use ($message): ?int {
@@ -905,6 +1227,12 @@ class Cast
         };
     }
 
+    /**
+     * Cast input to int or float or throw.
+     *
+     * @param string $message
+     * @return Closure(string): int|float|null
+     */
     public static function number(string $message = ""): Closure
     {
         return function (string $input) use ($message): int|float|null {
@@ -928,6 +1256,12 @@ class Cast
         };
     }
 
+    /**
+     * Return string input, optionally trimmed.
+     *
+     * @param bool $trim
+     * @return Closure(string): string
+     */
     public static function string(bool $trim = false): Closure
     {
         return function (string $input) use ($trim): string {
@@ -939,6 +1273,12 @@ class Cast
         };
     }
 
+    /**
+     * Return null if input is empty.
+     *
+     * @param string $input
+     * @return mixed
+     */
     protected static function nullOnEmpty(string $input): mixed
     {
         if (trim($input) === "") {
@@ -948,6 +1288,13 @@ class Cast
         return $input;
     }
 
+    /**
+     * Extract number from input string.
+     *
+     * @param string $input
+     * @param string $message
+     * @return string
+     */
     protected static function normalizeNumber(string $input, string $message): string
     {
         preg_match_all("/-?\d+(\.\d+)?/", $input, $matches);
@@ -986,12 +1333,22 @@ class Query
 
     public function __construct(protected ?PDO $pdo = null) {}
 
+    /**
+     * Use OR for the next condition.
+     *
+     * @return static
+     */
     public function or(): static
     {
         $this->bool = "OR";
         return $this;
     }
 
+    /**
+     * Consume current boolean operator.
+     *
+     * @return string
+     */
     protected function consumeBool(): string
     {
         $bool = $this->bool;
@@ -999,6 +1356,12 @@ class Query
         return " $bool ";
     }
 
+    /**
+     * Select columns.
+     *
+     * @param array|string ...$columns
+     * @return static
+     */
     public function select(array|string ...$columns): static
     {
         $columns = array_values((array) $columns);
@@ -1006,12 +1369,26 @@ class Query
         return $this;
     }
 
+    /**
+     * Set the table for the query.
+     *
+     * @param string $table
+     * @return static
+     */
     public function table(string $table): static
     {
         $this->table = $table;
         return $this;
     }
 
+    /**
+     * Add a where clause.
+     *
+     * @param string|Closure $column
+     * @param string|null $operator
+     * @param mixed $value
+     * @return static
+     */
     public function where(string|Closure $column, ?string $operator = null, mixed $value = null): static
     {
         if ($column instanceof Closure) {
@@ -1076,6 +1453,13 @@ class Query
         return $this->whereRaw("{$column} {$operator} ? AND ?", $value);
     }
 
+    /**
+     * Add raw where condition.
+     *
+     * @param string $statement
+     * @param array $data
+     * @return static
+     */
     public function whereRaw(string $statement, array $data = []): static
     {
         $this->where[] = "{$this->consumeBool()} {$statement}";
@@ -1083,6 +1467,12 @@ class Query
         return $this;
     }
 
+    /**
+     * Add group by clauses.
+     *
+     * @param array|string ...$groupBys
+     * @return static
+     */
     public function groupBy(array|string ...$groupBys): static
     {
         $groupBys = array_values((array) $groupBys);
@@ -1090,6 +1480,13 @@ class Query
         return $this;
     }
 
+    /**
+     * Add raw having clause.
+     *
+     * @param string $statement
+     * @param array $data
+     * @return static
+     */
     public function havingRaw(string $statement, array $data = []): static
     {
         $this->having[] = "{$this->consumeBool()} {$statement}";
@@ -1097,12 +1494,26 @@ class Query
         return $this;
     }
 
+    /**
+     * Add order by clause.
+     *
+     * @param string $column
+     * @param string $direction
+     * @return static
+     */
     public function orderBy(string $column, string $direction = "ASC"): static
     {
         $this->orderBys[] = "{$column} {$direction}";
         return $this;
     }
 
+    /**
+     * Set limit and optional offset.
+     *
+     * @param int $limit
+     * @param int|null $offset
+     * @return static
+     */
     public function limit(int $limit, ?int $offset = null): static
     {
         $this->limit = $limit;
@@ -1110,6 +1521,11 @@ class Query
         return $this;
     }
 
+    /**
+     * Generate SQL for select.
+     *
+     * @return string
+     */
     protected function selectSql(): string
     {
         if (empty($this->table)) {
@@ -1145,16 +1561,32 @@ class Query
         return $sql;
     }
 
+    /**
+     * Remove leading boolean operator.
+     *
+     * @param array $statements
+     * @return string
+     */
     protected function clean(array $statements): string
     {
         return preg_replace("/^\s*(AND|OR)\s*/", "", implode(" ", $statements));
     }
 
+    /**
+     * Get combined query parameters.
+     *
+     * @return array
+     */
     protected function getParams(): array
     {
         return array_merge($this->whereParams, $this->havingParams);
     }
 
+    /**
+     * Execute and return query results.
+     *
+     * @return Iterator
+     */
     public function get(): Iterator
     {
         if ($this->pdo === null) {
@@ -1169,6 +1601,11 @@ class Query
         }
     }
 
+    /**
+     * Get first result or empty array.
+     *
+     * @return array
+     */
     public function first(): array
     {
         $this->limit = 1;
@@ -1180,6 +1617,12 @@ class Query
         return [];
     }
 
+    /**
+     * Insert a new row and return ID.
+     *
+     * @param array $data
+     * @return int|null
+     */
     public function insert(array $data): ?int
     {
         if (array_is_list($data)) {
@@ -1204,6 +1647,12 @@ class Query
         return $this->pdo->lastInsertId() ?: null;
     }
 
+    /**
+     * Update matching rows.
+     *
+     * @param array $data
+     * @return bool
+     */
     public function update(array $data): bool
     {
         if (array_is_list($data)) {
@@ -1229,6 +1678,11 @@ class Query
         return $stmt->execute([...array_values($data), ...$this->whereParams]);
     }
 
+    /**
+     * Delete matching rows.
+     *
+     * @return bool
+     */
     public function delete(): bool
     {
         if (empty($this->table)) {
@@ -1252,6 +1706,12 @@ class Query
 
 class Validate
 {
+    /**
+     * Letters only.
+     *
+     * @param string $message
+     * @return Closure(?string): ?string
+     */
     public static function alpha(string $message = ""): Closure
     {
         return function (?string $input) use ($message): ?string {
@@ -1267,6 +1727,12 @@ class Validate
         };
     }
 
+    /**
+     * Letters, numbers, dashes, underscores.
+     *
+     * @param string $message
+     * @return Closure(?string): ?string
+     */
     public static function alphaDash(string $message = ""): Closure
     {
         return function (?string $input) use ($message): ?string {
@@ -1282,6 +1748,12 @@ class Validate
         };
     }
 
+    /**
+     * Letters and numbers only.
+     *
+     * @param string $message
+     * @return Closure(?string): ?string
+     */
     public static function alphaNum(string $message = ""): Closure
     {
         return function (?string $input) use ($message): ?string {
@@ -1297,6 +1769,12 @@ class Validate
         };
     }
 
+    /**
+     * Valid email format.
+     *
+     * @param string $message
+     * @return Closure(?string): ?string
+     */
     public static function email(string $message = ""): Closure
     {
         return function (?string $input) use ($message): ?string {
@@ -1312,6 +1790,13 @@ class Validate
         };
     }
 
+    /**
+     * Must end with one of the given values.
+     *
+     * @param array $suffixes
+     * @param string $message
+     * @return Closure(?string): ?string
+     */
     public static function endsWith(array $suffixes, string $message = ""): Closure
     {
         return function (?string $input) use ($suffixes, $message): ?string {
@@ -1329,7 +1814,13 @@ class Validate
         };
     }
 
-    public static function lowercase(string $message = ""): Closure
+    /**
+     * Must be lowercase.
+     *
+     * @param string $message
+     * @return Closure(?string): ?string
+     */
+    public static function lower(string $message = ""): Closure
     {
         return function (?string $input) use ($message): ?string {
             if ($input === null) {
@@ -1344,7 +1835,13 @@ class Validate
         };
     }
 
-    public static function uppercase(string $message = ""): Closure
+    /**
+     * Must be uppercase.
+     *
+     * @param string $message
+     * @return Closure(?string): ?string
+     */
+    public static function upper(string $message = ""): Closure
     {
         return function (?string $input) use ($message): ?string {
             if ($input === null) {
@@ -1359,6 +1856,13 @@ class Validate
         };
     }
 
+    /**
+     * Minimum string length.
+     *
+     * @param int $min
+     * @param string $message
+     * @return Closure(?string): ?string
+     */
     public static function minLength(int $min, string $message = ""): Closure
     {
         return function (?string $input) use ($min, $message): ?string {
@@ -1374,6 +1878,13 @@ class Validate
         };
     }
 
+    /**
+     * Maximum string length.
+     *
+     * @param int $max
+     * @param string $message
+     * @return Closure(?string): ?string
+     */
     public static function maxLength(int $max, string $message = ""): Closure
     {
         return function (?string $input) use ($max, $message): ?string {
@@ -1389,6 +1900,13 @@ class Validate
         };
     }
 
+    /**
+     * Matches regex pattern.
+     *
+     * @param string $pattern
+     * @param string $message
+     * @return Closure(?string): ?string
+     */
     public static function regex(string $pattern, string $message = ""): Closure
     {
         return function (?string $input) use ($pattern, $message): ?string {
@@ -1404,6 +1922,14 @@ class Validate
         };
     }
 
+    /**
+     * Value must be between min and max.
+     *
+     * @param DateTimeInterface|float|int $min
+     * @param DateTimeInterface|float|int $max
+     * @param string $message
+     * @return Closure(DateTimeInterface|float|int|null): DateTimeInterface|float|int|null
+     */
     public static function between(DateTimeInterface|float|int $min, DateTimeInterface|float|int $max, string $message = ""): Closure
     {
         $min = $min instanceof DateTimeInterface ? $min->getTimestamp() : $min;
@@ -1424,6 +1950,13 @@ class Validate
         };
     }
 
+    /**
+     * Must be greater than min.
+     *
+     * @param DateTimeInterface|float|int $min
+     * @param string $message
+     * @return Closure(DateTimeInterface|float|int|null): DateTimeInterface|float|int|null
+     */
     public static function gt(DateTimeInterface|float|int $min, string $message = ""): Closure
     {
         $min = $min instanceof DateTimeInterface ? $min->getTimestamp() : $min;
@@ -1443,6 +1976,13 @@ class Validate
         };
     }
 
+    /**
+     * Must be greater than or equal to min.
+     *
+     * @param DateTimeInterface|float|int $min
+     * @param string $message
+     * @return Closure(DateTimeInterface|float|int|null): DateTimeInterface|float|int|null
+     */
     public static function gte(DateTimeInterface|float|int $min, string $message = ""): Closure
     {
         $min = $min instanceof DateTimeInterface ? $min->getTimestamp() : $min;
@@ -1462,6 +2002,13 @@ class Validate
         };
     }
 
+    /**
+     * Must be less than max.
+     *
+     * @param DateTimeInterface|float|int $max
+     * @param string $message
+     * @return Closure(DateTimeInterface|float|int|null): DateTimeInterface|float|int|null
+     */
     public static function lt(DateTimeInterface|float|int $max, string $message = ""): Closure
     {
         $max = $max instanceof DateTimeInterface ? $max->getTimestamp() : $max;
@@ -1481,6 +2028,13 @@ class Validate
         };
     }
 
+    /**
+     * Must be less than or equal to max.
+     *
+     * @param DateTimeInterface|float|int $max
+     * @param string $message
+     * @return Closure(DateTimeInterface|float|int|null): DateTimeInterface|float|int|null
+     */
     public static function lte(DateTimeInterface|float|int $max, string $message = ""): Closure
     {
         $max = $max instanceof DateTimeInterface ? $max->getTimestamp() : $max;
@@ -1500,6 +2054,12 @@ class Validate
         };
     }
 
+    /**
+     * Input must be present and non-empty.
+     *
+     * @param string $message
+     * @return Closure(mixed): mixed
+     */
     public static function required(string $message = ""): Closure
     {
         return function (mixed $input) use ($message): mixed {
@@ -1511,6 +2071,14 @@ class Validate
         };
     }
 
+    /**
+     * Value must be in allowed set.
+     *
+     * @param array $allowed
+     * @param bool $strict
+     * @param string $message
+     * @return Closure(mixed): mixed
+     */
     public static function inArray(array $allowed, bool $strict = true, string $message = ""): Closure
     {
         return function (mixed $input) use ($allowed, $strict, $message): mixed {
@@ -1528,6 +2096,8 @@ class Validate
 }
 
 /**
+ * Resolve a class from the container.
+ *
  * @template T
  * @param class-string<T> $abstract
  * @return T
@@ -1538,9 +2108,11 @@ function app(string $abstract): object
 }
 
 /**
+ * Instantiate a class with dependencies.
+ *
  * @template T
  * @param class-string<T> $abstract
- * @param array<string,mixed>|list<mixed> $dependencies
+ * @param array<string, mixed>|list<mixed> $dependencies
  * @return T
  */
 function map(string $abstract, array $dependencies = []): object
@@ -1548,31 +2120,70 @@ function map(string $abstract, array $dependencies = []): object
     return Container::instance()->get($abstract, $dependencies);
 }
 
+/**
+ * Register a binding into the container.
+ *
+ * @param string $abstract
+ * @param callable():mixed|string|null $concrete
+ * @return void
+ */
 function bind(string $abstract, callable|string|null $concrete = null): void
 {
     Container::instance()->bind($abstract, $concrete);
 }
 
+/**
+ * Register a singleton into the container.
+ *
+ * @param string $abstract
+ * @param callable():mixed|string|null $concrete
+ * @return void
+ */
 function once(string $abstract, callable|string|null $concrete = null): void
 {
     Container::instance()->once($abstract, $concrete);
 }
 
+/**
+ * Get the absolute path from base path.
+ *
+ * @param string $path
+ * @return string
+ */
 function base_path(string $path): string
 {
     return app(Helper::class)->fromBase($path);
 }
 
+/**
+ * Get environment variable from .env file.
+ *
+ * @param string $key
+ * @return mixed
+ */
 function env(string $key): mixed
 {
     return app(Environment::class)->get($key);
 }
 
+/**
+ * Get CLI argument by key.
+ *
+ * @param int|string $key
+ * @return mixed
+ */
 function arg(int|string $key): mixed
 {
     return app(Argument::class)->get($key);
 }
 
+/**
+ * Register and execute a CLI command.
+ *
+ * @param string $name
+ * @param callable(Argument): int|void $handle
+ * @return void
+ */
 function command(string $name, callable $handle): void
 {
     $argument = app(Argument::class);
@@ -1585,6 +2196,8 @@ function command(string $name, callable $handle): void
 }
 
 /**
+ * Get the request instance or a specific key from it.
+ *
  * @template T as string
  * @param T $key
  * @return (T is '' ? Request : mixed)
@@ -1594,12 +2207,20 @@ function request(string $key = ""): mixed
     return func_num_args() ? app(Request::class)->get($key) : app(Request::class);
 }
 
+/**
+ * Get an input field from the request body or parameters.
+ *
+ * @param string $field
+ * @return mixed
+ */
 function input(string $field): mixed
 {
     return app(Request::class)->input($field);
 }
 
 /**
+ * Sanitize and validate user input.
+ *
  * @template T as string
  * @param array<T, callable(mixed): mixed>|array<T, list<callable(mixed): mixed>> $rules
  * @param callable(array<T, list<string>>): void $callback
@@ -1614,17 +2235,33 @@ function sanitize(array $rules, callable $callback): array|false
     return $data;
 }
 
+/**
+ * Get or set a session value.
+ *
+ * @param string $key
+ * @param mixed $value
+ * @return mixed
+ */
 function session(string $key, mixed $value = null): mixed
 {
     return func_num_args() === 1 ? app(Session::class)->get($key) : app(Session::class)->set($key, $value);
 }
 
+/**
+ * Get or set a flash session value.
+ *
+ * @param string $key
+ * @param mixed $value
+ * @return mixed
+ */
 function flash(string $key, mixed $value = null): mixed
 {
     return func_num_args() === 1 ? app(Session::class)->getFlash($key) : app(Session::class)->setFlash($key, $value);
 }
 
 /**
+ * Generate or verify a CSRF token.
+ *
  * @template T as string
  * @param T $csrf
  * @return (T is '' ? string : bool)
@@ -1635,6 +2272,8 @@ function csrf(string $csrf = ""): string|bool
 }
 
 /**
+ * Encode or decode a JWT payload.
+ *
  * @template T of array|string
  * @param T $payload
  * @return (T is string ? array : string)
@@ -1645,7 +2284,10 @@ function jwt(array|string $payload): array|string
 }
 
 /**
+ * Register middleware globally or scoped within a group.
+ *
  * @param callable(Request, callable(Request): Response): Response $middleware
+ * @return void
  */
 function middleware(callable $middleware): void
 {
@@ -1653,8 +2295,11 @@ function middleware(callable $middleware): void
 }
 
 /**
+ * Define a route group with shared prefix.
+ *
  * @param string $prefix
- * @param callable(void): void $group
+ * @param callable(): void $group
+ * @return void
  */
 function group(string $prefix, callable $group): void
 {
@@ -1662,9 +2307,11 @@ function group(string $prefix, callable $group): void
 }
 
 /**
+ * Register a GET route.
+ *
  * @param string $path
- * @param callable $handle
- * @return Route
+ * @param callable(Request): mixed $handle
+ * @return RouteInterface
  */
 function get(string $path, callable $handle): RouteInterface
 {
@@ -1672,9 +2319,11 @@ function get(string $path, callable $handle): RouteInterface
 }
 
 /**
+ * Register a POST route.
+ *
  * @param string $path
- * @param callable $handle
- * @return Route
+ * @param callable(Request): mixed $handle
+ * @return RouteInterface
  */
 function post(string $path, callable $handle): RouteInterface
 {
@@ -1682,9 +2331,11 @@ function post(string $path, callable $handle): RouteInterface
 }
 
 /**
+ * Register a PUT route.
+ *
  * @param string $path
- * @param callable $handle
- * @return Route
+ * @param callable(Request): mixed $handle
+ * @return RouteInterface
  */
 function put(string $path, callable $handle): RouteInterface
 {
@@ -1692,9 +2343,11 @@ function put(string $path, callable $handle): RouteInterface
 }
 
 /**
+ * Register a PATCH route.
+ *
  * @param string $path
- * @param callable $handle
- * @return Route
+ * @param callable(Request): mixed $handle
+ * @return RouteInterface
  */
 function patch(string $path, callable $handle): RouteInterface
 {
@@ -1702,25 +2355,48 @@ function patch(string $path, callable $handle): RouteInterface
 }
 
 /**
+ * Register a DELETE route.
+ *
  * @param string $path
- * @param callable $handle
- * @return Route
+ * @param callable(Request): mixed $handle
+ * @return RouteInterface
  */
 function delete(string $path, callable $handle): RouteInterface
 {
     return Router::route("DELETE", $path, $handle);
 }
 
+/**
+ * Generate a named route URL.
+ *
+ * @param string $name
+ * @param array<string, scalar> $params
+ * @return string
+ */
 function named_url(string $name, array $params = []): string
 {
     return Router::makeUrlByName($name, $params);
 }
 
+/**
+ * Render a PHP template to string.
+ *
+ * @param string $template
+ * @param array<string, mixed> $data
+ * @return string
+ */
 function render(string $template, array $data = []): string
 {
     return map(Template::class, [$template])->render($data);
 }
 
+/**
+ * Create a redirect response.
+ *
+ * @param string $uri
+ * @param int $status
+ * @return Response
+ */
 function redirect(string $uri, int $status = 302): Response
 {
     return app(Response::class)
@@ -1728,6 +2404,13 @@ function redirect(string $uri, int $status = 302): Response
         ->addHeaders(["Location" => $uri]);
 }
 
+/**
+ * Create an HTML response.
+ *
+ * @param string $html
+ * @param int $status
+ * @return Response
+ */
 function html(string $html, int $status = 200): Response
 {
     return app(Response::class)
@@ -1736,6 +2419,13 @@ function html(string $html, int $status = 200): Response
         ->setBody($html);
 }
 
+/**
+ * Create a JSON response.
+ *
+ * @param mixed $data
+ * @param int $status
+ * @return Response
+ */
 function json(mixed $data, int $status = 200): Response
 {
     return app(Response::class)
@@ -1744,6 +2434,13 @@ function json(mixed $data, int $status = 200): Response
         ->setBody(json_encode($data));
 }
 
+/**
+ * Create a plain text response.
+ *
+ * @param string $text
+ * @param int $status
+ * @return Response
+ */
 function text(string $text, int $status = 200): Response
 {
     return app(Response::class)
@@ -1752,11 +2449,27 @@ function text(string $text, int $status = 200): Response
         ->setBody($text);
 }
 
+/**
+ * Render a view and return an HTML response.
+ *
+ * @param string $template
+ * @param array<string, mixed> $data
+ * @param int $status
+ * @return Response
+ */
 function view(string $template, array $data = [], int $status = 200): Response
 {
     return html(render($template, $data), $status);
 }
 
+/**
+ * Conditionally throw an exception.
+ *
+ * @param bool $condition
+ * @param Throwable|string $e
+ * @return void
+ * @throws Throwable
+ */
 function throw_if(bool $condition, Throwable|string $e): void
 {
     if ($condition) {
@@ -1764,6 +2477,11 @@ function throw_if(bool $condition, Throwable|string $e): void
     }
 }
 
+/**
+ * Get a Query builder instance.
+ *
+ * @return Query
+ */
 function query(): Query
 {
     return app(Query::class);

@@ -19,11 +19,24 @@ class Router
 
     protected static array $lookup = [];
 
+    /**
+     * Register middleware for current route scope.
+     *
+     * @param callable(Request, callable(Request): Response): Response $middleware
+     * @return void
+     */
     public static function middleware(callable $middleware): void
     {
         static::$middleware[] = $middleware;
     }
 
+    /**
+     * Group routes under a common prefix and middleware.
+     *
+     * @param string $prefix
+     * @param callable(): void $group
+     * @return void
+     */
     public static function group(string $prefix, callable $group): void
     {
         [$oldPrefix, $oldMiddleware] = [static::$prefix, static::$middleware];
@@ -32,6 +45,14 @@ class Router
         [static::$prefix, static::$middleware] = [$oldPrefix, $oldMiddleware];
     }
 
+    /**
+     * Register a route handler for a method and path.
+     *
+     * @param string $method
+     * @param string $path
+     * @param callable(Request): mixed $handler
+     * @return RouteInterface
+     */
     public static function route(string $method, string $path, callable $handler): RouteInterface
     {
         $path = trim((string) preg_replace("#/+#", "/", static::$prefix . $path), "/");
@@ -66,11 +87,25 @@ class Router
         };
     }
 
+    /**
+     * Assign a name to a route path.
+     *
+     * @param string $name
+     * @param string $path
+     * @return void
+     */
     public static function setName(string $name, string $path): void
     {
         static::$lookup[$name] = $path;
     }
 
+    /**
+     * Generate a URL for a named route with parameters.
+     *
+     * @param string $name
+     * @param array<string, scalar> $params
+     * @return string
+     */
     public static function makeUrlByName(string $name, array $params): string
     {
         if (!isset(static::$lookup[$name])) {
@@ -95,6 +130,13 @@ class Router
         return "/{$url}{$query}";
     }
 
+    /**
+     * Match a request and execute the route handler.
+     *
+     * @param Request $request
+     * @param Response $response
+     * @return Response
+     */
     public static function dispatch(Request $request, Response $response): Response
     {
         $segments = explode("/", $request->path);

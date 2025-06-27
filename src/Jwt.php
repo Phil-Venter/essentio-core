@@ -8,11 +8,23 @@ class Jwt
 {
     public function __construct(protected string $secret, protected ?string $issuer = null) {}
 
+    /**
+     * Create a new Jwt instance from environment values.
+     *
+     * @param Environment $env
+     * @return static
+     */
     public static function create(Environment $env): static
     {
         return new static($env->get("JWT_SECRET") ?? "", $env->get("JWT_ISSUER"));
     }
 
+    /**
+     * Encode a payload into a JWT string.
+     *
+     * @param array $payload
+     * @return string
+     */
     public function encode(array $payload): string
     {
         if ($this->issuer !== null) {
@@ -27,6 +39,12 @@ class Jwt
         return implode(".", $segments);
     }
 
+    /**
+     * Decode and validate a JWT string.
+     *
+     * @param string $token
+     * @return array
+     */
     public function decode(string $token): array
     {
         [$header64, $payload64, $signature64] = explode(".", $token);
@@ -67,11 +85,23 @@ class Jwt
         return $payload;
     }
 
+    /**
+     * Encode data to base64url format.
+     *
+     * @param string $data
+     * @return string
+     */
     protected function base64url_encode(string $data): string
     {
         return rtrim(strtr(base64_encode($data), "+/", "-_"), "=");
     }
 
+    /**
+     * Decode data from base64url format.
+     *
+     * @param string $data
+     * @return string
+     */
     protected function base64url_decode(string $data): string
     {
         if ($remainder = strlen($data) % 4) {
@@ -81,6 +111,12 @@ class Jwt
         return base64_decode(strtr($data, "-_", "+/"));
     }
 
+    /**
+     * Sign input string using HMAC-SHA256.
+     *
+     * @param string $input
+     * @return string
+     */
     protected function sign(string $input): string
     {
         return hash_hmac("sha256", $input, $this->secret, true);

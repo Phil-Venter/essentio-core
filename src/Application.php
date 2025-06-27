@@ -6,6 +6,12 @@ use Throwable;
 
 class Application
 {
+    /**
+     * Bootstrap the application for CLI mode.
+     *
+     * @param string $basePath
+     * @return void
+     */
     public static function cli(string $basePath): void
     {
         Container::instance()->once(Argument::class, fn() => Argument::create(Container::instance()->get(Helper::class)));
@@ -13,6 +19,12 @@ class Application
         Container::instance()->once(Helper::class, fn() => Helper::create($basePath));
     }
 
+    /**
+     * Bootstrap the application for HTTP mode.
+     *
+     * @param string $basePath
+     * @return void
+     */
     public static function http(string $basePath): void
     {
         Container::instance()->once(Environment::class, fn() => Environment::create(Container::instance()->get(Helper::class)));
@@ -23,6 +35,11 @@ class Application
         Container::instance()->once(Session::class, fn() => Session::create());
     }
 
+    /**
+     * Run the application and handle the request.
+     *
+     * @return void
+     */
     public static function run(): void
     {
         $request = Container::instance()->get(Request::class);

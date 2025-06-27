@@ -32,6 +32,14 @@ class HttpException extends Exception
         500 => "Internal Server Error",
     ];
 
+    /**
+     * Create a new HTTP exception with status and optional message.
+     *
+     * @param int $status
+     * @param string|null $message
+     * @param Throwable|null $previous
+     * @return static
+     */
     public static function create(int $status, ?string $message = null, ?Throwable $previous = null): static
     {
         return new static($message ?? (static::HTTP_STATUS[$status] ?? "Unknown Error"), $status, $previous);

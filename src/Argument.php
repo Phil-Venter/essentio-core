@@ -6,6 +6,13 @@ class Argument
 {
     public function __construct(public readonly string $command = "", protected array $arguments = []) {}
 
+    /**
+     * Parse CLI arguments into command and options.
+     *
+     * @param Helper $helper
+     * @param list<string>|null $argv
+     * @return static
+     */
     public static function create(Helper $helper, ?array $argv = null): static
     {
         $argv ??= $_SERVER["argv"] ?? [];
@@ -67,6 +74,12 @@ class Argument
         return new static($command, $arguments);
     }
 
+    /**
+     * Get an argument by key or index.
+     *
+     * @param int|string $key
+     * @return mixed
+     */
     public function get(int|string $key): mixed
     {
         return $this->arguments[$key] ?? null;

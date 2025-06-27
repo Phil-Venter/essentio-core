@@ -36,12 +36,22 @@ class Query
 
     public function __construct(protected ?PDO $pdo = null) {}
 
+    /**
+     * Use OR for the next condition.
+     *
+     * @return static
+     */
     public function or(): static
     {
         $this->bool = "OR";
         return $this;
     }
 
+    /**
+     * Consume current boolean operator.
+     *
+     * @return string
+     */
     protected function consumeBool(): string
     {
         $bool = $this->bool;
@@ -49,6 +59,12 @@ class Query
         return " $bool ";
     }
 
+    /**
+     * Select columns.
+     *
+     * @param array|string ...$columns
+     * @return static
+     */
     public function select(array|string ...$columns): static
     {
         $columns = array_values((array) $columns);
@@ -56,12 +72,26 @@ class Query
         return $this;
     }
 
+    /**
+     * Set the table for the query.
+     *
+     * @param string $table
+     * @return static
+     */
     public function table(string $table): static
     {
         $this->table = $table;
         return $this;
     }
 
+    /**
+     * Add a where clause.
+     *
+     * @param string|Closure $column
+     * @param string|null $operator
+     * @param mixed $value
+     * @return static
+     */
     public function where(string|Closure $column, ?string $operator = null, mixed $value = null): static
     {
         if ($column instanceof Closure) {
@@ -126,6 +156,13 @@ class Query
         return $this->whereRaw("{$column} {$operator} ? AND ?", $value);
     }
 
+    /**
+     * Add raw where condition.
+     *
+     * @param string $statement
+     * @param array $data
+     * @return static
+     */
     public function whereRaw(string $statement, array $data = []): static
     {
         $this->where[] = "{$this->consumeBool()} {$statement}";
@@ -133,6 +170,12 @@ class Query
         return $this;
     }
 
+    /**
+     * Add group by clauses.
+     *
+     * @param array|string ...$groupBys
+     * @return static
+     */
     public function groupBy(array|string ...$groupBys): static
     {
         $groupBys = array_values((array) $groupBys);
@@ -140,6 +183,13 @@ class Query
         return $this;
     }
 
+    /**
+     * Add raw having clause.
+     *
+     * @param string $statement
+     * @param array $data
+     * @return static
+     */
     public function havingRaw(string $statement, array $data = []): static
     {
         $this->having[] = "{$this->consumeBool()} {$statement}";
@@ -147,12 +197,26 @@ class Query
         return $this;
     }
 
+    /**
+     * Add order by clause.
+     *
+     * @param string $column
+     * @param string $direction
+     * @return static
+     */
     public function orderBy(string $column, string $direction = "ASC"): static
     {
         $this->orderBys[] = "{$column} {$direction}";
         return $this;
     }
 
+    /**
+     * Set limit and optional offset.
+     *
+     * @param int $limit
+     * @param int|null $offset
+     * @return static
+     */
     public function limit(int $limit, ?int $offset = null): static
     {
         $this->limit = $limit;
@@ -160,6 +224,11 @@ class Query
         return $this;
     }
 
+    /**
+     * Generate SQL for select.
+     *
+     * @return string
+     */
     protected function selectSql(): string
     {
         if (empty($this->table)) {
@@ -195,16 +264,32 @@ class Query
         return $sql;
     }
 
+    /**
+     * Remove leading boolean operator.
+     *
+     * @param array $statements
+     * @return string
+     */
     protected function clean(array $statements): string
     {
         return preg_replace("/^\s*(AND|OR)\s*/", "", implode(" ", $statements));
     }
 
+    /**
+     * Get combined query parameters.
+     *
+     * @return array
+     */
     protected function getParams(): array
     {
         return array_merge($this->whereParams, $this->havingParams);
     }
 
+    /**
+     * Execute and return query results.
+     *
+     * @return Iterator
+     */
     public function get(): Iterator
     {
         if ($this->pdo === null) {
@@ -219,6 +304,11 @@ class Query
         }
     }
 
+    /**
+     * Get first result or empty array.
+     *
+     * @return array
+     */
     public function first(): array
     {
         $this->limit = 1;
@@ -230,6 +320,12 @@ class Query
         return [];
     }
 
+    /**
+     * Insert a new row and return ID.
+     *
+     * @param array $data
+     * @return int|null
+     */
     public function insert(array $data): ?int
     {
         if (array_is_list($data)) {
@@ -254,6 +350,12 @@ class Query
         return $this->pdo->lastInsertId() ?: null;
     }
 
+    /**
+     * Update matching rows.
+     *
+     * @param array $data
+     * @return bool
+     */
     public function update(array $data): bool
     {
         if (array_is_list($data)) {
@@ -279,6 +381,11 @@ class Query
         return $stmt->execute([...array_values($data), ...$this->whereParams]);
     }
 
+    /**
+     * Delete matching rows.
+     *
+     * @return bool
+     */
     public function delete(): bool
     {
         if (empty($this->table)) {

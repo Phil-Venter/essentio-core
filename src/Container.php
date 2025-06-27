@@ -12,12 +12,19 @@ class Container
 
     protected array $cache = [];
 
+    /**
+     * Get the container singleton instance.
+     *
+     * @return static
+     */
     public static function instance(): static
     {
         return static::$instance ??= new static();
     }
 
     /**
+     * Bind a class or factory to the container.
+     *
      * @template T
      * @param class-string<T> $id
      * @param callable():T|class-string<T>|null $concrete
@@ -34,6 +41,8 @@ class Container
     }
 
     /**
+     * Bind a singleton to the container.
+     *
      * @template T
      * @param class-string<T> $id
      * @param callable():T|class-string<T>|null $concrete
@@ -46,9 +55,11 @@ class Container
     }
 
     /**
+     * Resolve a class or binding from the container.
+     *
      * @template T
      * @param class-string<T> $id
-     * @param array<string,mixed>|list<mixed> $dependencies
+     * @param array<string, mixed>|list<mixed> $dependencies
      * @return T
      */
     public function get(string $id, array $dependencies = []): object
@@ -78,6 +89,8 @@ class Container
     }
 
     /**
+     * Check if a class is bound.
+     *
      * @param class-string $id
      * @return bool
      */

@@ -21,6 +21,18 @@ class Request
         public array $parameters
     ) {}
 
+    /**
+     * Create a Request from global or custom input.
+     *
+     * @param array<string, mixed>|null $server
+     * @param array<string, string>|null $headers
+     * @param array<string, mixed>|null $query
+     * @param array<string, mixed>|null $post
+     * @param array<string, mixed>|null $cookies
+     * @param array<string, mixed>|null $files
+     * @param string|null $body
+     * @return static
+     */
     public static function create(
         ?array $server = null,
         ?array $headers = null,
@@ -84,11 +96,23 @@ class Request
         return new static($method, $port, $path, $query, $contentType, $headers, $cookies, $flatFiles, $parsedBody, []);
     }
 
+    /**
+     * Get a query or path parameter.
+     *
+     * @param string $field
+     * @return mixed
+     */
     public function get(string $field): mixed
     {
         return $this->parameters[$field] ?? ($this->query[$field] ?? null);
     }
 
+    /**
+     * Get a value from the request body or parameters.
+     *
+     * @param string $field
+     * @return mixed
+     */
     public function input(string $field): mixed
     {
         return in_array($this->method, ["GET", "HEAD", "OPTIONS", "TRACE"], true)
@@ -96,6 +120,12 @@ class Request
             : $this->body[$field] ?? ($this->parameters[$field] ?? null);
     }
 
+    /**
+     * Sanitize and validate input fields.
+     *
+     * @param array<string, callable(mixed): mixed>|array<string, list<callable(mixed): mixed>> $rules
+     * @return array<string, mixed>|false
+     */
     public function sanitize(array $rules): array|false
     {
         $this->errors = [];

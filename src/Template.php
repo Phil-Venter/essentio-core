@@ -12,16 +12,35 @@ class Template
 
     public function __construct(protected ?string $template = null) {}
 
+    /**
+     * Set a parent layout template.
+     *
+     * @param string $template
+     * @return void
+     */
     protected function layout(string $template): void
     {
         $this->layout = new static($template);
     }
 
+    /**
+     * Get the content of a named segment.
+     *
+     * @param string $name
+     * @return string|null
+     */
     protected function yield(string $name): ?string
     {
         return $this->segments[$name] ?? null;
     }
 
+    /**
+     * Start or set a segment's content.
+     *
+     * @param string $name
+     * @param string|null $value
+     * @return void
+     */
     protected function segment(string $name, ?string $value = null): void
     {
         if ($value === null) {
@@ -32,12 +51,23 @@ class Template
         }
     }
 
+    /**
+     * End the current segment buffer.
+     *
+     * @return void
+     */
     protected function end(): void
     {
         $name = array_pop($this->stack);
         $this->segments[$name] = ob_get_clean();
     }
 
+    /**
+     * Render the view and optional layout.
+     *
+     * @param array<string, mixed> $data
+     * @return string
+     */
     public function render(array $data = []): string
     {
         $content = (function (array $data) {

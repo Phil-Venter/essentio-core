@@ -6,6 +6,13 @@ class Environment
 {
     public function __construct(protected array $data = []) {}
 
+    /**
+     * Load and parse environment variables from a .env file.
+     *
+     * @param Helper $helper
+     * @param string|null $file
+     * @return static
+     */
     public static function create(Helper $helper, ?string $file = null): static
     {
         if (!file_exists($file = $helper->fromBase($file ?? ".env"))) {
@@ -26,6 +33,12 @@ class Environment
         return new static($data);
     }
 
+    /**
+     * Get a value from the environment data.
+     *
+     * @param string $key
+     * @return mixed
+     */
     public function get(string $key): mixed
     {
         return $this->data[$key] ?? null;

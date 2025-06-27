@@ -10,6 +10,12 @@ use Exception;
 
 class Cast
 {
+    /**
+     * Cast input to bool or throw.
+     *
+     * @param string $message
+     * @return Closure(string): ?bool
+     */
     public static function bool(string $message = ""): Closure
     {
         return function (string $input) use ($message): ?bool {
@@ -29,6 +35,12 @@ class Cast
         };
     }
 
+    /**
+     * Cast input to DateTimeImmutable or throw.
+     *
+     * @param string $message
+     * @return Closure(string): ?DateTimeInterface
+     */
     public static function date(string $message = ""): Closure
     {
         return function (string $input) use ($message): ?DateTimeInterface {
@@ -46,6 +58,13 @@ class Cast
         };
     }
 
+    /**
+     * Cast input to enum value or throw.
+     *
+     * @param class-string<BackedEnum> $enumClass
+     * @param string $message
+     * @return Closure(string): ?BackedEnum
+     */
     public static function enum(string $enumClass, string $message = ""): Closure
     {
         if (!enum_exists($enumClass)) {
@@ -73,6 +92,12 @@ class Cast
         };
     }
 
+    /**
+     * Cast input to float or throw.
+     *
+     * @param string $message
+     * @return Closure(string): ?float
+     */
     public static function float(string $message = ""): Closure
     {
         return function (string $input) use ($message): ?float {
@@ -93,6 +118,12 @@ class Cast
         };
     }
 
+    /**
+     * Cast input to int or throw.
+     *
+     * @param string $message
+     * @return Closure(string): ?int
+     */
     public static function int(string $message = ""): Closure
     {
         return function (string $input) use ($message): ?int {
@@ -113,6 +144,12 @@ class Cast
         };
     }
 
+    /**
+     * Cast input to int or float or throw.
+     *
+     * @param string $message
+     * @return Closure(string): int|float|null
+     */
     public static function number(string $message = ""): Closure
     {
         return function (string $input) use ($message): int|float|null {
@@ -136,6 +173,12 @@ class Cast
         };
     }
 
+    /**
+     * Return string input, optionally trimmed.
+     *
+     * @param bool $trim
+     * @return Closure(string): string
+     */
     public static function string(bool $trim = false): Closure
     {
         return function (string $input) use ($trim): string {
@@ -147,6 +190,12 @@ class Cast
         };
     }
 
+    /**
+     * Return null if input is empty.
+     *
+     * @param string $input
+     * @return mixed
+     */
     protected static function nullOnEmpty(string $input): mixed
     {
         if (trim($input) === "") {
@@ -156,6 +205,13 @@ class Cast
         return $input;
     }
 
+    /**
+     * Extract number from input string.
+     *
+     * @param string $input
+     * @param string $message
+     * @return string
+     */
     protected static function normalizeNumber(string $input, string $message): string
     {
         preg_match_all("/-?\d+(\.\d+)?/", $input, $matches);
