@@ -98,7 +98,7 @@ php -S localhost:8080 -t public
 
 ## 🧱 Features
 
-Essentio gives you what PHP left out—just enough to build apps with precision and no nonsense:
+Essentio gives you just enough to build apps with precision and no nonsense:
 
 * **Boots fast**: HTTP or CLI mode with one line.
 * **Minimal router**: Params, groups, middleware—no fluff.
@@ -357,6 +357,10 @@ PHP                              1            356             69           1292
 Essentio is licensed under the [0BSD License](https://opensource.org/licenses/0BSD). No conditions. No attribution. No nonsense.
 
 Use it. Fork it. Rip it apart. Whatever helps you ship.
+
+## 🤝 Contributing
+
+Pull requests welcome. Ideas welcome. Opinions optional.
 
 ---
 
