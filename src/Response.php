@@ -4,7 +4,10 @@ namespace Essentio\Core;
 
 use Stringable;
 
-class Response
+/**
+ * @api
+ */
+final class Response
 {
     public int $status = 200;
 

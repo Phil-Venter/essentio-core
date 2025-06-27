@@ -5,7 +5,10 @@ namespace Essentio\Core\Extra;
 use Essentio\Core\Response;
 use RuntimeException;
 
-class HttpClient
+/**
+ * @api
+ */
+final class HttpClient
 {
     /**
      * Send an HTTP request and return a Response.
@@ -36,7 +39,7 @@ class HttpClient
             CURLOPT_SSL_VERIFYPEER => false,
             CURLOPT_SSL_VERIFYHOST => false,
             CURLOPT_CUSTOMREQUEST => strtoupper($method),
-            CURLOPT_HTTPHEADER => array_map(fn($k, $v) => "{$k}: {$v}", array_keys($headers), $headers),
+            CURLOPT_HTTPHEADER => array_map(fn($k, $v): string => "{$k}: {$v}", array_keys($headers), $headers),
             CURLOPT_POSTFIELDS => $body,
         ]);
 
@@ -50,8 +53,8 @@ class HttpClient
             $headerSize = curl_getinfo($curl, CURLINFO_HEADER_SIZE);
             $statusCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
 
-            $headerText = substr($raw, 0, $headerSize);
-            $bodyText = substr($raw, $headerSize);
+            $headerText = substr((string) $raw, 0, $headerSize);
+            $bodyText = substr((string) $raw, $headerSize);
 
             $response = new Response();
             $response->setStatus($statusCode);
@@ -62,6 +65,7 @@ class HttpClient
 
             foreach ($headerLines as $line) {
                 if (str_contains($line, ":")) {
+                    /** @psalm-suppress PossiblyUndefinedArrayOffset */
                     [$key, $value] = explode(":", $line, 2);
                     $parsedHeaders[trim($key)] = trim($value);
                 }

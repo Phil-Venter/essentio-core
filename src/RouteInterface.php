@@ -2,6 +2,9 @@
 
 namespace Essentio\Core;
 
+/**
+ * @api
+ */
 interface RouteInterface
 {
     public function name(string $name): static;

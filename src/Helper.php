@@ -2,7 +2,10 @@
 
 namespace Essentio\Core;
 
-class Helper
+/**
+ * @api
+ */
+final class Helper
 {
     public function __construct(protected string $basePath) {}
 

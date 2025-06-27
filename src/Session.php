@@ -2,7 +2,10 @@
 
 namespace Essentio\Core;
 
-class Session
+/**
+ * @api
+ */
+final class Session
 {
     protected const FLASH_OLD = "\0FLASH_OLD";
 

@@ -2,7 +2,12 @@
 
 namespace Essentio\Core;
 
-class Template
+use InvalidArgumentException;
+
+/**
+ * @api
+ */
+final class Template
 {
     protected array $segments = [];
 
@@ -18,7 +23,7 @@ class Template
      * @param string $template
      * @return void
      */
-    protected function layout(string $template): void
+    public function layout(string $template): void
     {
         $this->layout = new static($template);
     }
@@ -29,7 +34,7 @@ class Template
      * @param string $name
      * @return string|null
      */
-    protected function yield(string $name): ?string
+    public function yield(string $name): ?string
     {
         return $this->segments[$name] ?? null;
     }
@@ -41,7 +46,7 @@ class Template
      * @param string|null $value
      * @return void
      */
-    protected function segment(string $name, ?string $value = null): void
+    public function segment(string $name, ?string $value = null): void
     {
         if ($value === null) {
             $this->stack[] = $name;
@@ -56,8 +61,12 @@ class Template
      *
      * @return void
      */
-    protected function end(): void
+    public function end(): void
     {
+        if (empty($this->stack)) {
+            throw new InvalidArgumentException("No segment started");
+        }
+
         $name = array_pop($this->stack);
         $this->segments[$name] = ob_get_clean();
     }
@@ -70,12 +79,14 @@ class Template
      */
     public function render(array $data = []): string
     {
-        $content = (function (array $data) {
-            ob_start();
-            extract($data);
-            include $this->template;
-            return ob_get_clean();
-        })($data);
+        $content =
+            (function (array $data) {
+                ob_start();
+                extract($data);
+                include $this->template;
+                return ob_get_clean();
+            })($data) ?:
+            "";
 
         if ($this->layout !== null) {
             $this->segments["content"] = $content;

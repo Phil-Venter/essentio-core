@@ -4,7 +4,10 @@ namespace Essentio\Core;
 
 use RuntimeException;
 
-class Jwt
+/**
+ * @api
+ */
+final class Jwt
 {
     public function __construct(protected string $secret, protected ?string $issuer = null) {}
 
@@ -31,8 +34,8 @@ class Jwt
             $payload["iss"] = $this->issuer;
         }
 
-        $segments[] = $this->encodeBase64(json_encode(["alg" => "HS256", "typ" => "JWT"]));
-        $segments[] = $this->encodeBase64(json_encode($payload));
+        $segments = [$this->encodeBase64(json_encode(["alg" => "HS256", "typ" => "JWT"], JSON_THROW_ON_ERROR))];
+        $segments[] = $this->encodeBase64(json_encode($payload, JSON_THROW_ON_ERROR));
         $signature = $this->sign(implode(".", $segments));
         $segments[] = $this->encodeBase64($signature);
 

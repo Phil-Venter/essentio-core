@@ -37,5 +37,8 @@ jobs:
             - name: Install dependencies
               run: composer install --prefer-dist --no-progress
 
+            - name: Run analyzer
+              run: php ./vendor/bin/psalm
+
             - name: Run test suite
               run: php ./vendor/bin/pest

@@ -4,13 +4,16 @@ namespace Essentio\Core\Extra;
 
 use Closure;
 use DateTimeInterface;
+use Generator;
 use InvalidArgumentException;
-use Iterator;
 use PDO;
 use RuntimeException;
 use Stringable;
 
-class Query
+/**
+ * @api
+ */
+final class Query
 {
     protected string $bool = "AND";
 
@@ -67,7 +70,7 @@ class Query
      */
     public function select(array|string ...$columns): static
     {
-        $columns = array_values((array) $columns);
+        $columns = array_values($columns);
         $this->columns = array_merge($this->columns, $columns);
         return $this;
     }
@@ -178,7 +181,7 @@ class Query
      */
     public function groupBy(array|string ...$groupBys): static
     {
-        $groupBys = array_values((array) $groupBys);
+        $groupBys = array_values($groupBys);
         $this->groupBys = array_merge($this->groupBys, $groupBys);
         return $this;
     }
@@ -272,7 +275,7 @@ class Query
      */
     protected function clean(array $statements): string
     {
-        return preg_replace("/^\s*(AND|OR)\s*/", "", implode(" ", $statements));
+        return (string) preg_replace("/^\s*(AND|OR)\s*/", "", implode(" ", $statements));
     }
 
     /**
@@ -288,9 +291,9 @@ class Query
     /**
      * Execute and return query results.
      *
-     * @return Iterator
+     * @psalm-return Generator<int, mixed, mixed, never>
      */
-    public function get(): Iterator
+    public function get(): Generator
     {
         if ($this->pdo === null) {
             throw new RuntimeException("No PDO to run query.");
@@ -324,9 +327,9 @@ class Query
      * Insert a new row and return ID.
      *
      * @param array $data
-     * @return int|null
+     * @return null|string
      */
-    public function insert(array $data): ?int
+    public function insert(array $data): string|null
     {
         if (array_is_list($data)) {
             throw new InvalidArgumentException("Data must be associative array.");

@@ -6,13 +6,16 @@ use Closure;
 use DateTimeInterface;
 use Exception;
 
-class Validate
+/**
+ * @api
+ */
+final class Validate
 {
     /**
      * Letters only.
      *
      * @param string $message
-     * @return Closure(?string): ?string
+     * @return Closure
      */
     public static function alpha(string $message = ""): Closure
     {
@@ -33,7 +36,7 @@ class Validate
      * Letters, numbers, dashes, underscores.
      *
      * @param string $message
-     * @return Closure(?string): ?string
+     * @return Closure
      */
     public static function alphaDash(string $message = ""): Closure
     {
@@ -54,7 +57,7 @@ class Validate
      * Letters and numbers only.
      *
      * @param string $message
-     * @return Closure(?string): ?string
+     * @return Closure
      */
     public static function alphaNum(string $message = ""): Closure
     {
@@ -75,7 +78,7 @@ class Validate
      * Valid email format.
      *
      * @param string $message
-     * @return Closure(?string): ?string
+     * @return Closure
      */
     public static function email(string $message = ""): Closure
     {
@@ -97,7 +100,7 @@ class Validate
      *
      * @param array $suffixes
      * @param string $message
-     * @return Closure(?string): ?string
+     * @return Closure
      */
     public static function endsWith(array $suffixes, string $message = ""): Closure
     {
@@ -120,7 +123,7 @@ class Validate
      * Must be lowercase.
      *
      * @param string $message
-     * @return Closure(?string): ?string
+     * @return Closure
      */
     public static function lower(string $message = ""): Closure
     {
@@ -141,7 +144,7 @@ class Validate
      * Must be uppercase.
      *
      * @param string $message
-     * @return Closure(?string): ?string
+     * @return Closure
      */
     public static function upper(string $message = ""): Closure
     {
@@ -163,7 +166,7 @@ class Validate
      *
      * @param int $min
      * @param string $message
-     * @return Closure(?string): ?string
+     * @return Closure
      */
     public static function minLength(int $min, string $message = ""): Closure
     {
@@ -185,7 +188,7 @@ class Validate
      *
      * @param int $max
      * @param string $message
-     * @return Closure(?string): ?string
+     * @return Closure
      */
     public static function maxLength(int $max, string $message = ""): Closure
     {
@@ -205,9 +208,9 @@ class Validate
     /**
      * Matches regex pattern.
      *
-     * @param string $pattern
+     * @param non-empty-string $pattern
      * @param string $message
-     * @return Closure(?string): ?string
+     * @return Closure
      */
     public static function regex(string $pattern, string $message = ""): Closure
     {
@@ -230,7 +233,7 @@ class Validate
      * @param DateTimeInterface|float|int $min
      * @param DateTimeInterface|float|int $max
      * @param string $message
-     * @return Closure(DateTimeInterface|float|int|null): DateTimeInterface|float|int|null
+     * @return Closure
      */
     public static function between(DateTimeInterface|float|int $min, DateTimeInterface|float|int $max, string $message = ""): Closure
     {
@@ -257,7 +260,7 @@ class Validate
      *
      * @param DateTimeInterface|float|int $min
      * @param string $message
-     * @return Closure(DateTimeInterface|float|int|null): DateTimeInterface|float|int|null
+     * @return Closure
      */
     public static function gt(DateTimeInterface|float|int $min, string $message = ""): Closure
     {
@@ -283,7 +286,7 @@ class Validate
      *
      * @param DateTimeInterface|float|int $min
      * @param string $message
-     * @return Closure(DateTimeInterface|float|int|null): DateTimeInterface|float|int|null
+     * @return Closure
      */
     public static function gte(DateTimeInterface|float|int $min, string $message = ""): Closure
     {
@@ -309,7 +312,7 @@ class Validate
      *
      * @param DateTimeInterface|float|int $max
      * @param string $message
-     * @return Closure(DateTimeInterface|float|int|null): DateTimeInterface|float|int|null
+     * @return Closure
      */
     public static function lt(DateTimeInterface|float|int $max, string $message = ""): Closure
     {
@@ -335,7 +338,7 @@ class Validate
      *
      * @param DateTimeInterface|float|int $max
      * @param string $message
-     * @return Closure(DateTimeInterface|float|int|null): DateTimeInterface|float|int|null
+     * @return Closure
      */
     public static function lte(DateTimeInterface|float|int $max, string $message = ""): Closure
     {
@@ -360,7 +363,7 @@ class Validate
      * Input must be present and non-empty.
      *
      * @param string $message
-     * @return Closure(mixed): mixed
+     * @return Closure
      */
     public static function required(string $message = ""): Closure
     {
@@ -379,7 +382,7 @@ class Validate
      * @param array $allowed
      * @param bool $strict
      * @param string $message
-     * @return Closure(mixed): mixed
+     * @return Closure
      */
     public static function inArray(array $allowed, bool $strict = true, string $message = ""): Closure
     {

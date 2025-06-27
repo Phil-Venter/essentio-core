@@ -3,9 +3,13 @@
 namespace Essentio\Core;
 
 use InvalidArgumentException;
+use Override;
 use Stringable;
 
-class Router
+/**
+ * @api
+ */
+final class Router
 {
     protected const LEAF = "\0LEAF_NODE";
 
@@ -56,11 +60,13 @@ class Router
     public static function route(string $method, string $path, callable $handler): RouteInterface
     {
         $path = trim((string) preg_replace("#/+#", "/", static::$prefix . $path), "/");
+        /** @psalm-suppress UnsupportedPropertyReferenceUsage */
         $node = &static::$routes;
         $params = [];
 
         foreach (explode("/", $path) as $segment) {
             if (str_starts_with($segment, ":")) {
+                /** @psalm-suppress UnsupportedPropertyReferenceUsage */
                 $node = &$node[static::PARAM];
                 $params[] = substr($segment, 1);
             } else {
@@ -73,12 +79,14 @@ class Router
         return $node[static::LEAF][$method] = new class ($path, $params, $middleware, $handler) implements RouteInterface {
             public function __construct(public string $path, public array $params, public array $middleware, public $handler) {}
 
+            #[Override]
             public function name(string $name): static
             {
                 Router::setName($name, $this->path);
                 return $this;
             }
 
+            #[Override]
             public function middleware(callable $middleware): static
             {
                 $this->middleware[] = $middleware;

@@ -5,7 +5,10 @@ namespace Essentio\Core;
 use Exception;
 use Throwable;
 
-class HttpException extends Exception
+/**
+ * @api
+ */
+final class HttpException extends Exception
 {
     public const HTTP_STATUS = [
         // Success

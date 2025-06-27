@@ -16,49 +16,51 @@ use Essentio\Core\Template;
  * Resolve a class from the container.
  *
  * @template T
- * @param class-string<T> $abstract
+ * @param class-string<T> $id
  * @return T
  */
-function app(string $abstract): object
+function app(string $id): object
 {
-    return Container::instance()->get($abstract);
+    return Container::instance()->get($id);
 }
 
 /**
  * Instantiate a class with dependencies.
  *
  * @template T
- * @param class-string<T> $abstract
+ * @param class-string<T> $id
  * @param array<string, mixed>|list<mixed> $dependencies
  * @return T
  */
-function map(string $abstract, array $dependencies = []): object
+function map(string $id, array $dependencies = []): object
 {
-    return Container::instance()->get($abstract, $dependencies);
+    return Container::instance()->get($id, $dependencies);
 }
 
 /**
  * Register a binding into the container.
  *
- * @param string $abstract
- * @param callable():mixed|string|null $concrete
+ * @template T
+ * @param class-string<T> $id
+ * @param callable $concrete
  * @return void
  */
-function bind(string $abstract, callable|string|null $concrete = null): void
+function bind(string $id, callable|string|null $concrete = null): void
 {
-    Container::instance()->bind($abstract, $concrete);
+    Container::instance()->bind($id, $concrete);
 }
 
 /**
  * Register a singleton into the container.
  *
- * @param string $abstract
- * @param callable():mixed|string|null $concrete
+ * @template T
+ * @param class-string<T> $id
+ * @param callable $concrete
  * @return void
  */
-function once(string $abstract, callable|string|null $concrete = null): void
+function once(string $id, callable|string|null $concrete = null): void
 {
-    Container::instance()->once($abstract, $concrete);
+    Container::instance()->once($id, $concrete);
 }
 
 /**
@@ -98,7 +100,7 @@ function arg(int|string $key): mixed
  * Register and execute a CLI command.
  *
  * @param string $name
- * @param callable(Argument): int|void $handle
+ * @param callable $handle
  * @return void
  */
 function command(string $name, callable $handle): void
@@ -139,8 +141,8 @@ function input(string $field): mixed
  * Sanitize and validate user input.
  *
  * @template T as string
- * @param array<T, callable(mixed): mixed>|array<T, list<callable(mixed): mixed>> $rules
- * @param callable(array<T, list<string>>): void $callback
+ * @param array<T, callable>|array<T, list<callable>> $rules
+ * @param callable $callback
  * @return array<T, mixed>|false
  */
 function sanitize(array $rules, callable $callback): array|false
@@ -203,7 +205,7 @@ function jwt(array|string $payload): array|string
 /**
  * Register middleware globally or scoped within a group.
  *
- * @param callable(Request, callable(Request): Response): Response $middleware
+ * @param callable $middleware
  * @return void
  */
 function middleware(callable $middleware): void
@@ -215,7 +217,7 @@ function middleware(callable $middleware): void
  * Define a route group with shared prefix.
  *
  * @param string $prefix
- * @param callable(): void $group
+ * @param callable $group
  * @return void
  */
 function group(string $prefix, callable $group): void
@@ -227,7 +229,7 @@ function group(string $prefix, callable $group): void
  * Register a GET route.
  *
  * @param string $path
- * @param callable(Request): mixed $handle
+ * @param callable $handle
  * @return RouteInterface
  */
 function get(string $path, callable $handle): RouteInterface
@@ -239,7 +241,7 @@ function get(string $path, callable $handle): RouteInterface
  * Register a POST route.
  *
  * @param string $path
- * @param callable(Request): mixed $handle
+ * @param callable $handle
  * @return RouteInterface
  */
 function post(string $path, callable $handle): RouteInterface
@@ -251,7 +253,7 @@ function post(string $path, callable $handle): RouteInterface
  * Register a PUT route.
  *
  * @param string $path
- * @param callable(Request): mixed $handle
+ * @param callable $handle
  * @return RouteInterface
  */
 function put(string $path, callable $handle): RouteInterface
@@ -263,7 +265,7 @@ function put(string $path, callable $handle): RouteInterface
  * Register a PATCH route.
  *
  * @param string $path
- * @param callable(Request): mixed $handle
+ * @param callable $handle
  * @return RouteInterface
  */
 function patch(string $path, callable $handle): RouteInterface
@@ -275,7 +277,7 @@ function patch(string $path, callable $handle): RouteInterface
  * Register a DELETE route.
  *
  * @param string $path
- * @param callable(Request): mixed $handle
+ * @param callable $handle
  * @return RouteInterface
  */
 function delete(string $path, callable $handle): RouteInterface

@@ -23,7 +23,7 @@ it("inserts a row and returns its ID", function () {
     $query->table("users");
     $id = $query->insert(["name" => "Alice", "active" => 1]);
 
-    expect($id)->toBe(1);
+    expect($id)->toBe("1");
 });
 
 it("retrieves a single row with where clause", function () {

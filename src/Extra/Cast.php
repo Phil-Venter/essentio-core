@@ -5,16 +5,18 @@ namespace Essentio\Core\Extra;
 use BackedEnum;
 use Closure;
 use DateTimeImmutable;
-use DateTimeInterface;
 use Exception;
 
-class Cast
+/**
+ * @api
+ */
+final class Cast
 {
     /**
      * Cast input to bool or throw.
      *
      * @param string $message
-     * @return Closure(string): ?bool
+     * @return Closure
      */
     public static function bool(string $message = ""): Closure
     {
@@ -39,11 +41,11 @@ class Cast
      * Cast input to DateTimeImmutable or throw.
      *
      * @param string $message
-     * @return Closure(string): ?DateTimeInterface
+     * @return Closure
      */
     public static function date(string $message = ""): Closure
     {
-        return function (string $input) use ($message): ?DateTimeInterface {
+        return function (string $input) use ($message): DateTimeImmutable|null {
             $input = static::nullOnEmpty($input);
 
             if ($input === null) {
@@ -63,7 +65,7 @@ class Cast
      *
      * @param class-string<BackedEnum> $enumClass
      * @param string $message
-     * @return Closure(string): ?BackedEnum
+     * @return Closure
      */
     public static function enum(string $enumClass, string $message = ""): Closure
     {
@@ -96,7 +98,7 @@ class Cast
      * Cast input to float or throw.
      *
      * @param string $message
-     * @return Closure(string): ?float
+     * @return Closure
      */
     public static function float(string $message = ""): Closure
     {
@@ -122,7 +124,7 @@ class Cast
      * Cast input to int or throw.
      *
      * @param string $message
-     * @return Closure(string): ?int
+     * @return Closure
      */
     public static function int(string $message = ""): Closure
     {
@@ -148,7 +150,7 @@ class Cast
      * Cast input to int or float or throw.
      *
      * @param string $message
-     * @return Closure(string): int|float|null
+     * @return Closure
      */
     public static function number(string $message = ""): Closure
     {
@@ -177,7 +179,7 @@ class Cast
      * Return string input, optionally trimmed.
      *
      * @param bool $trim
-     * @return Closure(string): string
+     * @return Closure
      */
     public static function string(bool $trim = false): Closure
     {

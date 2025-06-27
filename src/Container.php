@@ -4,7 +4,10 @@ namespace Essentio\Core;
 
 use RuntimeException;
 
-class Container
+/**
+ * @api
+ */
+final class Container
 {
     protected static $instance;
 
@@ -28,16 +31,15 @@ class Container
      * @template T
      * @param class-string<T> $id
      * @param callable():T|class-string<T>|null $concrete
-     * @return static
      */
-    public function bind(string $id, callable|string|null $concrete = null): static
+    public function bind(string $id, callable|string|null $concrete = null): void
     {
+        /** @var string $concrete */
         if (is_string($concrete ??= $id) && !class_exists($concrete, true)) {
             throw new RuntimeException("Cannot bind [{$id}] to [{$concrete}].");
         }
 
         $this->bindings[$id] = $concrete;
-        return $this;
     }
 
     /**
@@ -46,12 +48,11 @@ class Container
      * @template T
      * @param class-string<T> $id
      * @param callable():T|class-string<T>|null $concrete
-     * @return static
      */
-    public function once(string $id, callable|string|null $concrete = null): static
+    public function once(string $id, callable|string|null $concrete = null): void
     {
         $this->cache[$id] = null;
-        return $this->bind($id, $concrete);
+        $this->bind($id, $concrete);
     }
 
     /**
@@ -72,7 +73,7 @@ class Container
             throw new RuntimeException("Service [{$id}] is not bound and cannot be instantiated.");
         }
 
-        $once = $once = array_key_exists($id, $this->cache);
+        $once = array_key_exists($id, $this->cache);
 
         if ($once && $this->cache[$id] !== null) {
             return $this->cache[$id];
@@ -85,17 +86,10 @@ class Container
             $this->cache[$id] = $resolved;
         }
 
+        /**
+         * @template T
+         * @var T $resolved
+         */
         return $resolved;
-    }
-
-    /**
-     * Check if a class is bound.
-     *
-     * @param class-string $id
-     * @return bool
-     */
-    public function has(string $id): bool
-    {
-        return isset($this->bindings[$id]);
     }
 }

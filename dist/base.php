@@ -1,6 +1,9 @@
 <?php
 
-class Application
+/**
+ * @api
+ */
+final class Application
 {
     /**
      * Bootstrap the application for CLI mode.
@@ -10,9 +13,9 @@ class Application
      */
     public static function cli(string $basePath): void
     {
-        Container::instance()->once(Argument::class, fn() => Argument::create(Container::instance()->get(Helper::class)));
-        Container::instance()->once(Environment::class, fn() => Environment::create(Container::instance()->get(Helper::class)));
-        Container::instance()->once(Helper::class, fn() => Helper::create($basePath));
+        Container::instance()->once(Argument::class, fn(): Argument => Argument::create(Container::instance()->get(Helper::class)));
+        Container::instance()->once(Environment::class, fn(): Environment => Environment::create(Container::instance()->get(Helper::class)));
+        Container::instance()->once(Helper::class, fn(): Helper => Helper::create($basePath));
     }
 
     /**
@@ -23,12 +26,12 @@ class Application
      */
     public static function http(string $basePath): void
     {
-        Container::instance()->once(Environment::class, fn() => Environment::create(Container::instance()->get(Helper::class)));
-        Container::instance()->once(Helper::class, fn() => Helper::create($basePath));
-        Container::instance()->once(Jwt::class, fn() => Jwt::create(Container::instance()->get(Environment::class)));
-        Container::instance()->once(Request::class, fn() => Request::create());
+        Container::instance()->once(Environment::class, fn(): Environment => Environment::create(Container::instance()->get(Helper::class)));
+        Container::instance()->once(Helper::class, fn(): Helper => Helper::create($basePath));
+        Container::instance()->once(Jwt::class, fn(): Jwt => Jwt::create(Container::instance()->get(Environment::class)));
+        Container::instance()->once(Request::class, fn(): Request => Request::create());
         Container::instance()->once(Response::class);
-        Container::instance()->once(Session::class, fn() => Session::create());
+        Container::instance()->once(Session::class, fn(): Session => Session::create());
     }
 
     /**
@@ -52,7 +55,10 @@ class Application
     }
 }
 
-class Argument
+/**
+ * @api
+ */
+final class Argument
 {
     public function __construct(public readonly string $command = "", protected array $arguments = []) {}
 
@@ -85,6 +91,7 @@ class Argument
                 $option = substr((string) $arg, 2);
 
                 if (mb_stripos($option, "=") !== false) {
+                    /** @psalm-suppress PossiblyUndefinedArrayOffset */
                     [$key, $value] = explode("=", $option, 2);
                 } elseif (isset($argv[0]) && $argv[0][0] !== "-") {
                     $key = $option;
@@ -136,7 +143,10 @@ class Argument
     }
 }
 
-class Container
+/**
+ * @api
+ */
+final class Container
 {
     protected static $instance;
 
@@ -160,16 +170,15 @@ class Container
      * @template T
      * @param class-string<T> $id
      * @param callable():T|class-string<T>|null $concrete
-     * @return static
      */
-    public function bind(string $id, callable|string|null $concrete = null): static
+    public function bind(string $id, callable|string|null $concrete = null): void
     {
+        /** @var string $concrete */
         if (is_string($concrete ??= $id) && !class_exists($concrete, true)) {
             throw new RuntimeException("Cannot bind [{$id}] to [{$concrete}].");
         }
 
         $this->bindings[$id] = $concrete;
-        return $this;
     }
 
     /**
@@ -178,12 +187,11 @@ class Container
      * @template T
      * @param class-string<T> $id
      * @param callable():T|class-string<T>|null $concrete
-     * @return static
      */
-    public function once(string $id, callable|string|null $concrete = null): static
+    public function once(string $id, callable|string|null $concrete = null): void
     {
         $this->cache[$id] = null;
-        return $this->bind($id, $concrete);
+        $this->bind($id, $concrete);
     }
 
     /**
@@ -204,7 +212,7 @@ class Container
             throw new RuntimeException("Service [{$id}] is not bound and cannot be instantiated.");
         }
 
-        $once = $once = array_key_exists($id, $this->cache);
+        $once = array_key_exists($id, $this->cache);
 
         if ($once && $this->cache[$id] !== null) {
             return $this->cache[$id];
@@ -217,22 +225,18 @@ class Container
             $this->cache[$id] = $resolved;
         }
 
+        /**
+         * @template T
+         * @var T $resolved
+         */
         return $resolved;
-    }
-
-    /**
-     * Check if a class is bound.
-     *
-     * @param class-string $id
-     * @return bool
-     */
-    public function has(string $id): bool
-    {
-        return isset($this->bindings[$id]);
     }
 }
 
-class Environment
+/**
+ * @api
+ */
+final class Environment
 {
     public function __construct(protected array $data = []) {}
 
@@ -256,6 +260,7 @@ class Environment
                 continue;
             }
 
+            /** @psalm-suppress PossiblyUndefinedArrayOffset */
             [$key, $value] = explode("=", $line, 2);
             $data[trim($key)] = $helper->autoCast(trim($value));
         }
@@ -275,7 +280,10 @@ class Environment
     }
 }
 
-class Helper
+/**
+ * @api
+ */
+final class Helper
 {
     public function __construct(protected string $basePath) {}
 
@@ -329,7 +337,10 @@ class Helper
     }
 }
 
-class HttpException extends Exception
+/**
+ * @api
+ */
+final class HttpException extends Exception
 {
     public const HTTP_STATUS = [
         // Success
@@ -370,7 +381,10 @@ class HttpException extends Exception
     }
 }
 
-class Jwt
+/**
+ * @api
+ */
+final class Jwt
 {
     public function __construct(protected string $secret, protected ?string $issuer = null) {}
 
@@ -397,8 +411,8 @@ class Jwt
             $payload["iss"] = $this->issuer;
         }
 
-        $segments[] = $this->encodeBase64(json_encode(["alg" => "HS256", "typ" => "JWT"]));
-        $segments[] = $this->encodeBase64(json_encode($payload));
+        $segments = [$this->encodeBase64(json_encode(["alg" => "HS256", "typ" => "JWT"], JSON_THROW_ON_ERROR))];
+        $segments[] = $this->encodeBase64(json_encode($payload, JSON_THROW_ON_ERROR));
         $signature = $this->sign(implode(".", $segments));
         $segments[] = $this->encodeBase64($signature);
 
@@ -489,7 +503,10 @@ class Jwt
     }
 }
 
-class Request
+/**
+ * @api
+ */
+final class Request
 {
     public array $errors = [];
 
@@ -527,19 +544,21 @@ class Request
         ?array $files = null,
         ?string $body = null
     ): static {
-        $server ??= $_SERVER ?? [];
-        $post ??= $_POST ?? [];
-        $query ??= $_GET ?? [];
-        $cookies ??= $_COOKIE ?? [];
-        $files ??= $_FILES ?? [];
-        $headers ??= function_exists("getallheaders") ? getallheaders() : [];
-        $rawInput = $body ?? file_get_contents("php://input");
+        $server ??= $_SERVER;
+        $post ??= $_POST;
+        $query ??= $_GET;
+        $cookies ??= $_COOKIE;
+        $files ??= $_FILES;
+        $headers ??= function_exists("getallheaders") ? (getallheaders() ?: []) : [];
+        $rawInput = $body ?? file_get_contents("php://input") ?: "";
 
+        /** @psalm-suppress PossiblyInvalidArgument */
         $method = strtoupper($post["_method"] ?? ($server["REQUEST_METHOD"] ?? "GET"));
-        $path = trim(parse_url($server["REQUEST_URI"] ?? "", PHP_URL_PATH) ?? "", "/");
+        $path = trim((string) parse_url($server["REQUEST_URI"] ?? "", PHP_URL_PATH), "/");
 
         $hostHeader = $server["HTTP_HOST"] ?? null;
         if ($hostHeader && str_contains((string) $hostHeader, ":")) {
+            /** @psalm-suppress PossiblyUndefinedArrayOffset */
             [, $port] = explode(":", (string) $hostHeader, 2);
             $port = (int) $port;
         } else {
@@ -558,6 +577,7 @@ class Request
                 continue;
             }
 
+            /** @psalm-suppress PossiblyInvalidArgument */
             for ($i = 0; $i < count($info["name"]); $i++) {
                 if ($info["error"][$i] !== UPLOAD_ERR_OK) {
                     continue;
@@ -574,7 +594,9 @@ class Request
 
         $parsedBody = match ($contentType) {
             "application/json" => json_decode($rawInput, true) ?? [],
-            "application/xml", "text/xml" => ($xml = simplexml_load_string($rawInput)) ? json_decode(json_encode($xml), true) : [],
+            "application/xml", "text/xml" => ($xml = simplexml_load_string($rawInput))
+                ? json_decode(json_encode($xml, JSON_THROW_ON_ERROR), true)
+                : [],
             default => $post,
         };
 
@@ -608,8 +630,9 @@ class Request
     /**
      * Sanitize and validate input fields.
      *
-     * @param array<string, callable(mixed): mixed>|array<string, list<callable(mixed): mixed>> $rules
-     * @return array<string, mixed>|false
+     * @template T as string
+     * @param array<T, callable>|array<T, list<callable>> $rules
+     * @return array<T, mixed>|false
      */
     public function sanitize(array $rules): array|false
     {
@@ -634,7 +657,10 @@ class Request
     }
 }
 
-class Response
+/**
+ * @api
+ */
+final class Response
 {
     public int $status = 200;
 
@@ -718,6 +744,9 @@ class Response
     }
 }
 
+/**
+ * @api
+ */
 interface RouteInterface
 {
     public function name(string $name): static;
@@ -725,7 +754,10 @@ interface RouteInterface
     public function middleware(callable $middleware): static;
 }
 
-class Router
+/**
+ * @api
+ */
+final class Router
 {
     protected const LEAF = "\0LEAF_NODE";
 
@@ -776,11 +808,13 @@ class Router
     public static function route(string $method, string $path, callable $handler): RouteInterface
     {
         $path = trim((string) preg_replace("#/+#", "/", static::$prefix . $path), "/");
+        /** @psalm-suppress UnsupportedPropertyReferenceUsage */
         $node = &static::$routes;
         $params = [];
 
         foreach (explode("/", $path) as $segment) {
             if (str_starts_with($segment, ":")) {
+                /** @psalm-suppress UnsupportedPropertyReferenceUsage */
                 $node = &$node[static::PARAM];
                 $params[] = substr($segment, 1);
             } else {
@@ -793,12 +827,14 @@ class Router
         return $node[static::LEAF][$method] = new class ($path, $params, $middleware, $handler) implements RouteInterface {
             public function __construct(public string $path, public array $params, public array $middleware, public $handler) {}
 
+            #[Override]
             public function name(string $name): static
             {
                 Router::setName($name, $this->path);
                 return $this;
             }
 
+            #[Override]
             public function middleware(callable $middleware): static
             {
                 $this->middleware[] = $middleware;
@@ -910,7 +946,10 @@ class Router
     }
 }
 
-class Session
+/**
+ * @api
+ */
+final class Session
 {
     protected const FLASH_OLD = "\0FLASH_OLD";
 
@@ -1006,7 +1045,10 @@ class Session
     }
 }
 
-class Template
+/**
+ * @api
+ */
+final class Template
 {
     protected array $segments = [];
 
@@ -1022,7 +1064,7 @@ class Template
      * @param string $template
      * @return void
      */
-    protected function layout(string $template): void
+    public function layout(string $template): void
     {
         $this->layout = new static($template);
     }
@@ -1033,7 +1075,7 @@ class Template
      * @param string $name
      * @return string|null
      */
-    protected function yield(string $name): ?string
+    public function yield(string $name): ?string
     {
         return $this->segments[$name] ?? null;
     }
@@ -1045,7 +1087,7 @@ class Template
      * @param string|null $value
      * @return void
      */
-    protected function segment(string $name, ?string $value = null): void
+    public function segment(string $name, ?string $value = null): void
     {
         if ($value === null) {
             $this->stack[] = $name;
@@ -1060,8 +1102,12 @@ class Template
      *
      * @return void
      */
-    protected function end(): void
+    public function end(): void
     {
+        if (empty($this->stack)) {
+            throw new InvalidArgumentException("No segment started");
+        }
+
         $name = array_pop($this->stack);
         $this->segments[$name] = ob_get_clean();
     }
@@ -1074,12 +1120,14 @@ class Template
      */
     public function render(array $data = []): string
     {
-        $content = (function (array $data) {
-            ob_start();
-            extract($data);
-            include $this->template;
-            return ob_get_clean();
-        })($data);
+        $content =
+            (function (array $data) {
+                ob_start();
+                extract($data);
+                include $this->template;
+                return ob_get_clean();
+            })($data) ?:
+            "";
 
         if ($this->layout !== null) {
             $this->segments["content"] = $content;
@@ -1095,49 +1143,51 @@ class Template
  * Resolve a class from the container.
  *
  * @template T
- * @param class-string<T> $abstract
+ * @param class-string<T> $id
  * @return T
  */
-function app(string $abstract): object
+function app(string $id): object
 {
-    return Container::instance()->get($abstract);
+    return Container::instance()->get($id);
 }
 
 /**
  * Instantiate a class with dependencies.
  *
  * @template T
- * @param class-string<T> $abstract
+ * @param class-string<T> $id
  * @param array<string, mixed>|list<mixed> $dependencies
  * @return T
  */
-function map(string $abstract, array $dependencies = []): object
+function map(string $id, array $dependencies = []): object
 {
-    return Container::instance()->get($abstract, $dependencies);
+    return Container::instance()->get($id, $dependencies);
 }
 
 /**
  * Register a binding into the container.
  *
- * @param string $abstract
- * @param callable():mixed|string|null $concrete
+ * @template T
+ * @param class-string<T> $id
+ * @param callable $concrete
  * @return void
  */
-function bind(string $abstract, callable|string|null $concrete = null): void
+function bind(string $id, callable|string|null $concrete = null): void
 {
-    Container::instance()->bind($abstract, $concrete);
+    Container::instance()->bind($id, $concrete);
 }
 
 /**
  * Register a singleton into the container.
  *
- * @param string $abstract
- * @param callable():mixed|string|null $concrete
+ * @template T
+ * @param class-string<T> $id
+ * @param callable $concrete
  * @return void
  */
-function once(string $abstract, callable|string|null $concrete = null): void
+function once(string $id, callable|string|null $concrete = null): void
 {
-    Container::instance()->once($abstract, $concrete);
+    Container::instance()->once($id, $concrete);
 }
 
 /**
@@ -1177,7 +1227,7 @@ function arg(int|string $key): mixed
  * Register and execute a CLI command.
  *
  * @param string $name
- * @param callable(Argument): int|void $handle
+ * @param callable $handle
  * @return void
  */
 function command(string $name, callable $handle): void
@@ -1218,8 +1268,8 @@ function input(string $field): mixed
  * Sanitize and validate user input.
  *
  * @template T as string
- * @param array<T, callable(mixed): mixed>|array<T, list<callable(mixed): mixed>> $rules
- * @param callable(array<T, list<string>>): void $callback
+ * @param array<T, callable>|array<T, list<callable>> $rules
+ * @param callable $callback
  * @return array<T, mixed>|false
  */
 function sanitize(array $rules, callable $callback): array|false
@@ -1282,7 +1332,7 @@ function jwt(array|string $payload): array|string
 /**
  * Register middleware globally or scoped within a group.
  *
- * @param callable(Request, callable(Request): Response): Response $middleware
+ * @param callable $middleware
  * @return void
  */
 function middleware(callable $middleware): void
@@ -1294,7 +1344,7 @@ function middleware(callable $middleware): void
  * Define a route group with shared prefix.
  *
  * @param string $prefix
- * @param callable(): void $group
+ * @param callable $group
  * @return void
  */
 function group(string $prefix, callable $group): void
@@ -1306,7 +1356,7 @@ function group(string $prefix, callable $group): void
  * Register a GET route.
  *
  * @param string $path
- * @param callable(Request): mixed $handle
+ * @param callable $handle
  * @return RouteInterface
  */
 function get(string $path, callable $handle): RouteInterface
@@ -1318,7 +1368,7 @@ function get(string $path, callable $handle): RouteInterface
  * Register a POST route.
  *
  * @param string $path
- * @param callable(Request): mixed $handle
+ * @param callable $handle
  * @return RouteInterface
  */
 function post(string $path, callable $handle): RouteInterface
@@ -1330,7 +1380,7 @@ function post(string $path, callable $handle): RouteInterface
  * Register a PUT route.
  *
  * @param string $path
- * @param callable(Request): mixed $handle
+ * @param callable $handle
  * @return RouteInterface
  */
 function put(string $path, callable $handle): RouteInterface
@@ -1342,7 +1392,7 @@ function put(string $path, callable $handle): RouteInterface
  * Register a PATCH route.
  *
  * @param string $path
- * @param callable(Request): mixed $handle
+ * @param callable $handle
  * @return RouteInterface
  */
 function patch(string $path, callable $handle): RouteInterface
@@ -1354,7 +1404,7 @@ function patch(string $path, callable $handle): RouteInterface
  * Register a DELETE route.
  *
  * @param string $path
- * @param callable(Request): mixed $handle
+ * @param callable $handle
  * @return RouteInterface
  */
 function delete(string $path, callable $handle): RouteInterface

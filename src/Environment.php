@@ -2,7 +2,10 @@
 
 namespace Essentio\Core;
 
-class Environment
+/**
+ * @api
+ */
+final class Environment
 {
     public function __construct(protected array $data = []) {}
 
@@ -26,6 +29,7 @@ class Environment
                 continue;
             }
 
+            /** @psalm-suppress PossiblyUndefinedArrayOffset */
             [$key, $value] = explode("=", $line, 2);
             $data[trim($key)] = $helper->autoCast(trim($value));
         }

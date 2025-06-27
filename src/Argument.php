@@ -2,7 +2,10 @@
 
 namespace Essentio\Core;
 
-class Argument
+/**
+ * @api
+ */
+final class Argument
 {
     public function __construct(public readonly string $command = "", protected array $arguments = []) {}
 
@@ -35,6 +38,7 @@ class Argument
                 $option = substr((string) $arg, 2);
 
                 if (mb_stripos($option, "=") !== false) {
+                    /** @psalm-suppress PossiblyUndefinedArrayOffset */
                     [$key, $value] = explode("=", $option, 2);
                 } elseif (isset($argv[0]) && $argv[0][0] !== "-") {
                     $key = $option;

@@ -4,7 +4,10 @@ namespace Essentio\Core;
 
 use Throwable;
 
-class Request
+/**
+ * @api
+ */
+final class Request
 {
     public array $errors = [];
 
@@ -42,19 +45,21 @@ class Request
         ?array $files = null,
         ?string $body = null
     ): static {
-        $server ??= $_SERVER ?? [];
-        $post ??= $_POST ?? [];
-        $query ??= $_GET ?? [];
-        $cookies ??= $_COOKIE ?? [];
-        $files ??= $_FILES ?? [];
-        $headers ??= function_exists("getallheaders") ? getallheaders() : [];
-        $rawInput = $body ?? file_get_contents("php://input");
+        $server ??= $_SERVER;
+        $post ??= $_POST;
+        $query ??= $_GET;
+        $cookies ??= $_COOKIE;
+        $files ??= $_FILES;
+        $headers ??= function_exists("getallheaders") ? (getallheaders() ?: []) : [];
+        $rawInput = $body ?? file_get_contents("php://input") ?: "";
 
+        /** @psalm-suppress PossiblyInvalidArgument */
         $method = strtoupper($post["_method"] ?? ($server["REQUEST_METHOD"] ?? "GET"));
-        $path = trim(parse_url($server["REQUEST_URI"] ?? "", PHP_URL_PATH) ?? "", "/");
+        $path = trim((string) parse_url($server["REQUEST_URI"] ?? "", PHP_URL_PATH), "/");
 
         $hostHeader = $server["HTTP_HOST"] ?? null;
         if ($hostHeader && str_contains((string) $hostHeader, ":")) {
+            /** @psalm-suppress PossiblyUndefinedArrayOffset */
             [, $port] = explode(":", (string) $hostHeader, 2);
             $port = (int) $port;
         } else {
@@ -73,6 +78,7 @@ class Request
                 continue;
             }
 
+            /** @psalm-suppress PossiblyInvalidArgument */
             for ($i = 0; $i < count($info["name"]); $i++) {
                 if ($info["error"][$i] !== UPLOAD_ERR_OK) {
                     continue;
@@ -89,7 +95,9 @@ class Request
 
         $parsedBody = match ($contentType) {
             "application/json" => json_decode($rawInput, true) ?? [],
-            "application/xml", "text/xml" => ($xml = simplexml_load_string($rawInput)) ? json_decode(json_encode($xml), true) : [],
+            "application/xml", "text/xml" => ($xml = simplexml_load_string($rawInput))
+                ? json_decode(json_encode($xml, JSON_THROW_ON_ERROR), true)
+                : [],
             default => $post,
         };
 
@@ -123,8 +131,9 @@ class Request
     /**
      * Sanitize and validate input fields.
      *
-     * @param array<string, callable(mixed): mixed>|array<string, list<callable(mixed): mixed>> $rules
-     * @return array<string, mixed>|false
+     * @template T as string
+     * @param array<T, callable>|array<T, list<callable>> $rules
+     * @return array<T, mixed>|false
      */
     public function sanitize(array $rules): array|false
     {
