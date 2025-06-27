@@ -4,21 +4,6 @@ namespace Essentio\Core;
 
 use Throwable;
 
-use function count;
-use function explode;
-use function file_get_contents;
-use function function_exists;
-use function getallheaders;
-use function in_array;
-use function is_array;
-use function json_decode;
-use function json_encode;
-use function parse_url;
-use function simplexml_load_string;
-use function str_contains;
-use function strtoupper;
-use function trim;
-
 class Request
 {
     public array $errors = [];

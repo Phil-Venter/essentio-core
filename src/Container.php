@@ -4,10 +4,6 @@ namespace Essentio\Core;
 
 use RuntimeException;
 
-use function array_key_exists;
-use function class_exists;
-use function is_string;
-
 class Container
 {
     protected static $instance;
@@ -21,53 +17,72 @@ class Container
         return static::$instance ??= new static();
     }
 
-    public function bind(string $abstract, callable|string|null $concrete = null): static
+    /**
+     * @template T
+     * @param class-string<T> $id
+     * @param callable():T|class-string<T>|null $concrete
+     * @return static
+     */
+    public function bind(string $id, callable|string|null $concrete = null): static
     {
-        $concrete ??= $abstract;
-
-        if (is_string($concrete) && !class_exists($concrete, true)) {
-            throw new RuntimeException("Cannot bind [{$abstract}] to [{$concrete}].");
+        if (is_string($concrete ??= $id) && !class_exists($concrete, true)) {
+            throw new RuntimeException("Cannot bind [{$id}] to [{$concrete}].");
         }
 
-        $this->bindings[$abstract] = $concrete;
+        $this->bindings[$id] = $concrete;
         return $this;
-    }
-
-    public function once(string $abstract, callable|string|null $concrete = null): static
-    {
-        $this->cache[$abstract] = null;
-        return $this->bind($abstract, $concrete);
     }
 
     /**
      * @template T
-     * @param class-string<T> $abstract
+     * @param class-string<T> $id
+     * @param callable():T|class-string<T>|null $concrete
+     * @return static
+     */
+    public function once(string $id, callable|string|null $concrete = null): static
+    {
+        $this->cache[$id] = null;
+        return $this->bind($id, $concrete);
+    }
+
+    /**
+     * @template T
+     * @param class-string<T> $id
      * @param array<string,mixed>|list<mixed> $dependencies
      * @return T
      */
-    public function resolve(string $abstract, array $dependencies = []): object
+    public function get(string $id, array $dependencies = []): object
     {
-        if (!isset($this->bindings[$abstract])) {
-            if (class_exists($abstract, true)) {
-                return new $abstract(...$dependencies);
+        if (!isset($this->bindings[$id])) {
+            if (class_exists($id, true)) {
+                return new $id(...$dependencies);
             }
 
-            throw new RuntimeException("Service [{$abstract}] is not bound and cannot be instantiated.");
+            throw new RuntimeException("Service [{$id}] is not bound and cannot be instantiated.");
         }
 
-        $once = array_key_exists($abstract, $this->cache);
+        $once = $once = array_key_exists($id, $this->cache);
 
-        if ($once && $this->cache[$abstract] !== null) {
-            return $this->cache[$abstract];
+        if ($once && $this->cache[$id] !== null) {
+            return $this->cache[$id];
         }
 
-        $concrete = $this->bindings[$abstract];
+        $concrete = $this->bindings[$id];
         $resolved = is_string($concrete) ? new $concrete(...$dependencies) : $concrete(...$dependencies);
 
         if ($once) {
-            $this->cache[$abstract] = $resolved;
+            $this->cache[$id] = $resolved;
         }
 
         return $resolved;
+    }
+
+    /**
+     * @param class-string $id
+     * @return bool
+     */
+    public function has(string $id): bool
+    {
+        return isset($this->bindings[$id]);
     }
 }

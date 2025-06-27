@@ -5,13 +5,13 @@ class Application
     public static function http(string $basePath): void
     {
         Container::instance()->once(Helper::class, fn(): Helper => Helper::create($basePath));
-        Container::instance()->once(Environment::class, fn(): Environment => Environment::create(Container::instance()->resolve(Helper::class)));
+        Container::instance()->once(Environment::class, fn(): Environment => Environment::create(Container::instance()->get(Helper::class)));
         Container::instance()->once(Session::class, fn(): Session => Session::create());
         Container::instance()->once(Request::class, fn(): Request => Request::create());
         Container::instance()->once(Response::class);
 
         Container::instance()->once(Jwt::class, function () {
-            $env = Container::instance()->resolve(Environment::class);
+            $env = Container::instance()->get(Environment::class);
             return new Jwt($env->get("JWT_SECRET") ?? "", $env->get("JWT_ISSUER"));
         });
     }
@@ -19,17 +19,17 @@ class Application
     public static function cli(string $basePath): void
     {
         Container::instance()->once(Helper::class, fn(): Helper => Helper::create($basePath));
-        Container::instance()->once(Environment::class, fn(): Environment => Environment::create(Container::instance()->resolve(Helper::class)));
-        Container::instance()->once(Argument::class, fn(): Argument => Argument::create(Container::instance()->resolve(Helper::class)));
+        Container::instance()->once(Environment::class, fn(): Environment => Environment::create(Container::instance()->get(Helper::class)));
+        Container::instance()->once(Argument::class, fn(): Argument => Argument::create(Container::instance()->get(Helper::class)));
     }
 
     public static function run(): void
     {
-        $request = Container::instance()->resolve(Request::class);
-        $response = Container::instance()->resolve(Response::class);
+        $request = Container::instance()->get(Request::class);
+        $response = Container::instance()->get(Response::class);
 
         try {
-            Container::instance()->resolve(Router::class)->dispatch($request, $response)->send();
+            Container::instance()->get(Router::class)->dispatch($request, $response)->send();
         } catch (HttpException $e) {
             $status = $e->getCode() ?: 500;
             $response->setStatus($status)->setBody($e->getMessage())->send();
@@ -123,54 +123,73 @@ class Container
         return static::$instance ??= new static();
     }
 
-    public function bind(string $abstract, callable|string|null $concrete = null): static
+    /**
+     * @template T
+     * @param class-string<T> $id
+     * @param callable():T|class-string<T>|null $concrete
+     * @return static
+     */
+    public function bind(string $id, callable|string|null $concrete = null): static
     {
-        $concrete ??= $abstract;
-
-        if (is_string($concrete) && !class_exists($concrete, true)) {
-            throw new RuntimeException("Cannot bind [{$abstract}] to [{$concrete}].");
+        if (is_string($concrete ??= $id) && !class_exists($concrete, true)) {
+            throw new RuntimeException("Cannot bind [{$id}] to [{$concrete}].");
         }
 
-        $this->bindings[$abstract] = $concrete;
+        $this->bindings[$id] = $concrete;
         return $this;
-    }
-
-    public function once(string $abstract, callable|string|null $concrete = null): static
-    {
-        $this->cache[$abstract] = null;
-        return $this->bind($abstract, $concrete);
     }
 
     /**
      * @template T
-     * @param class-string<T> $abstract
+     * @param class-string<T> $id
+     * @param callable():T|class-string<T>|null $concrete
+     * @return static
+     */
+    public function once(string $id, callable|string|null $concrete = null): static
+    {
+        $this->cache[$id] = null;
+        return $this->bind($id, $concrete);
+    }
+
+    /**
+     * @template T
+     * @param class-string<T> $id
      * @param array<string,mixed>|list<mixed> $dependencies
      * @return T
      */
-    public function resolve(string $abstract, array $dependencies = []): object
+    public function get(string $id, array $dependencies = []): object
     {
-        if (!isset($this->bindings[$abstract])) {
-            if (class_exists($abstract, true)) {
-                return new $abstract(...$dependencies);
+        if (!isset($this->bindings[$id])) {
+            if (class_exists($id, true)) {
+                return new $id(...$dependencies);
             }
 
-            throw new RuntimeException("Service [{$abstract}] is not bound and cannot be instantiated.");
+            throw new RuntimeException("Service [{$id}] is not bound and cannot be instantiated.");
         }
 
-        $once = array_key_exists($abstract, $this->cache);
+        $once = $once = array_key_exists($id, $this->cache);
 
-        if ($once && $this->cache[$abstract] !== null) {
-            return $this->cache[$abstract];
+        if ($once && $this->cache[$id] !== null) {
+            return $this->cache[$id];
         }
 
-        $concrete = $this->bindings[$abstract];
+        $concrete = $this->bindings[$id];
         $resolved = is_string($concrete) ? new $concrete(...$dependencies) : $concrete(...$dependencies);
 
         if ($once) {
-            $this->cache[$abstract] = $resolved;
+            $this->cache[$id] = $resolved;
         }
 
         return $resolved;
+    }
+
+    /**
+     * @param class-string $id
+     * @return bool
+     */
+    public function has(string $id): bool
+    {
+        return isset($this->bindings[$id]);
     }
 }
 
@@ -184,10 +203,9 @@ class Environment
             return new static();
         }
 
-        $lines = file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
         $data = [];
 
-        foreach ($lines as $line) {
+        foreach (file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] as $line) {
             if (empty($line) || $line[0] === "#" || !str_contains($line, "=")) {
                 continue;
             }
@@ -280,41 +298,52 @@ class Jwt
 
     public function encode(array $payload): string
     {
-        $header = ["alg" => "HS256", "typ" => "JWT"];
-        $this->issuer !== null and ($payload["iss"] = $this->issuer);
-        $segments = [$this->base64url_encode(json_encode($header)), $this->base64url_encode(json_encode($payload))];
-        $signingInput = implode(".", $segments);
-        $signature = $this->sign($signingInput);
+        if ($this->issuer !== null) {
+            $payload["iss"] = $this->issuer;
+        }
 
+        $segments[] = $this->base64url_encode(json_encode(["alg" => "HS256", "typ" => "JWT"]));
+        $segments[] = $this->base64url_encode(json_encode($payload));
+        $signature = $this->sign(implode(".", $segments));
         $segments[] = $this->base64url_encode($signature);
+
         return implode(".", $segments);
     }
 
     public function decode(string $token): array
     {
         [$header64, $payload64, $signature64] = explode(".", $token);
-        $signingInput = "$header64.$payload64";
         $signature = $this->base64url_decode($signature64);
 
-        if (!hash_equals($this->sign($signingInput), $signature)) {
+        $header = json_decode($this->base64url_decode($header64), true);
+
+        if (!is_array($header) || ($header["alg"] ?? null) !== "HS256") {
+            throw new RuntimeException("Unsupported or missing algorithm");
+        }
+
+        if (!hash_equals($this->sign("$header64.$payload64"), $signature)) {
             throw new RuntimeException("Invalid token signature");
         }
 
         $payload = json_decode($this->base64url_decode($payload64), true);
 
-        if ($this->issuer !== null && (!isset($payload["iss"]) || $this->issuer !== $payload["iss"])) {
+        if (!is_array($payload)) {
+            throw new RuntimeException("Invalid payload format");
+        }
+
+        if (($this->issuer ?? null) !== ($payload["iss"] ?? null)) {
             throw new RuntimeException("Invalid issuer");
         }
 
-        if (isset($payload["exp"]) && time() > $payload["exp"]) {
+        if (isset($payload["exp"]) && time() > (int) $payload["exp"]) {
             throw new RuntimeException("Token has expired");
         }
 
-        if (isset($payload["iat"]) && time() < $payload["iat"]) {
+        if (isset($payload["iat"]) && time() < (int) $payload["iat"]) {
             throw new RuntimeException("Token not valid yet");
         }
 
-        if (isset($payload["nbf"]) && time() < $payload["nbf"]) {
+        if (isset($payload["nbf"]) && time() < (int) $payload["nbf"]) {
             throw new RuntimeException("Token not valid yet");
         }
 
@@ -328,6 +357,10 @@ class Jwt
 
     protected function base64url_decode(string $data): string
     {
+        if ($remainder = strlen($data) % 4) {
+            $data .= str_repeat("=", 4 - $remainder);
+        }
+
         return base64_decode(strtr($data, "-_", "+/"));
     }
 
@@ -667,7 +700,6 @@ class Session
 
         $_SESSION[static::FLASH_OLD] = $_SESSION[static::FLASH_NEW] ?? [];
         $_SESSION[static::FLASH_NEW] = [];
-
         return new static();
     }
 
@@ -768,7 +800,7 @@ class Template
  */
 function app(string $abstract): object
 {
-    return Container::instance()->resolve($abstract);
+    return Container::instance()->get($abstract);
 }
 
 /**
@@ -779,7 +811,7 @@ function app(string $abstract): object
  */
 function map(string $abstract, array $dependencies = []): object
 {
-    return Container::instance()->resolve($abstract, $dependencies);
+    return Container::instance()->get($abstract, $dependencies);
 }
 
 function bind(string $abstract, callable|string|null $concrete = null): void

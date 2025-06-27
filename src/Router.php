@@ -5,17 +5,6 @@ namespace Essentio\Core;
 use InvalidArgumentException;
 use Stringable;
 
-use function array_combine;
-use function array_reverse;
-use function array_shift;
-use function explode;
-use function http_build_query;
-use function preg_replace;
-use function rawurlencode;
-use function str_starts_with;
-use function substr;
-use function trim;
-
 class Router
 {
     protected const LEAF = "\0LEAF_NODE";

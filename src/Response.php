@@ -4,12 +4,6 @@ namespace Essentio\Core;
 
 use Stringable;
 
-use function header;
-use function header_remove;
-use function headers_sent;
-use function http_response_code;
-use function is_array;
-
 class Response
 {
     protected int $status = 200;

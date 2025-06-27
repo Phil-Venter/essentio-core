@@ -19,7 +19,7 @@ use Essentio\Core\Template;
  */
 function app(string $abstract): object
 {
-    return Container::instance()->resolve($abstract);
+    return Container::instance()->get($abstract);
 }
 
 /**
@@ -30,7 +30,7 @@ function app(string $abstract): object
  */
 function map(string $abstract, array $dependencies = []): object
 {
-    return Container::instance()->resolve($abstract, $dependencies);
+    return Container::instance()->get($abstract, $dependencies);
 }
 
 function bind(string $abstract, callable|string|null $concrete = null): void
@@ -43,7 +43,7 @@ function once(string $abstract, callable|string|null $concrete = null): void
     Container::instance()->once($abstract, $concrete);
 }
 
-function base(string $path): string
+function base_path(string $path): string
 {
     return app(Helper::class)->fromBase($path);
 }

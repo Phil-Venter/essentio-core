@@ -4,59 +4,58 @@ namespace Essentio\Core;
 
 use RuntimeException;
 
-use function base64_decode;
-use function base64_encode;
-use function explode;
-use function hash_equals;
-use function hash_hmac;
-use function implode;
-use function json_decode;
-use function json_encode;
-use function rtrim;
-use function strtr;
-use function time;
-
 class Jwt
 {
     public function __construct(protected string $secret, protected ?string $issuer = null) {}
 
     public function encode(array $payload): string
     {
-        $header = ["alg" => "HS256", "typ" => "JWT"];
-        $this->issuer !== null and ($payload["iss"] = $this->issuer);
-        $segments = [$this->base64url_encode(json_encode($header)), $this->base64url_encode(json_encode($payload))];
-        $signingInput = implode(".", $segments);
-        $signature = $this->sign($signingInput);
+        if ($this->issuer !== null) {
+            $payload["iss"] = $this->issuer;
+        }
 
+        $segments[] = $this->base64url_encode(json_encode(["alg" => "HS256", "typ" => "JWT"]));
+        $segments[] = $this->base64url_encode(json_encode($payload));
+        $signature = $this->sign(implode(".", $segments));
         $segments[] = $this->base64url_encode($signature);
+
         return implode(".", $segments);
     }
 
     public function decode(string $token): array
     {
         [$header64, $payload64, $signature64] = explode(".", $token);
-        $signingInput = "$header64.$payload64";
         $signature = $this->base64url_decode($signature64);
 
-        if (!hash_equals($this->sign($signingInput), $signature)) {
+        $header = json_decode($this->base64url_decode($header64), true);
+
+        if (!is_array($header) || ($header["alg"] ?? null) !== "HS256") {
+            throw new RuntimeException("Unsupported or missing algorithm");
+        }
+
+        if (!hash_equals($this->sign("$header64.$payload64"), $signature)) {
             throw new RuntimeException("Invalid token signature");
         }
 
         $payload = json_decode($this->base64url_decode($payload64), true);
 
-        if ($this->issuer !== null && (!isset($payload["iss"]) || $this->issuer !== $payload["iss"])) {
+        if (!is_array($payload)) {
+            throw new RuntimeException("Invalid payload format");
+        }
+
+        if (($this->issuer ?? null) !== ($payload["iss"] ?? null)) {
             throw new RuntimeException("Invalid issuer");
         }
 
-        if (isset($payload["exp"]) && time() > $payload["exp"]) {
+        if (isset($payload["exp"]) && time() > (int) $payload["exp"]) {
             throw new RuntimeException("Token has expired");
         }
 
-        if (isset($payload["iat"]) && time() < $payload["iat"]) {
+        if (isset($payload["iat"]) && time() < (int) $payload["iat"]) {
             throw new RuntimeException("Token not valid yet");
         }
 
-        if (isset($payload["nbf"]) && time() < $payload["nbf"]) {
+        if (isset($payload["nbf"]) && time() < (int) $payload["nbf"]) {
             throw new RuntimeException("Token not valid yet");
         }
 
@@ -70,6 +69,10 @@ class Jwt
 
     protected function base64url_decode(string $data): string
     {
+        if ($remainder = strlen($data) % 4) {
+            $data .= str_repeat("=", 4 - $remainder);
+        }
+
         return base64_decode(strtr($data, "-_", "+/"));
     }
 

@@ -2,11 +2,6 @@
 
 namespace Essentio\Core;
 
-use function array_pop;
-use function extract;
-use function ob_get_clean;
-use function ob_start;
-
 class Template
 {
     protected array $segments = [];

@@ -2,14 +2,6 @@
 
 namespace Essentio\Core;
 
-use function array_map;
-use function array_merge;
-use function array_shift;
-use function explode;
-use function mb_stripos;
-use function str_starts_with;
-use function substr;
-
 class Argument
 {
     public function __construct(public readonly string $command = "", protected array $arguments = []) {}

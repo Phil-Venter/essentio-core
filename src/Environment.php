@@ -2,12 +2,6 @@
 
 namespace Essentio\Core;
 
-use function explode;
-use function file;
-use function file_exists;
-use function str_contains;
-use function trim;
-
 class Environment
 {
     public function __construct(protected array $data = []) {}
@@ -18,10 +12,9 @@ class Environment
             return new static();
         }
 
-        $lines = file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
         $data = [];
 
-        foreach ($lines as $line) {
+        foreach (file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] as $line) {
             if (empty($line) || $line[0] === "#" || !str_contains($line, "=")) {
                 continue;
             }

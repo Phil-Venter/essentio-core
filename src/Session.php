@@ -2,11 +2,6 @@
 
 namespace Essentio\Core;
 
-use function bin2hex;
-use function random_bytes;
-use function session_start;
-use function session_status;
-
 class Session
 {
     protected const FLASH_OLD = "\0FLASH_OLD";
@@ -23,7 +18,6 @@ class Session
 
         $_SESSION[static::FLASH_OLD] = $_SESSION[static::FLASH_NEW] ?? [];
         $_SESSION[static::FLASH_NEW] = [];
-
         return new static();
     }
 
