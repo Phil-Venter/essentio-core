@@ -8,7 +8,6 @@ on:
 
 permissions:
     contents: read
-    actions: write
 
 jobs:
     test:
@@ -40,51 +39,3 @@ jobs:
 
             - name: Run test suite
               run: php ./vendor/bin/pest
-
-    build-dist:
-        name: Build dist (PHP 8.2)
-        runs-on: ubuntu-latest
-        needs: test
-        steps:
-            - uses: actions/checkout@v4
-
-            - name: Setup PHP
-              uses: shivammathur/setup-php@v2
-              with:
-                  php-version: 8.2
-
-            - name: Cache Composer packages
-              uses: actions/cache@v3
-              with:
-                  path: vendor
-                  key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
-                  restore-keys: ${{ runner.os }}-php-
-
-            - name: Install dependencies
-              run: composer install --prefer-dist --no-progress
-
-            - name: Run Rector (format)
-              run: php ./vendor/bin/rector
-
-            - name: Ensure clean dist
-              run: rm -rf dist && mkdir -p dist
-
-            - name: Build base dist
-              run: php bin/build.php dist/base.php
-
-            - name: Build full dist
-              run: php bin/build.php --extra dist/full.php
-
-            - name: Confirm build output
-              run: |
-                  echo "Built dist contents:"
-                  find dist/ -type f -exec ls -l {} \;
-
-            - name: Checksum of dist files
-              run: find dist/ -type f -exec sha256sum {} \;
-
-            - name: Upload dist files
-              uses: actions/upload-artifact@v4
-              with:
-                  name: essentio-dist
-                  path: dist/

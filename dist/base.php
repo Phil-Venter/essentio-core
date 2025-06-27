@@ -824,7 +824,7 @@ function once(string $abstract, callable|string|null $concrete = null): void
     Container::instance()->once($abstract, $concrete);
 }
 
-function base(string $path): string
+function base_path(string $path): string
 {
     return app(Helper::class)->fromBase($path);
 }
@@ -965,7 +965,7 @@ function delete(string $path, callable $handle): RouteInterface
 
 function named_url(string $name, array $params = []): string
 {
-    return app(Router::class)->makeUrlByName($name, $params);
+    return Router::makeUrlByName($name, $params);
 }
 
 function render(string $template, array $data = []): string

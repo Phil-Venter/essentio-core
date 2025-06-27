@@ -21,9 +21,11 @@
     },
     "minimum-stability": "stable",
     "scripts": {
-        "runner": "composer format && composer test",
+        "runner": "composer format && composer test && composer build:base 'dist/base.php' && composer build:full 'dist/full.php'",
         "format": "./vendor/bin/rector",
-        "test": "./vendor/bin/pest"
+        "test": "./vendor/bin/pest",
+        "build:base": "php ./bin/build.php",
+        "build:full": "php ./bin/build.php --extra"
     },
     "config": {
         "allow-plugins": {
