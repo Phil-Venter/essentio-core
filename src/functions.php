@@ -138,6 +138,15 @@ function middleware(callable $middleware): void
 }
 
 /**
+ * @param string $prefix
+ * @param callable(void): void $group
+ */
+function group(string $prefix, callable $group): void
+{
+    Router::group($prefix, $group);
+}
+
+/**
  * @param string $path
  * @param callable $handle
  * @return Route

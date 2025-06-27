@@ -8,6 +8,11 @@ class Jwt
 {
     public function __construct(protected string $secret, protected ?string $issuer = null) {}
 
+    public static function create(Environment $env): static
+    {
+        return new static($env->get("JWT_SECRET") ?? "", $env->get("JWT_ISSUER"));
+    }
+
     public function encode(array $payload): string
     {
         if ($this->issuer !== null) {

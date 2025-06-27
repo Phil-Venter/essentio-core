@@ -21,7 +21,6 @@ return RectorConfig::configure()
     ->withCodingStyleLevel(8)
     ->withImportNames(removeUnusedImports: true)
     ->withRules([
-        AddArrowFunctionReturnTypeRector::class,
         RemoveDeadReturnRector::class,
         RemoveUselessAliasInUseStatementRector::class,
         RenameForeachValueVariableToMatchMethodCallReturnTypeRector::class,

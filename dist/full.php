@@ -2,25 +2,21 @@
 
 class Application
 {
-    public static function http(string $basePath): void
-    {
-        Container::instance()->once(Helper::class, fn(): Helper => Helper::create($basePath));
-        Container::instance()->once(Environment::class, fn(): Environment => Environment::create(Container::instance()->get(Helper::class)));
-        Container::instance()->once(Session::class, fn(): Session => Session::create());
-        Container::instance()->once(Request::class, fn(): Request => Request::create());
-        Container::instance()->once(Response::class);
-
-        Container::instance()->once(Jwt::class, function () {
-            $env = Container::instance()->get(Environment::class);
-            return new Jwt($env->get("JWT_SECRET") ?? "", $env->get("JWT_ISSUER"));
-        });
-    }
-
     public static function cli(string $basePath): void
     {
-        Container::instance()->once(Helper::class, fn(): Helper => Helper::create($basePath));
-        Container::instance()->once(Environment::class, fn(): Environment => Environment::create(Container::instance()->get(Helper::class)));
-        Container::instance()->once(Argument::class, fn(): Argument => Argument::create(Container::instance()->get(Helper::class)));
+        Container::instance()->once(Argument::class, fn() => Argument::create(Container::instance()->get(Helper::class)));
+        Container::instance()->once(Environment::class, fn() => Environment::create(Container::instance()->get(Helper::class)));
+        Container::instance()->once(Helper::class, fn() => Helper::create($basePath));
+    }
+
+    public static function http(string $basePath): void
+    {
+        Container::instance()->once(Environment::class, fn() => Environment::create(Container::instance()->get(Helper::class)));
+        Container::instance()->once(Helper::class, fn() => Helper::create($basePath));
+        Container::instance()->once(Jwt::class, fn() => Jwt::create(Container::instance()->get(Environment::class)));
+        Container::instance()->once(Request::class, fn() => Request::create());
+        Container::instance()->once(Response::class);
+        Container::instance()->once(Session::class, fn() => Session::create());
     }
 
     public static function run(): void
@@ -46,12 +42,12 @@ class Argument
     public static function create(Helper $helper, ?array $argv = null): static
     {
         $argv ??= $_SERVER["argv"] ?? [];
-        array_shift($argv);
 
-        if (empty($argv)) {
+        if (count($argv) <= 1) {
             return new static();
         }
 
+        array_shift($argv);
         $command = "";
         $arguments = [];
 
@@ -295,6 +291,11 @@ class HttpException extends Exception
 class Jwt
 {
     public function __construct(protected string $secret, protected ?string $issuer = null) {}
+
+    public static function create(Environment $env): static
+    {
+        return new static($env->get("JWT_SECRET") ?? "", $env->get("JWT_ISSUER"));
+    }
 
     public function encode(array $payload): string
     {
@@ -555,6 +556,8 @@ class Router
 
     protected static array $middleware = [];
 
+    protected static string $prefix = "";
+
     protected static array $routes = [];
 
     protected static array $lookup = [];
@@ -564,9 +567,17 @@ class Router
         static::$middleware[] = $middleware;
     }
 
+    public static function group(string $prefix, callable $group): void
+    {
+        [$oldPrefix, $oldMiddleware] = [static::$prefix, static::$middleware];
+        static::$prefix .= $prefix;
+        $group();
+        [static::$prefix, static::$middleware] = [$oldPrefix, $oldMiddleware];
+    }
+
     public static function route(string $method, string $path, callable $handler): RouteInterface
     {
-        $path = trim((string) preg_replace("#/+#", "/", $path), "/");
+        $path = trim((string) preg_replace("#/+#", "/", static::$prefix . $path), "/");
         $node = &static::$routes;
         $params = [];
 
@@ -579,10 +590,10 @@ class Router
             }
         }
 
-        return $node[static::LEAF][$method] = new class ($path, $params, $handler) implements RouteInterface {
-            public array $middleware = [];
+        $middleware = static::$middleware;
 
-            public function __construct(public string $path, public array $params, public $handler) {}
+        return $node[static::LEAF][$method] = new class ($path, $params, $middleware, $handler) implements RouteInterface {
+            public function __construct(public string $path, public array $params, public array $middleware, public $handler) {}
 
             public function name(string $name): static
             {
@@ -663,10 +674,6 @@ class Router
         $handler = $route->handler;
 
         foreach (array_reverse($route->middleware) as $mw) {
-            $handler = fn(Request $req) => $mw($req, $handler);
-        }
-
-        foreach (array_reverse(static::$middleware) as $mw) {
             $handler = fn(Request $req) => $mw($req, $handler);
         }
 
@@ -1643,6 +1650,15 @@ function jwt(array|string $payload): array|string
 function middleware(callable $middleware): void
 {
     Router::middleware($middleware);
+}
+
+/**
+ * @param string $prefix
+ * @param callable(void): void $group
+ */
+function group(string $prefix, callable $group): void
+{
+    Router::group($prefix, $group);
 }
 
 /**

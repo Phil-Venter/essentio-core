@@ -9,12 +9,12 @@ class Argument
     public static function create(Helper $helper, ?array $argv = null): static
     {
         $argv ??= $_SERVER["argv"] ?? [];
-        array_shift($argv);
 
-        if (empty($argv)) {
+        if (count($argv) <= 1) {
             return new static();
         }
 
+        array_shift($argv);
         $command = "";
         $arguments = [];
 

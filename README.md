@@ -126,187 +126,100 @@ Whether you’re building tools, APIs, internal apps, or microservices—Essenti
 
 ## 🧠 What You Get
 
-### 🧩 Core (`base.php` and `full.php`)
+### 🧩 Core Components (`base.php` & `full.php`)
 
 #### 📦 Classes
 
-| Class           | Purpose                        |
-| --------------- | ------------------------------ |
-| `Application`   | Bootstaps HTTP/CLI lifecycle   |
-| `Container`     | Bindings, singleton resolution |
-| `Router`        | Routes + middleware            |
-| `Route`         | Router leaf node               |
-| `Request`       | Unified input                  |
-| `Response`      | Output handler                 |
-| `Session`       | Session + flash + CSRF         |
-| `Template`      | PHP layout segments            |
-| `Jwt`           | Stateless JWT handling         |
-| `Environment`   | Typed `.env` loader            |
-| `HttpException` | HTTP errors                    |
+| Class           | Description                              |
+| --------------- | ---------------------------------------- |
+| `Application`   | Initializes HTTP or CLI context          |
+| `Container`     | Dependency injection container           |
+| `Router`        | Route registry and dispatcher            |
+| `Request`       | Normalized HTTP request abstraction      |
+| `Response`      | Fluent HTTP response builder             |
+| `Session`       | Native session management + CSRF support |
+| `Template`      | Layout/segment PHP-based template engine |
+| `Jwt`           | Stateless JWT encoder/decoder            |
+| `Environment`   | `.env` file parser with auto-casting     |
+| `HttpException` | Structured HTTP error generator          |
 
-### 🌍 Global Helpers
+---
+
+### 🌍 Global Helper Functions
 
 #### 🧱 Dependency Injection
 
-| Function              | Purpose               |
-| --------------------- | --------------------- |
-| `app()`, `map()`      | Resolve services      |
-| `bind()`, `once()`    | Register services     |
+| Function           | Description                   |
+| ------------------ | ----------------------------- |
+| `app(class)`       | Get a singleton instance      |
+| `map(class, deps)` | Create a new instance         |
+| `bind(class, ...)` | Register service (multi-call) |
+| `once(class, ...)` | Register singleton (one-time) |
 
-#### ⚙️ Environment & Path
+#### ⚙️ Environment & Paths
 
-| Function     | Purpose             |
-| ------------ | ------------------- |
-| `base()`     | Base path resolver  |
-| `env()`      | Environment values  |
+| Function          | Description                 |
+| ----------------- | --------------------------- |
+| `base_path(path)` | Join path to base directory |
+| `env(key)`        | Retrieve `.env` variable    |
 
 #### 🌐 Routing & Requests
 
-| Function                                          | Purpose               |
-| ------------------------------------------------- | --------------------- |
-| `get()`, `post()`, `put()`, `patch()`, `delete()` | Route registration    |
-| `request()`, `input()`                            | Access input values   |
-| `sanitize()`                                      | Validate + cast input |
+| Function                                    | Description                       |
+| ------------------------------------------- | --------------------------------- |
+| `middleware(fn)`                            | Global middleware registration    |
+| `group(prefix, fn)`                         | Grouped routes under a prefix     |
+| `get(path, fn)` `post(path, fn)` `put()`... | Route registration for HTTP verbs |
+| `request(key)`<br>`input(field)`            | Access route/query/form input     |
+| `sanitize(rules, onError)`                  | Cast + validate user input        |
 
-#### 🗂️ Session & Protection
+#### 🗂️ Sessions & Security
 
-| Function              | Purpose              |
-| --------------------- | -------------------- |
-| `session()`, `flash()`| Session state        |
-| `csrf()`              | CSRF token utilities |
-| `jwt()`               | JWT encode/decode    |
+| Function                 | Description                   |
+| ------------------------ | ----------------------------- |
+| `session(key)`           | Get/set session variable      |
+| `flash(key)`             | Temporary one-request data    |
+| `csrf()` / `csrf(token)` | Generate or verify CSRF token |
+| `jwt(data)`              | Encode/Decode JWT payload     |
 
-#### 📤 Response Helpers
+#### 📤 Responses
 
-| Function                           | Purpose         |
-| ---------------------------------- | --------------- |
-| `render()`                         | Render template |
-| `json()`, `text()`, `html()`       | Send responses  |
-| `redirect()`                       | Issue redirect  |
-| `view()`                           | Template view   |
+| Function                                | Description                    |
+| --------------------------------------- | ------------------------------ |
+| `render(template, data)`                | Render template to string      |
+| `html(str)`, `text(str)`, `json(mixed)` | Send typed response content    |
+| `redirect(uri, status)`                 | Issue HTTP redirect            |
+| `view(template, data)`                  | Return templated HTML response |
 
-#### 🛠️ Utilities
+#### 🛠️ Miscellaneous
 
-| Function        | Purpose              |
-| --------------- | -------------------- |
-| `throw_if()`    | Conditional throw    |
+| Function                 | Description                  |
+| ------------------------ | ---------------------------- |
+| `throw_if(cond, except)` | Conditionally throw an error |
 
-### ➕ Extras (`full.php` only)
+---
 
-#### 📦 Extra Classes
+### ➕ Extended Utilities (`full.php` only)
 
-| Class      | Purpose                           |
-| ---------- | --------------------------------- |
-| `Cast`     | Input casting for sanitization    |
-| `Query`    | Fluent SQL builder                |
-| `Validate` | Declarative validation rules      |
+#### 📦 Additional Classes
 
-#### 🌍 Extra Global Helpers
+| Class      | Description                            |
+| ---------- | -------------------------------------- |
+| `Cast`     | Input transformation (type coercion)   |
+| `Validate` | Validation rules (regex, bounds, etc.) |
+| `Query`    | Fluent SQL query builder (PDO-based)   |
 
-| Function    | Purpose                |
-| ----------- | ---------------------- |
-| `query()`   | SQL builder entrypoint |
+#### 🌍 Additional Helpers
+
+| Function  | Description                |
+| --------- | -------------------------- |
+| `query()` | Instantiate `Query` object |
 
 You need to explicitly bind the query builder to the container before using it.
 
 ```php
-once(PDO::class, fn() => new PDO("sqlite:" . base("database.sqlite")));
+once(PDO::class, fn() => new PDO("sqlite:" . base_path("database.sqlite")));
 bind(Query::class, fn() => new Query(app(PDO::class)));
-```
-
----
-
-## 🧾 Example App
-
-A simple starting point for more advanced apps
-
-```bash
-curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/full.php -o framework.php
-```
-
-`public/index.php`
-```php
-require_once __DIR__ . '/../framework.php';
-
-Application::http(__DIR__ . '/..');
-
-require_once base('bootstrap.php');
-require_once base('app.php');
-
-Application::run();
-```
-
-`app.php`
-```php
-# CONTAINER
-once(PDO::class, fn() => new PDO("sqlite:" . base("database.sqlite")));
-bind(Query::class, fn() => new Query(app(PDO::class)));
-
-# ROUTES
-get("/__ping", fn() => text("pong"));
-```
-
-`bootstrap.php`
-```php
-# ERROR LOGGING MIDDLEWARE
-middleware(function (Request $req, $next) {
-    try {
-        return $next($req);
-    } catch (Throwable $e) {
-        foreach ($e->getTrace() as $frame) {
-            if (isset($frame["file"]) && !str_contains($frame["file"], "full.php")) {
-                $file = $frame["file"];
-                $line = $frame["line"];
-                break;
-            }
-        }
-
-        $file ??= $e->getFile();
-        $line ??= $e->getLine();
-
-        error_log("[{$req->method}] /{$req->path} - {$e->getMessage()} {$file}:{$line}");
-        throw $e;
-    }
-});
-
-# CSRF MIDDLEWARE
-middleware(function (Request $req, $next) {
-    if (
-        $req->contentType !== "application/json" &&
-        in_array($req->method, ["POST", "PUT", "PATCH", "DELETE"]) &&
-        !csrf(input("_csrf") ?? ($req->headers["X-CSRF-TOKEN"] ?? ""))
-    ) {
-        throw HttpException::create(403, "CSRF token mismatch");
-    }
-
-    return $next($req);
-});
-
-# JWT MIDDLEWARE ON api/
-middleware(function (Request $req, $next) {
-    if ($req->contentType === "application/json" && str_starts_with($req->path, "api/")) {
-        try {
-            jwt(trim(str_replace("Bearer ", "", $req->headers["Authorization"] ?? "")));
-        } catch (Throwable) {
-            throw HttpException::create(401, "Unauthorized");
-        }
-
-        return app(Response::class)->addHeaders(["Content-Type" => "application/json"]);
-    }
-
-    return $next($req);
-});
-
-# SECURITY HEADERS
-middleware(function (Request $req, $next) {
-    return $next($req)->addHeaders([
-        "X-Content-Type-Options" => "nosniff",
-        "X-Frame-Options" => "DENY",
-        "X-XSS-Protection" => "1; mode=block",
-        "Referrer-Policy" => "strict-origin-when-cross-origin",
-        "Content-Security-Policy" => "default-src 'self'; object-src 'none'; frame-ancestors 'none';",
-    ]);
-});
 ```
 
 ---
@@ -331,22 +244,20 @@ If it happens, it’s because you wrote it.
 Measured using [cloc](https://github.com/AlDanial/cloc):
 
 **Base:**
-
 ```
 -------------------------------------------------------------------------------
 Language                     files          blank        comment           code
 -------------------------------------------------------------------------------
-PHP                              1            192             86            744
+PHP                              1            194             90            754
 -------------------------------------------------------------------------------
 ```
 
 **Full (with Extras):**
-
 ```
 -------------------------------------------------------------------------------
 Language                     files          blank        comment           code
 -------------------------------------------------------------------------------
-PHP                              1            361             86           1307
+PHP                              1            363             90           1317
 -------------------------------------------------------------------------------
 ```
 
@@ -355,7 +266,7 @@ PHP                              1            361             86           1307
 -------------------------------------------------------------------------------
 Language                     files          blank        comment           code
 -------------------------------------------------------------------------------
-PHP                             18            389             86           1376
+PHP                             18            391             90           1386
 -------------------------------------------------------------------------------
 ```
 
@@ -366,6 +277,8 @@ PHP                             18            389             86           1376
 Essentio is licensed under the [0BSD License](https://opensource.org/licenses/0BSD). No conditions. No attribution. No nonsense.
 
 Use it. Fork it. Rip it apart. Whatever helps you ship.
+
+---
 
 ## 🤝 Contributing
 

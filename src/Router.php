@@ -13,6 +13,8 @@ class Router
 
     protected static array $middleware = [];
 
+    protected static string $prefix = "";
+
     protected static array $routes = [];
 
     protected static array $lookup = [];
@@ -22,9 +24,17 @@ class Router
         static::$middleware[] = $middleware;
     }
 
+    public static function group(string $prefix, callable $group): void
+    {
+        [$oldPrefix, $oldMiddleware] = [static::$prefix, static::$middleware];
+        static::$prefix .= $prefix;
+        $group();
+        [static::$prefix, static::$middleware] = [$oldPrefix, $oldMiddleware];
+    }
+
     public static function route(string $method, string $path, callable $handler): RouteInterface
     {
-        $path = trim((string) preg_replace("#/+#", "/", $path), "/");
+        $path = trim((string) preg_replace("#/+#", "/", static::$prefix . $path), "/");
         $node = &static::$routes;
         $params = [];
 
@@ -37,10 +47,10 @@ class Router
             }
         }
 
-        return $node[static::LEAF][$method] = new class ($path, $params, $handler) implements RouteInterface {
-            public array $middleware = [];
+        $middleware = static::$middleware;
 
-            public function __construct(public string $path, public array $params, public $handler) {}
+        return $node[static::LEAF][$method] = new class ($path, $params, $middleware, $handler) implements RouteInterface {
+            public function __construct(public string $path, public array $params, public array $middleware, public $handler) {}
 
             public function name(string $name): static
             {
@@ -121,10 +131,6 @@ class Router
         $handler = $route->handler;
 
         foreach (array_reverse($route->middleware) as $mw) {
-            $handler = fn(Request $req) => $mw($req, $handler);
-        }
-
-        foreach (array_reverse(static::$middleware) as $mw) {
             $handler = fn(Request $req) => $mw($req, $handler);
         }
 
