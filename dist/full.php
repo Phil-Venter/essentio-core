@@ -1594,12 +1594,17 @@ function input(string $field): mixed
 
 /**
  * @template T as string
- * @param array<T, callable(mixed): mixed> $rules
+ * @param array<T, callable(mixed): mixed>|array<T, list<callable(mixed): mixed>> $rules
+ * @param callable(array<T, list<string>>): void $callback
  * @return array<T, mixed>|false
  */
-function sanitize(array $rules): array|false
+function sanitize(array $rules, callable $callback): array|false
 {
-    return app(Request::class)->sanitize($rules);
+    if (!($data = app(Request::class)->sanitize($rules))) {
+        $callback(app(Request::class)->errors);
+    }
+
+    return $data;
 }
 
 function session(string $key, mixed $value = null): mixed
