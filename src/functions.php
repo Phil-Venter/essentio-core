@@ -184,7 +184,7 @@ function delete(string $path, callable $handle): RouteInterface
 
 function named_url(string $name, array $params = []): string
 {
-    return app(Router::class)->makeUrlByName($name, $params);
+    return Router::makeUrlByName($name, $params);
 }
 
 function render(string $template, array $data = []): string
