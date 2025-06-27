@@ -1584,7 +1584,7 @@ function command(string $name, callable $handle): void
  */
 function request(string $key = ""): mixed
 {
-    return func_num_args() ? app(Request::class) : app(Request::class)->get($key);
+    return func_num_args() ? app(Request::class)->get($key) : app(Request::class);
 }
 
 function input(string $field): mixed
