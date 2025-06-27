@@ -1,13 +1,13 @@
 <?php
 
-use Essentio\Core\Application;
 use Essentio\Core\Argument;
+use Essentio\Core\Container;
 use Essentio\Core\Environment;
 use Essentio\Core\Helper;
 use Essentio\Core\Jwt;
 use Essentio\Core\Request;
 use Essentio\Core\Response;
-use Essentio\Core\Route;
+use Essentio\Core\RouteInterface;
 use Essentio\Core\Router;
 use Essentio\Core\Session;
 use Essentio\Core\Template;
@@ -19,7 +19,7 @@ use Essentio\Core\Template;
  */
 function app(string $abstract): object
 {
-    return Application::$container->resolve($abstract);
+    return Container::instance()->resolve($abstract);
 }
 
 /**
@@ -30,17 +30,17 @@ function app(string $abstract): object
  */
 function map(string $abstract, array $dependencies = []): object
 {
-    return Application::$container->resolve($abstract, $dependencies);
+    return Container::instance()->resolve($abstract, $dependencies);
 }
 
 function bind(string $abstract, callable|string|null $concrete = null): void
 {
-    Application::$container->bind($abstract, $concrete);
+    Container::instance()->bind($abstract, $concrete);
 }
 
 function once(string $abstract, callable|string|null $concrete = null): void
 {
-    Application::$container->once($abstract, $concrete);
+    Container::instance()->once($abstract, $concrete);
 }
 
 function base(string $path): string
@@ -129,7 +129,7 @@ function jwt(array|string $payload): array|string
  */
 function middleware(callable $middleware): void
 {
-    app(Router::class)->middleware($middleware);
+    Router::middleware($middleware);
 }
 
 /**
@@ -137,9 +137,9 @@ function middleware(callable $middleware): void
  * @param callable $handle
  * @return Route
  */
-function get(string $path, callable $handle): Route
+function get(string $path, callable $handle): RouteInterface
 {
-    return app(Router::class)->add("GET", $path, $handle);
+    return Router::route("GET", $path, $handle);
 }
 
 /**
@@ -147,9 +147,9 @@ function get(string $path, callable $handle): Route
  * @param callable $handle
  * @return Route
  */
-function post(string $path, callable $handle): Route
+function post(string $path, callable $handle): RouteInterface
 {
-    return app(Router::class)->add("POST", $path, $handle);
+    return Router::route("POST", $path, $handle);
 }
 
 /**
@@ -157,9 +157,9 @@ function post(string $path, callable $handle): Route
  * @param callable $handle
  * @return Route
  */
-function put(string $path, callable $handle): Route
+function put(string $path, callable $handle): RouteInterface
 {
-    return app(Router::class)->add("PUT", $path, $handle);
+    return Router::route("PUT", $path, $handle);
 }
 
 /**
@@ -167,9 +167,9 @@ function put(string $path, callable $handle): Route
  * @param callable $handle
  * @return Route
  */
-function patch(string $path, callable $handle): Route
+function patch(string $path, callable $handle): RouteInterface
 {
-    return app(Router::class)->add("PATCH", $path, $handle);
+    return Router::route("PATCH", $path, $handle);
 }
 
 /**
@@ -177,9 +177,9 @@ function patch(string $path, callable $handle): Route
  * @param callable $handle
  * @return Route
  */
-function delete(string $path, callable $handle): Route
+function delete(string $path, callable $handle): RouteInterface
 {
-    return app(Router::class)->add("DELETE", $path, $handle);
+    return Router::route("DELETE", $path, $handle);
 }
 
 function named_url(string $name, array $params = []): string

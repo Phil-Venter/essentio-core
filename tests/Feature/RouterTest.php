@@ -27,12 +27,10 @@ function createResponse(): Response
 }
 
 it("matches static route and sends response", function () {
-    $router = new Router();
-
-    $router->add("GET", "hello/world", fn() => createResponse()->setBody("Hello"));
+    Router::route("GET", "hello/world", fn() => createResponse()->setBody("Hello"));
 
     $req = createRequest("GET", "hello/world");
-    $res = $router->dispatch($req, createResponse());
+    $res = Router::dispatch($req, createResponse());
 
     ob_start();
     $res->send();
@@ -42,12 +40,10 @@ it("matches static route and sends response", function () {
 });
 
 it("matches parameterized route and sends id", function () {
-    $router = new Router();
-
-    $router->add("GET", "users/:id", fn(Request $r) => createResponse()->setBody($r->parameters["id"]));
+    Router::route("GET", "users/:id", fn(Request $r) => createResponse()->setBody($r->parameters["id"]));
 
     $req = createRequest("GET", "users/123");
-    $res = $router->dispatch($req, createResponse());
+    $res = Router::dispatch($req, createResponse());
 
     ob_start();
     $res->send();
@@ -57,12 +53,10 @@ it("matches parameterized route and sends id", function () {
 });
 
 it("wraps scalar return into Response body", function () {
-    $router = new Router();
-
-    $router->add("GET", "text", fn() => "hello text");
+    Router::route("GET", "text", fn() => "hello text");
 
     $req = createRequest("GET", "text");
-    $res = $router->dispatch($req, createResponse());
+    $res = Router::dispatch($req, createResponse());
 
     ob_start();
     $res->send();
@@ -72,9 +66,7 @@ it("wraps scalar return into Response body", function () {
 });
 
 it("wraps Stringable return into Response body", function () {
-    $router = new Router();
-
-    $router->add(
+    Router::route(
         "GET",
         "stringable",
         fn() => new class {
@@ -86,7 +78,7 @@ it("wraps Stringable return into Response body", function () {
     );
 
     $req = createRequest("GET", "stringable");
-    $res = $router->dispatch($req, createResponse());
+    $res = Router::dispatch($req, createResponse());
 
     ob_start();
     $res->send();
@@ -96,50 +88,43 @@ it("wraps Stringable return into Response body", function () {
 });
 
 it("throws 204 if result is null or empty", function () {
-    $router = new Router();
-
-    $router->add("GET", "empty", fn() => null);
+    Router::route("GET", "empty", fn() => null);
 
     $req = createRequest("GET", "empty");
 
-    expect(fn() => $router->dispatch($req, createResponse()))->toThrow(HttpException::class)->and(fn($e) => expect($e->getCode())->toBe(204));
+    expect(fn() => Router::dispatch($req, createResponse()))->toThrow(HttpException::class)->and(fn($e) => expect($e->getCode())->toBe(204));
 });
 
 it("throws 404 if path not matched", function () {
-    $router = new Router();
-
-    $router->add("GET", "found", fn() => "yes");
+    Router::route("GET", "found", fn() => "yes");
 
     $req = createRequest("GET", "not-found");
 
-    expect(fn() => $router->dispatch($req, createResponse()))->toThrow(HttpException::class)->and(fn($e) => expect($e->getCode())->toBe(404));
+    expect(fn() => Router::dispatch($req, createResponse()))->toThrow(HttpException::class)->and(fn($e) => expect($e->getCode())->toBe(404));
 });
 
 it("throws 405 if method not matched", function () {
-    $router = new Router();
-
-    $router->add("GET", "only/get", fn() => "nope");
+    Router::route("GET", "only/get", fn() => "nope");
 
     $req = createRequest("POST", "only/get");
 
-    expect(fn() => $router->dispatch($req, createResponse()))->toThrow(HttpException::class)->and(fn($e) => expect($e->getCode())->toBe(405));
+    expect(fn() => Router::dispatch($req, createResponse()))->toThrow(HttpException::class)->and(fn($e) => expect($e->getCode())->toBe(405));
 });
 
 it("applies global middleware in correct order", function () {
-    $router = new Router();
     $trace = [];
 
-    $router->middleware(function (Request $r, callable $next) use (&$trace) {
+    Router::middleware(function (Request $r, callable $next) use (&$trace) {
         $trace[] = "before";
         $res = $next($r);
         $trace[] = "after";
         return $res;
     });
 
-    $router->add("GET", "mw", fn() => "ok");
+    Router::route("GET", "mw", fn() => "ok");
 
     $req = createRequest("GET", "mw");
-    $res = $router->dispatch($req, createResponse());
+    $res = Router::dispatch($req, createResponse());
 
     ob_start();
     $res->send();
@@ -149,16 +134,15 @@ it("applies global middleware in correct order", function () {
 });
 
 it("applies route-specific middleware", function () {
-    $router = new Router();
     $trace = [];
 
-    $router->add("GET", "route/mw", fn() => "done")->middleware(function (Request $r, callable $next) use (&$trace) {
+    Router::route("GET", "route/mw", fn() => "done")->middleware(function (Request $r, callable $next) use (&$trace) {
         $trace[] = "route-mw";
         return $next($r);
     });
 
     $req = createRequest("GET", "route/mw");
-    $res = $router->dispatch($req, createResponse());
+    $res = Router::dispatch($req, createResponse());
 
     ob_start();
     $res->send();
@@ -168,35 +152,27 @@ it("applies route-specific middleware", function () {
 });
 
 it("builds named route URL", function () {
-    $router = new Router();
+    Router::route("GET", "users/:id", fn() => "irrelevant")->name("user.view");
 
-    $router->add("GET", "users/:id", fn() => "irrelevant")->name("user.view");
-
-    $url = $router->makeUrlByName("user.view", ["id" => 7]);
+    $url = Router::makeUrlByName("user.view", ["id" => 7]);
 
     expect($url)->toBe("/users/7");
 });
 
 it("throws for unknown named route", function () {
-    $router = new Router();
-
-    expect(fn() => $router->makeUrlByName("missing", []))->toThrow(InvalidArgumentException::class);
+    expect(fn() => Router::makeUrlByName("missing", []))->toThrow(InvalidArgumentException::class);
 });
 
 it("throws if named route param missing", function () {
-    $router = new Router();
+    Router::route("GET", "articles/:slug", fn() => "")->name("article.view");
 
-    $router->add("GET", "articles/:slug", fn() => "")->name("article.view");
-
-    expect(fn() => $router->makeUrlByName("article.view", []))->toThrow(InvalidArgumentException::class);
+    expect(fn() => Router::makeUrlByName("article.view", []))->toThrow(InvalidArgumentException::class);
 });
 
 it("adds query string for extra params in named route", function () {
-    $router = new Router();
+    Router::route("GET", "search/:term", fn() => "")->name("search");
 
-    $router->add("GET", "search/:term", fn() => "")->name("search");
-
-    $url = $router->makeUrlByName("search", ["term" => "cat", "page" => 3]);
+    $url = Router::makeUrlByName("search", ["term" => "cat", "page" => 3]);
 
     expect($url)->toBe("/search/cat?page=3");
 });

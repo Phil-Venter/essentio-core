@@ -2,48 +2,34 @@
 
 class Application
 {
-    public static Container $container;
-
     public static function http(string $basePath): void
     {
-        [$container, , $environment] = static::bootstrap($basePath);
+        Container::instance()->once(Helper::class, fn(): Helper => Helper::create($basePath));
+        Container::instance()->once(Environment::class, fn(): Environment => Environment::create(Container::instance()->resolve(Helper::class)));
+        Container::instance()->once(Session::class, fn(): Session => Session::create());
+        Container::instance()->once(Request::class, fn(): Request => Request::create());
+        Container::instance()->once(Response::class);
 
-        $container->once(Session::class, fn(): Session => Session::create());
-        $container->once(Jwt::class, fn(): Jwt => new Jwt($environment->get("JWT_SECRET") ?? "", $environment->get("JWT_ISSUER")));
-        $container->once(Request::class, fn(): Request => Request::create());
-        $container->once(Response::class);
-        $container->once(Router::class);
-
-        static::$container = $container;
+        Container::instance()->once(Jwt::class, function () {
+            $env = Container::instance()->resolve(Environment::class);
+            return new Jwt($env->get("JWT_SECRET") ?? "", $env->get("JWT_ISSUER"));
+        });
     }
 
     public static function cli(string $basePath): void
     {
-        [$container, $helper] = static::bootstrap($basePath);
-        $container->once(Argument::class, fn(): Argument => Argument::create($helper));
-
-        static::$container = $container;
-    }
-
-    protected static function bootstrap(string $basePath): array
-    {
-        $container = new Container();
-        $helper = new Helper(rtrim($basePath, "/"));
-        $environment = Environment::create($helper);
-
-        $container->once(Helper::class, fn(): Helper => $helper);
-        $container->once(Environment::class, fn(): Environment => $environment);
-
-        return [$container, $helper, $environment];
+        Container::instance()->once(Helper::class, fn(): Helper => Helper::create($basePath));
+        Container::instance()->once(Environment::class, fn(): Environment => Environment::create(Container::instance()->resolve(Helper::class)));
+        Container::instance()->once(Argument::class, fn(): Argument => Argument::create(Container::instance()->resolve(Helper::class)));
     }
 
     public static function run(): void
     {
-        $request = static::$container->resolve(Request::class);
-        $response = static::$container->resolve(Response::class);
+        $request = Container::instance()->resolve(Request::class);
+        $response = Container::instance()->resolve(Response::class);
 
         try {
-            static::$container->resolve(Router::class)->dispatch($request, $response)->send();
+            Container::instance()->resolve(Router::class)->dispatch($request, $response)->send();
         } catch (HttpException $e) {
             $status = $e->getCode() ?: 500;
             $response->setStatus($status)->setBody($e->getMessage())->send();
@@ -126,9 +112,16 @@ class Argument
 
 class Container
 {
+    protected static $instance;
+
     protected array $bindings = [];
 
     protected array $cache = [];
+
+    public static function instance(): static
+    {
+        return static::$instance ??= new static();
+    }
 
     public function bind(string $abstract, callable|string|null $concrete = null): static
     {
@@ -215,6 +208,11 @@ class Environment
 class Helper
 {
     public function __construct(protected string $basePath) {}
+
+    public static function create(string $basePath): static
+    {
+        return new static(rtrim($basePath, "/"));
+    }
 
     public function fromBase(string $path): string
     {
@@ -509,23 +507,11 @@ class Response
     }
 }
 
-class Route
+interface RouteInterface
 {
-    public array $middleware = [];
+    public function name(string $name): static;
 
-    public function __construct(protected string $path, public readonly array $params, public $handler, protected $setName) {}
-
-    public function name(string $name): static
-    {
-        ($this->setName)($name, $this->path);
-        return $this;
-    }
-
-    public function middleware(callable $middleware): static
-    {
-        $this->middleware[] = $middleware;
-        return $this;
-    }
+    public function middleware(callable $middleware): static;
 }
 
 class Router
@@ -534,22 +520,21 @@ class Router
 
     protected const PARAM = "\0PARAMETER";
 
-    protected array $middleware = [];
+    protected static array $middleware = [];
 
-    protected array $routes = [];
+    protected static array $routes = [];
 
-    protected array $lookup = [];
+    protected static array $lookup = [];
 
-    public function middleware(callable $middleware): static
+    public static function middleware(callable $middleware): void
     {
-        $this->middleware[] = $middleware;
-        return $this;
+        static::$middleware[] = $middleware;
     }
 
-    public function add(string $method, string $path, callable $handler): Route
+    public static function route(string $method, string $path, callable $handler): RouteInterface
     {
         $path = trim((string) preg_replace("#/+#", "/", $path), "/");
-        $node = &$this->routes;
+        $node = &static::$routes;
         $params = [];
 
         foreach (explode("/", $path) as $segment) {
@@ -561,52 +546,100 @@ class Router
             }
         }
 
-        return $node[static::LEAF][$method] = new Route($path, $params, $handler, $this->setName(...));
+        return $node[static::LEAF][$method] = new class ($path, $params, $handler) implements RouteInterface {
+            public array $middleware = [];
+
+            public function __construct(public string $path, public array $params, public $handler) {}
+
+            public function name(string $name): static
+            {
+                Router::setName($name, $this->path);
+                return $this;
+            }
+
+            public function middleware(callable $middleware): static
+            {
+                $this->middleware[] = $middleware;
+                return $this;
+            }
+        };
     }
 
-    public function makeUrlByName(string $name, array $params): string
+    public static function setName(string $name, string $path): void
     {
-        if (!isset($this->lookup[$name])) {
-            throw new InvalidArgumentException("Route named '{$name}' not found.");
+        static::$lookup[$name] = $path;
+    }
+
+    public static function makeUrlByName(string $name, array $params): string
+    {
+        if (!isset(static::$lookup[$name])) {
+            throw new InvalidArgumentException("Route named [{$name}] not found.");
         }
 
-        $url = preg_replace_callback(
-            "#:([\w]+)#",
-            function ($matches) use (&$params, $name) {
-                if (!array_key_exists($key = $matches[1], $params)) {
-                    throw new InvalidArgumentException("Missing parameter '{$key}' for route '{$name}'.");
-                }
+        $url = static::$lookup[$name];
 
-                $value = $params[$key];
+        foreach ($params as $key => $value) {
+            $search = ":" . $key;
+            if (str_contains($url, $search)) {
+                $url = str_replace($search, rawurlencode((string) $value), $url);
                 unset($params[$key]);
-                return rawurlencode((string) $value);
-            },
-            $this->lookup[$name]
-        );
+            }
+        }
 
-        return "/" . ltrim($url, "/") . (empty($params) ? "" : "?" . http_build_query($params));
+        if (str_contains($url, ":")) {
+            throw new InvalidArgumentException("Missing parameter for route [{$name}].");
+        }
+
+        $query = empty($params) ? "" : "?" . http_build_query($params);
+        return "/{$url}{$query}";
     }
 
-    public function dispatch(Request $request, Response $response): Response
+    public static function dispatch(Request $request, Response $response): Response
     {
-        [$values, $routes] = $this->match($this->routes, explode("/", $request->path)) ?? throw HttpException::create(404);
+        $segments = explode("/", $request->path);
+        $paramValues = [];
+        $node = static::$routes;
 
-        if (!isset($routes[$request->method])) {
+        while ($segments) {
+            $segment = array_shift($segments);
+
+            if (isset($node[$segment])) {
+                $node = $node[$segment];
+                continue;
+            }
+
+            if (isset($node[static::PARAM])) {
+                $paramValues[] = $segment;
+                $node = $node[static::PARAM];
+                continue;
+            }
+
+            throw HttpException::create(404);
+        }
+
+        if (!isset($node[static::LEAF])) {
+            throw HttpException::create(404);
+        }
+
+        if (!isset($node[static::LEAF][$request->method])) {
             throw HttpException::create(405);
         }
 
-        $request->parameters = array_combine($routes[$request->method]->params, $values);
-        $handler = $routes[$request->method]->handler;
+        $route = $node[static::LEAF][$request->method];
+        $request->parameters = array_combine($route->params, $paramValues);
+        $handler = $route->handler;
 
-        foreach (array_reverse($routes[$request->method]->middleware) as $mw) {
+        foreach (array_reverse($route->middleware) as $mw) {
             $handler = fn(Request $req) => $mw($req, $handler);
         }
 
-        foreach (array_reverse($this->middleware) as $mw) {
+        foreach (array_reverse(static::$middleware) as $mw) {
             $handler = fn(Request $req) => $mw($req, $handler);
         }
 
-        if (($result = $handler($request)) instanceof Response) {
+        $result = $handler($request);
+
+        if ($result instanceof Response) {
             return $result;
         }
 
@@ -615,30 +648,6 @@ class Router
         }
 
         throw HttpException::create(204);
-    }
-
-    protected function setName(string $name, string $path): void
-    {
-        $this->lookup[$name] = $path;
-    }
-
-    protected function match(array $node, array $segments, array $params = []): ?array
-    {
-        if (!$segments) {
-            return $node[static::LEAF] ?? null ? [$params, $node[static::LEAF]] : null;
-        }
-
-        $segment = array_shift($segments);
-
-        if (isset($node[$segment]) && ($found = $this->match($node[$segment], $segments, $params))) {
-            return $found;
-        }
-
-        if (isset($node[static::PARAM])) {
-            return $this->match($node[static::PARAM], $segments, [...$params, $segment]);
-        }
-
-        return null;
     }
 }
 
@@ -759,7 +768,7 @@ class Template
  */
 function app(string $abstract): object
 {
-    return Application::$container->resolve($abstract);
+    return Container::instance()->resolve($abstract);
 }
 
 /**
@@ -770,17 +779,17 @@ function app(string $abstract): object
  */
 function map(string $abstract, array $dependencies = []): object
 {
-    return Application::$container->resolve($abstract, $dependencies);
+    return Container::instance()->resolve($abstract, $dependencies);
 }
 
 function bind(string $abstract, callable|string|null $concrete = null): void
 {
-    Application::$container->bind($abstract, $concrete);
+    Container::instance()->bind($abstract, $concrete);
 }
 
 function once(string $abstract, callable|string|null $concrete = null): void
 {
-    Application::$container->once($abstract, $concrete);
+    Container::instance()->once($abstract, $concrete);
 }
 
 function base(string $path): string
@@ -869,7 +878,7 @@ function jwt(array|string $payload): array|string
  */
 function middleware(callable $middleware): void
 {
-    app(Router::class)->middleware($middleware);
+    Router::middleware($middleware);
 }
 
 /**
@@ -877,9 +886,9 @@ function middleware(callable $middleware): void
  * @param callable $handle
  * @return Route
  */
-function get(string $path, callable $handle): Route
+function get(string $path, callable $handle): RouteInterface
 {
-    return app(Router::class)->add("GET", $path, $handle);
+    return Router::route("GET", $path, $handle);
 }
 
 /**
@@ -887,9 +896,9 @@ function get(string $path, callable $handle): Route
  * @param callable $handle
  * @return Route
  */
-function post(string $path, callable $handle): Route
+function post(string $path, callable $handle): RouteInterface
 {
-    return app(Router::class)->add("POST", $path, $handle);
+    return Router::route("POST", $path, $handle);
 }
 
 /**
@@ -897,9 +906,9 @@ function post(string $path, callable $handle): Route
  * @param callable $handle
  * @return Route
  */
-function put(string $path, callable $handle): Route
+function put(string $path, callable $handle): RouteInterface
 {
-    return app(Router::class)->add("PUT", $path, $handle);
+    return Router::route("PUT", $path, $handle);
 }
 
 /**
@@ -907,9 +916,9 @@ function put(string $path, callable $handle): Route
  * @param callable $handle
  * @return Route
  */
-function patch(string $path, callable $handle): Route
+function patch(string $path, callable $handle): RouteInterface
 {
-    return app(Router::class)->add("PATCH", $path, $handle);
+    return Router::route("PATCH", $path, $handle);
 }
 
 /**
@@ -917,9 +926,9 @@ function patch(string $path, callable $handle): Route
  * @param callable $handle
  * @return Route
  */
-function delete(string $path, callable $handle): Route
+function delete(string $path, callable $handle): RouteInterface
 {
-    return app(Router::class)->add("DELETE", $path, $handle);
+    return Router::route("DELETE", $path, $handle);
 }
 
 function named_url(string $name, array $params = []): string

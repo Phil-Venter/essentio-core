@@ -6,14 +6,11 @@ use InvalidArgumentException;
 use Stringable;
 
 use function array_combine;
-use function array_key_exists;
 use function array_reverse;
 use function array_shift;
 use function explode;
 use function http_build_query;
-use function ltrim;
 use function preg_replace;
-use function preg_replace_callback;
 use function rawurlencode;
 use function str_starts_with;
 use function substr;
@@ -25,22 +22,21 @@ class Router
 
     protected const PARAM = "\0PARAMETER";
 
-    protected array $middleware = [];
+    protected static array $middleware = [];
 
-    protected array $routes = [];
+    protected static array $routes = [];
 
-    protected array $lookup = [];
+    protected static array $lookup = [];
 
-    public function middleware(callable $middleware): static
+    public static function middleware(callable $middleware): void
     {
-        $this->middleware[] = $middleware;
-        return $this;
+        static::$middleware[] = $middleware;
     }
 
-    public function add(string $method, string $path, callable $handler): Route
+    public static function route(string $method, string $path, callable $handler): RouteInterface
     {
         $path = trim((string) preg_replace("#/+#", "/", $path), "/");
-        $node = &$this->routes;
+        $node = &static::$routes;
         $params = [];
 
         foreach (explode("/", $path) as $segment) {
@@ -52,52 +48,100 @@ class Router
             }
         }
 
-        return $node[static::LEAF][$method] = new Route($path, $params, $handler, $this->setName(...));
+        return $node[static::LEAF][$method] = new class ($path, $params, $handler) implements RouteInterface {
+            public array $middleware = [];
+
+            public function __construct(public string $path, public array $params, public $handler) {}
+
+            public function name(string $name): static
+            {
+                Router::setName($name, $this->path);
+                return $this;
+            }
+
+            public function middleware(callable $middleware): static
+            {
+                $this->middleware[] = $middleware;
+                return $this;
+            }
+        };
     }
 
-    public function makeUrlByName(string $name, array $params): string
+    public static function setName(string $name, string $path): void
     {
-        if (!isset($this->lookup[$name])) {
-            throw new InvalidArgumentException("Route named '{$name}' not found.");
+        static::$lookup[$name] = $path;
+    }
+
+    public static function makeUrlByName(string $name, array $params): string
+    {
+        if (!isset(static::$lookup[$name])) {
+            throw new InvalidArgumentException("Route named [{$name}] not found.");
         }
 
-        $url = preg_replace_callback(
-            "#:([\w]+)#",
-            function ($matches) use (&$params, $name) {
-                if (!array_key_exists($key = $matches[1], $params)) {
-                    throw new InvalidArgumentException("Missing parameter '{$key}' for route '{$name}'.");
-                }
+        $url = static::$lookup[$name];
 
-                $value = $params[$key];
+        foreach ($params as $key => $value) {
+            $search = ":" . $key;
+            if (str_contains($url, $search)) {
+                $url = str_replace($search, rawurlencode((string) $value), $url);
                 unset($params[$key]);
-                return rawurlencode((string) $value);
-            },
-            $this->lookup[$name]
-        );
+            }
+        }
 
-        return "/" . ltrim($url, "/") . (empty($params) ? "" : "?" . http_build_query($params));
+        if (str_contains($url, ":")) {
+            throw new InvalidArgumentException("Missing parameter for route [{$name}].");
+        }
+
+        $query = empty($params) ? "" : "?" . http_build_query($params);
+        return "/{$url}{$query}";
     }
 
-    public function dispatch(Request $request, Response $response): Response
+    public static function dispatch(Request $request, Response $response): Response
     {
-        [$values, $routes] = $this->match($this->routes, explode("/", $request->path)) ?? throw HttpException::create(404);
+        $segments = explode("/", $request->path);
+        $paramValues = [];
+        $node = static::$routes;
 
-        if (!isset($routes[$request->method])) {
+        while ($segments) {
+            $segment = array_shift($segments);
+
+            if (isset($node[$segment])) {
+                $node = $node[$segment];
+                continue;
+            }
+
+            if (isset($node[static::PARAM])) {
+                $paramValues[] = $segment;
+                $node = $node[static::PARAM];
+                continue;
+            }
+
+            throw HttpException::create(404);
+        }
+
+        if (!isset($node[static::LEAF])) {
+            throw HttpException::create(404);
+        }
+
+        if (!isset($node[static::LEAF][$request->method])) {
             throw HttpException::create(405);
         }
 
-        $request->parameters = array_combine($routes[$request->method]->params, $values);
-        $handler = $routes[$request->method]->handler;
+        $route = $node[static::LEAF][$request->method];
+        $request->parameters = array_combine($route->params, $paramValues);
+        $handler = $route->handler;
 
-        foreach (array_reverse($routes[$request->method]->middleware) as $mw) {
+        foreach (array_reverse($route->middleware) as $mw) {
             $handler = fn(Request $req) => $mw($req, $handler);
         }
 
-        foreach (array_reverse($this->middleware) as $mw) {
+        foreach (array_reverse(static::$middleware) as $mw) {
             $handler = fn(Request $req) => $mw($req, $handler);
         }
 
-        if (($result = $handler($request)) instanceof Response) {
+        $result = $handler($request);
+
+        if ($result instanceof Response) {
             return $result;
         }
 
@@ -106,29 +150,5 @@ class Router
         }
 
         throw HttpException::create(204);
-    }
-
-    protected function setName(string $name, string $path): void
-    {
-        $this->lookup[$name] = $path;
-    }
-
-    protected function match(array $node, array $segments, array $params = []): ?array
-    {
-        if (!$segments) {
-            return $node[static::LEAF] ?? null ? [$params, $node[static::LEAF]] : null;
-        }
-
-        $segment = array_shift($segments);
-
-        if (isset($node[$segment]) && ($found = $this->match($node[$segment], $segments, $params))) {
-            return $found;
-        }
-
-        if (isset($node[static::PARAM])) {
-            return $this->match($node[static::PARAM], $segments, [...$params, $segment]);
-        }
-
-        return null;
     }
 }

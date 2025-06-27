@@ -10,9 +10,16 @@ use function is_string;
 
 class Container
 {
+    protected static $instance;
+
     protected array $bindings = [];
 
     protected array $cache = [];
+
+    public static function instance(): static
+    {
+        return static::$instance ??= new static();
+    }
 
     public function bind(string $abstract, callable|string|null $concrete = null): static
     {
