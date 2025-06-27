@@ -397,10 +397,10 @@ class Jwt
             $payload["iss"] = $this->issuer;
         }
 
-        $segments[] = $this->base64url_encode(json_encode(["alg" => "HS256", "typ" => "JWT"]));
-        $segments[] = $this->base64url_encode(json_encode($payload));
+        $segments[] = $this->encodeBase64(json_encode(["alg" => "HS256", "typ" => "JWT"]));
+        $segments[] = $this->encodeBase64(json_encode($payload));
         $signature = $this->sign(implode(".", $segments));
-        $segments[] = $this->base64url_encode($signature);
+        $segments[] = $this->encodeBase64($signature);
 
         return implode(".", $segments);
     }
@@ -414,9 +414,9 @@ class Jwt
     public function decode(string $token): array
     {
         [$header64, $payload64, $signature64] = explode(".", $token);
-        $signature = $this->base64url_decode($signature64);
+        $signature = $this->decodeBase64($signature64);
 
-        $header = json_decode($this->base64url_decode($header64), true);
+        $header = json_decode($this->decodeBase64($header64), true);
 
         if (!is_array($header) || ($header["alg"] ?? null) !== "HS256") {
             throw new RuntimeException("Unsupported or missing algorithm");
@@ -426,7 +426,7 @@ class Jwt
             throw new RuntimeException("Invalid token signature");
         }
 
-        $payload = json_decode($this->base64url_decode($payload64), true);
+        $payload = json_decode($this->decodeBase64($payload64), true);
 
         if (!is_array($payload)) {
             throw new RuntimeException("Invalid payload format");
@@ -457,7 +457,7 @@ class Jwt
      * @param string $data
      * @return string
      */
-    protected function base64url_encode(string $data): string
+    protected function encodeBase64(string $data): string
     {
         return rtrim(strtr(base64_encode($data), "+/", "-_"), "=");
     }
@@ -468,7 +468,7 @@ class Jwt
      * @param string $data
      * @return string
      */
-    protected function base64url_decode(string $data): string
+    protected function decodeBase64(string $data): string
     {
         if ($remainder = strlen($data) % 4) {
             $data .= str_repeat("=", 4 - $remainder);
@@ -1304,6 +1304,76 @@ class Cast
         }
 
         return $matches[0][0];
+    }
+}
+
+class HttpClient
+{
+    /**
+     * Send an HTTP request and return a Response.
+     *
+     * @param string $method
+     * @param string $url
+     * @param array $headers
+     * @param string $body
+     * @return Response
+     */
+    public static function request(string $method, string $url, array $headers = [], string $body = ""): Response
+    {
+        $curl = curl_init();
+
+        if ($curl === false) {
+            throw new RuntimeException("Unable to initialize cURL.");
+        }
+
+        curl_setopt_array($curl, [
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HEADER => true,
+            CURLOPT_ENCODING => "",
+            CURLOPT_MAXREDIRS => 10,
+            CURLOPT_TIMEOUT => 30,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_SSL_VERIFYHOST => false,
+            CURLOPT_CUSTOMREQUEST => strtoupper($method),
+            CURLOPT_HTTPHEADER => array_map(fn($k, $v) => "{$k}: {$v}", array_keys($headers), $headers),
+            CURLOPT_POSTFIELDS => $body,
+        ]);
+
+        try {
+            $raw = curl_exec($curl);
+
+            if ($raw === false) {
+                throw new RuntimeException("Curl error: " . curl_error($curl));
+            }
+
+            $headerSize = curl_getinfo($curl, CURLINFO_HEADER_SIZE);
+            $statusCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+
+            $headerText = substr($raw, 0, $headerSize);
+            $bodyText = substr($raw, $headerSize);
+
+            $response = new Response();
+            $response->setStatus($statusCode);
+            $response->setBody($bodyText);
+
+            $headerLines = explode("\r\n", trim($headerText));
+            $parsedHeaders = [];
+
+            foreach ($headerLines as $line) {
+                if (str_contains($line, ":")) {
+                    [$key, $value] = explode(":", $line, 2);
+                    $parsedHeaders[trim($key)] = trim($value);
+                }
+            }
+
+            $response->addHeaders($parsedHeaders);
+            return $response;
+        } finally {
+            curl_close($curl);
+        }
     }
 }
 
@@ -2475,6 +2545,20 @@ function throw_if(bool $condition, Throwable|string $e): void
     if ($condition) {
         throw $e instanceof Throwable ? $e : new Exception($e);
     }
+}
+
+/**
+ * Send an HTTP request via HttpClient and return a Response.
+ *
+ * @param string $method  HTTP verb (e.g. 'GET', 'POST')
+ * @param string $url     Full URL to request
+ * @param array $headers  Associative array of headers (e.g. ['Accept' => 'application/json'])
+ * @param string $body    Request body as a raw string
+ * @return Response       Structured response with status, headers, and body
+ */
+function http(string $method, string $url, array $headers = [], string $body = ""): Response
+{
+    return HttpClient::request($method, $url, $headers, $body);
 }
 
 /**

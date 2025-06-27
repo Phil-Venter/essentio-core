@@ -203,17 +203,19 @@ Whether you’re building tools, APIs, internal apps, or microservices—Essenti
 
 #### 📦 Additional Classes
 
-| Class      | Description                            |
-| ---------- | -------------------------------------- |
-| `Cast`     | Input transformation (type coercion)   |
-| `Validate` | Validation rules (regex, bounds, etc.) |
-| `Query`    | Fluent SQL query builder (PDO-based)   |
+| Class        | Description                            |
+| ------------ | -------------------------------------- |
+| `Cast`       | Input transformation (type coercion)   |
+| `HttpClient` | Minimal HTTP client using cURL         |
+| `Query`      | Fluent SQL query builder (PDO-based)   |
+| `Validate`   | Validation rules (regex, bounds, etc.) |
 
 #### 🌍 Additional Helpers
 
-| Function  | Description                |
-| --------- | -------------------------- |
-| `query()` | Instantiate `Query` object |
+| Function                           | Description                                |
+| ---------------------------------- | ------------------------------------------ |
+| `http(method, url, headers, body)` | Send an HTTP request and return `Response` |
+| `query()`                          | Instantiate `Query` object                 |
 
 You need to explicitly bind the query builder to the container before using it.
 
@@ -257,7 +259,7 @@ PHP                              1            194            526            754
 -------------------------------------------------------------------------------
 Language                     files          blank        comment           code
 -------------------------------------------------------------------------------
-PHP                              1            363            808           1317
+PHP                              1            375            826           1371
 -------------------------------------------------------------------------------
 ```
 
@@ -266,7 +268,7 @@ PHP                              1            363            808           1317
 -------------------------------------------------------------------------------
 Language                     files          blank        comment           code
 -------------------------------------------------------------------------------
-PHP                             18            391            808           1386
+PHP                             19            405            826           1446
 -------------------------------------------------------------------------------
 ```
 

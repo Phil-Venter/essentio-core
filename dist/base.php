@@ -397,10 +397,10 @@ class Jwt
             $payload["iss"] = $this->issuer;
         }
 
-        $segments[] = $this->base64url_encode(json_encode(["alg" => "HS256", "typ" => "JWT"]));
-        $segments[] = $this->base64url_encode(json_encode($payload));
+        $segments[] = $this->encodeBase64(json_encode(["alg" => "HS256", "typ" => "JWT"]));
+        $segments[] = $this->encodeBase64(json_encode($payload));
         $signature = $this->sign(implode(".", $segments));
-        $segments[] = $this->base64url_encode($signature);
+        $segments[] = $this->encodeBase64($signature);
 
         return implode(".", $segments);
     }
@@ -414,9 +414,9 @@ class Jwt
     public function decode(string $token): array
     {
         [$header64, $payload64, $signature64] = explode(".", $token);
-        $signature = $this->base64url_decode($signature64);
+        $signature = $this->decodeBase64($signature64);
 
-        $header = json_decode($this->base64url_decode($header64), true);
+        $header = json_decode($this->decodeBase64($header64), true);
 
         if (!is_array($header) || ($header["alg"] ?? null) !== "HS256") {
             throw new RuntimeException("Unsupported or missing algorithm");
@@ -426,7 +426,7 @@ class Jwt
             throw new RuntimeException("Invalid token signature");
         }
 
-        $payload = json_decode($this->base64url_decode($payload64), true);
+        $payload = json_decode($this->decodeBase64($payload64), true);
 
         if (!is_array($payload)) {
             throw new RuntimeException("Invalid payload format");
@@ -457,7 +457,7 @@ class Jwt
      * @param string $data
      * @return string
      */
-    protected function base64url_encode(string $data): string
+    protected function encodeBase64(string $data): string
     {
         return rtrim(strtr(base64_encode($data), "+/", "-_"), "=");
     }
@@ -468,7 +468,7 @@ class Jwt
      * @param string $data
      * @return string
      */
-    protected function base64url_decode(string $data): string
+    protected function decodeBase64(string $data): string
     {
         if ($remainder = strlen($data) % 4) {
             $data .= str_repeat("=", 4 - $remainder);
