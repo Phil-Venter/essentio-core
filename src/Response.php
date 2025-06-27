@@ -6,11 +6,11 @@ use Stringable;
 
 class Response
 {
-    protected int $status = 200;
+    public int $status = 200;
 
-    protected array $headers = [];
+    public array $headers = [];
 
-    protected bool|float|int|string|Stringable|null $body = null;
+    public bool|float|int|string|Stringable|null $body = null;
 
     /**
      * Set the HTTP status code.
