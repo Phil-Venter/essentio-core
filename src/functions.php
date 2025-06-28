@@ -350,7 +350,7 @@ function json(mixed $data, int $status = 200): Response
     return app(Response::class)
         ->setStatus($status)
         ->addHeaders(["Content-Type" => "application/json"])
-        ->setBody(json_encode($data));
+        ->setBody(json_encode($data, JSON_THROW_ON_ERROR));
 }
 
 /**
