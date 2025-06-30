@@ -149,12 +149,12 @@ Whether you’re building tools, APIs, internal apps, or microservices—Essenti
 
 #### 🧱 Dependency Injection
 
-| Function           | Description                   |
-| ------------------ | ----------------------------- |
-| `app(class)`       | Get a singleton instance      |
-| `map(class, deps)` | Create a new instance         |
-| `bind(class, ...)` | Register service (multi-call) |
-| `once(class, ...)` | Register singleton (one-time) |
+| Function            | Description                   |
+| ------------------- | ----------------------------- |
+| `app(class)`        | Get a singleton instance      |
+| `make(class, deps)` | Create a new instance         |
+| `bind(class, ...)`  | Register service (multi-call) |
+| `once(class, ...)`  | Register singleton (one-time) |
 
 #### ⚙️ Environment & Paths
 
@@ -214,7 +214,7 @@ Whether you’re building tools, APIs, internal apps, or microservices—Essenti
 
 | Function                           | Description                                |
 | ---------------------------------- | ------------------------------------------ |
-| `http(method, url, headers, body)` | Send an HTTP request and return `Response` |
+| `call(method, url, headers, body)` | Send an HTTP request and return `Response` |
 | `query()`                          | Instantiate `Query` object                 |
 
 You need to explicitly bind the query builder to the container before using it.

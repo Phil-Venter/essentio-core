@@ -2246,7 +2246,7 @@ function app(string $id): object
  * @param array<string, mixed>|list<mixed> $dependencies
  * @return T
  */
-function map(string $id, array $dependencies = []): object
+function make(string $id, array $dependencies = []): object
 {
     return Container::instance()->get($id, $dependencies);
 }
@@ -2520,7 +2520,7 @@ function named_url(string $name, array $params = []): string
  */
 function render(string $template, array $data = []): string
 {
-    return map(Template::class, [$template])->render($data);
+    return make(Template::class, [$template])->render($data);
 }
 
 /**
@@ -2564,7 +2564,7 @@ function json(mixed $data, int $status = 200): Response
     return app(Response::class)
         ->setStatus($status)
         ->addHeaders(["Content-Type" => "application/json"])
-        ->setBody(json_encode($data));
+        ->setBody(json_encode($data, JSON_THROW_ON_ERROR));
 }
 
 /**
@@ -2619,7 +2619,7 @@ function throw_if(bool $condition, Throwable|string $e): void
  * @param string $body    Request body as a raw string
  * @return Response       Structured response with status, headers, and body
  */
-function http(string $method, string $url, array $headers = [], string $body = ""): Response
+function call(string $method, string $url, array $headers = [], string $body = ""): Response
 {
     return HttpClient::request($method, $url, $headers, $body);
 }
