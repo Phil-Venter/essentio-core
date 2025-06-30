@@ -214,7 +214,7 @@ Whether you’re building tools, APIs, internal apps, or microservices—Essenti
 
 | Function                           | Description                                |
 | ---------------------------------- | ------------------------------------------ |
-| `call(method, url, headers, body)` | Send an HTTP request and return `Response` |
+| `curl(method, url, headers, body)` | Send an HTTP request and return `Response` |
 | `query()`                          | Instantiate `Query` object                 |
 
 You need to explicitly bind the query builder to the container before using it.
