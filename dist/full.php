@@ -2619,7 +2619,7 @@ function throw_if(bool $condition, Throwable|string $e): void
  * @param string $body    Request body as a raw string
  * @return Response       Structured response with status, headers, and body
  */
-function call(string $method, string $url, array $headers = [], string $body = ""): Response
+function curl(string $method, string $url, array $headers = [], string $body = ""): Response
 {
     return HttpClient::request($method, $url, $headers, $body);
 }
