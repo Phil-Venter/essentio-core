@@ -1,6 +1,7 @@
 <?php
 
 use Essentio\Core\Container;
+use Essentio\Core\FrameworkException;
 
 class DummyService
 {
@@ -60,7 +61,7 @@ it("throws if class does not exist in bind", function () {
     $container = new Container();
 
     expect(fn() => $container->bind("test", "NonExistentClass"))
-        ->toThrow(RuntimeException::class)
+        ->toThrow(FrameworkException::class)
         ->and(fn($e) => expect($e->getMessage())->toContain("Cannot bind"));
 });
 
@@ -68,7 +69,7 @@ it("throws if resolve fails for unknown non-class", function () {
     $container = new Container();
 
     expect(fn() => $container->get("not_bound_and_invalid_class"))
-        ->toThrow(RuntimeException::class)
+        ->toThrow(FrameworkException::class)
         ->and(fn($e) => expect($e->getMessage())->toContain("Service [not_bound_and_invalid_class] is not bound"));
 });
 

@@ -2,8 +2,6 @@
 
 namespace Essentio\Core;
 
-use InvalidArgumentException;
-
 /**
  * @api
  */
@@ -15,7 +13,7 @@ final class Template
 
     protected array $stack = [];
 
-    public function __construct(protected ?string $template = null) {}
+    public function __construct(protected string $template) {}
 
     /**
      * Set a parent layout template.
@@ -64,7 +62,7 @@ final class Template
     public function end(): void
     {
         if (empty($this->stack)) {
-            throw new InvalidArgumentException("No segment started");
+            throw new FrameworkException("No segment started");
         }
 
         $name = array_pop($this->stack);
@@ -79,6 +77,10 @@ final class Template
      */
     public function render(array $data = []): string
     {
+        if (!file_exists($this->template)) {
+            throw new FrameworkException("Template file not found");
+        }
+
         $content =
             (function (array $data) {
                 ob_start();

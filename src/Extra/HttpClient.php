@@ -2,8 +2,8 @@
 
 namespace Essentio\Core\Extra;
 
+use Essentio\Core\FrameworkException;
 use Essentio\Core\Response;
-use RuntimeException;
 
 /**
  * @api
@@ -24,7 +24,7 @@ final class HttpClient
         $curl = curl_init();
 
         if ($curl === false) {
-            throw new RuntimeException("Unable to initialize cURL.");
+            throw new FrameworkException("Unable to initialize cURL.");
         }
 
         curl_setopt_array($curl, [
@@ -47,7 +47,7 @@ final class HttpClient
             $raw = curl_exec($curl);
 
             if ($raw === false) {
-                throw new RuntimeException("Curl error: " . curl_error($curl));
+                throw new FrameworkException("Curl error: " . curl_error($curl));
             }
 
             $headerSize = curl_getinfo($curl, CURLINFO_HEADER_SIZE);

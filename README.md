@@ -130,18 +130,19 @@ Whether you’re building tools, APIs, internal apps, or microservices—Essenti
 
 #### 📦 Classes
 
-| Class           | Description                              |
-| --------------- | ---------------------------------------- |
-| `Application`   | Initializes HTTP or CLI context          |
-| `Container`     | Dependency injection container           |
-| `Router`        | Route registry and dispatcher            |
-| `Request`       | Normalized HTTP request abstraction      |
-| `Response`      | Fluent HTTP response builder             |
-| `Session`       | Native session management + CSRF support |
-| `Template`      | Layout/segment PHP-based template engine |
-| `Jwt`           | Stateless JWT encoder/decoder            |
-| `Environment`   | `.env` file parser with auto-casting     |
-| `HttpException` | Structured HTTP error generator          |
+| Class                 | Description                                       |
+| --------------------- | ------------------------------------------------- |
+| `Application`         | Initializes HTTP or CLI context                   |
+| `Container`           | Dependency injection container                    |
+| `Router`              | Route registry and dispatcher                     |
+| `Request`             | Normalized HTTP request abstraction               |
+| `Response`            | Fluent HTTP response builder                      |
+| `Session`             | Native session management + CSRF support          |
+| `Template`            | Layout/segment PHP-based template engine          |
+| `Jwt`                 | Stateless JWT encoder/decoder                     |
+| `Environment`         | `.env` file parser with auto-casting              |
+| `HttpException`       | Structured HTTP error generator                   |
+| `FrameworkException`  | Base exception type for internal framework errors |
 
 ---
 
@@ -203,12 +204,13 @@ Whether you’re building tools, APIs, internal apps, or microservices—Essenti
 
 #### 📦 Additional Classes
 
-| Class        | Description                            |
-| ------------ | -------------------------------------- |
-| `Cast`       | Input transformation (type coercion)   |
-| `HttpClient` | Minimal HTTP client using cURL         |
-| `Query`      | Fluent SQL query builder (PDO-based)   |
-| `Validate`   | Validation rules (regex, bounds, etc.) |
+| Class                 | Description                            |
+| --------------------- | -------------------------------------- |
+| `Cast`                | Input transformation (type coercion)   |
+| `HttpClient`          | Minimal HTTP client using cURL         |
+| `Query`               | Fluent SQL query builder (PDO-based)   |
+| `Validate`            | Validation rules (regex, bounds, etc.) |
+| `ValidationException` | Thrown when validation rules fail      |
 
 #### 🌍 Additional Helpers
 
@@ -250,7 +252,7 @@ Measured using [cloc](https://github.com/AlDanial/cloc):
 -------------------------------------------------------------------------------
 Language                     files          blank        comment           code
 -------------------------------------------------------------------------------
-PHP                              1            194            574            756
+PHP                              1            199            575            767
 -------------------------------------------------------------------------------
 ```
 
@@ -259,7 +261,7 @@ PHP                              1            194            574            756
 -------------------------------------------------------------------------------
 Language                     files          blank        comment           code
 -------------------------------------------------------------------------------
-PHP                              1            375            887           1373
+PHP                              1            367            888           1364
 -------------------------------------------------------------------------------
 ```
 
@@ -268,7 +270,7 @@ PHP                              1            375            887           1373
 -------------------------------------------------------------------------------
 Language                     files          blank        comment           code
 -------------------------------------------------------------------------------
-PHP                             19            406            887           1449
+PHP                             21            398            888           1440
 -------------------------------------------------------------------------------
 ```
 

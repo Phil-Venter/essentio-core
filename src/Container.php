@@ -2,8 +2,6 @@
 
 namespace Essentio\Core;
 
-use RuntimeException;
-
 /**
  * @api
  */
@@ -36,7 +34,7 @@ final class Container
     {
         /** @var string $concrete */
         if (is_string($concrete ??= $id) && !class_exists($concrete, true)) {
-            throw new RuntimeException("Cannot bind [{$id}] to [{$concrete}].");
+            throw new FrameworkException("Cannot bind [{$id}] to [{$concrete}].");
         }
 
         $this->bindings[$id] = $concrete;
@@ -70,7 +68,7 @@ final class Container
                 return new $id(...$dependencies);
             }
 
-            throw new RuntimeException("Service [{$id}] is not bound and cannot be instantiated.");
+            throw new FrameworkException("Service [{$id}] is not bound and cannot be instantiated.");
         }
 
         $once = array_key_exists($id, $this->cache);

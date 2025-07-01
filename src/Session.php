@@ -2,24 +2,31 @@
 
 namespace Essentio\Core;
 
+use SessionHandler;
+
 /**
  * @api
  */
 final class Session
 {
-    protected const FLASH_OLD = "\0FLASH_OLD";
+    protected const FLASH_OLD = "__flash_old__";
 
-    protected const FLASH_NEW = "\0FLASH_NEW";
+    protected const FLASH_NEW = "__flash_new__";
 
-    protected const CSRF_KEY = "\0CSRF_KEY";
+    protected const CSRF_KEY = "__csrf_key__";
 
     /**
-     * Start the session and initialize flash data.
+     * Start the session and prepare flash data for the request.
      *
+     * @param ?SessionHandler $handler
      * @return static
      */
-    public static function create(): static
+    public static function create(?SessionHandler $handler = null): static
     {
+        if ($handler !== null) {
+            session_set_save_handler($handler);
+        }
+
         if (session_status() !== PHP_SESSION_ACTIVE) {
             session_start();
         }

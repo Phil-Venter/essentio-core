@@ -45,6 +45,10 @@ final class Application
      */
     public static function run(): void
     {
+        if (PHP_SAPI === "cli") {
+            exit(1);
+        }
+
         $request = Container::instance()->get(Request::class);
         $response = Container::instance()->get(Response::class);
 

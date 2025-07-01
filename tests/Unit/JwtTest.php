@@ -1,5 +1,6 @@
 <?php
 
+use Essentio\Core\FrameworkException;
 use Essentio\Core\Jwt;
 
 beforeEach(function () {
@@ -26,7 +27,7 @@ it("rejects token with invalid signature", function () {
     $tampered = implode(".", [$header, $payload, "invalidsignature"]);
 
     expect(fn() => $this->jwt->decode($tampered))
-        ->toThrow(RuntimeException::class)
+        ->toThrow(FrameworkException::class)
         ->and(fn($e) => expect($e->getMessage())->toBe("Invalid token signature"));
 });
 
@@ -34,20 +35,22 @@ it("rejects token with wrong issuer", function () {
     $otherJwt = new Jwt($this->secret, "wrong-issuer");
     $token = $otherJwt->encode(["user_id" => 1]);
 
-    expect(fn() => $this->jwt->decode($token))->toThrow(RuntimeException::class)->and(fn($e) => expect($e->getMessage())->toBe("Invalid issuer"));
+    expect(fn() => $this->jwt->decode($token))->toThrow(FrameworkException::class)->and(fn($e) => expect($e->getMessage())->toBe("Invalid issuer"));
 });
 
 it("rejects expired token", function () {
     $token = $this->jwt->encode(["exp" => time() - 10]);
 
-    expect(fn() => $this->jwt->decode($token))->toThrow(RuntimeException::class)->and(fn($e) => expect($e->getMessage())->toBe("Token has expired"));
+    expect(fn() => $this->jwt->decode($token))
+        ->toThrow(FrameworkException::class)
+        ->and(fn($e) => expect($e->getMessage())->toBe("Token has expired"));
 });
 
 it("rejects token not yet valid (nbf)", function () {
     $token = $this->jwt->encode(["nbf" => time() + 10]);
 
     expect(fn() => $this->jwt->decode($token))
-        ->toThrow(RuntimeException::class)
+        ->toThrow(FrameworkException::class)
         ->and(fn($e) => expect($e->getMessage())->toBe("Token not valid yet"));
 });
 
@@ -55,7 +58,7 @@ it("rejects token issued in the future (iat)", function () {
     $token = $this->jwt->encode(["iat" => time() + 10]);
 
     expect(fn() => $this->jwt->decode($token))
-        ->toThrow(RuntimeException::class)
+        ->toThrow(FrameworkException::class)
         ->and(fn($e) => expect($e->getMessage())->toBe("Token not valid yet"));
 });
 

@@ -5,7 +5,8 @@ namespace Essentio\Core\Extra;
 use BackedEnum;
 use Closure;
 use DateTimeImmutable;
-use Exception;
+use Essentio\Core\ValidationException;
+use Throwable;
 
 /**
  * @api
@@ -21,16 +22,12 @@ final class Cast
     public static function bool(string $message = ""): Closure
     {
         return function (string $input) use ($message): ?bool {
-            $input = static::nullOnEmpty($input);
-
-            if ($input === null) {
+            if (($input = static::nullOnEmpty($input)) === null) {
                 return null;
             }
 
-            $bool = filter_var($input, FILTER_VALIDATE_BOOL, FILTER_NULL_ON_FAILURE);
-
-            if ($bool === null) {
-                throw new Exception($message);
+            if (($bool = filter_var($input, FILTER_VALIDATE_BOOL, FILTER_NULL_ON_FAILURE)) === null) {
+                throw new ValidationException($message);
             }
 
             return $bool;
@@ -46,16 +43,14 @@ final class Cast
     public static function date(string $message = ""): Closure
     {
         return function (string $input) use ($message): DateTimeImmutable|null {
-            $input = static::nullOnEmpty($input);
-
-            if ($input === null) {
+            if (($input = static::nullOnEmpty($input)) === null) {
                 return null;
             }
 
             try {
                 return new DateTimeImmutable($input);
-            } catch (Exception) {
-                throw new Exception($message);
+            } catch (Throwable $throwable) {
+                throw new ValidationException($message, previous: $throwable);
             }
         };
     }
@@ -70,27 +65,23 @@ final class Cast
     public static function enum(string $enumClass, string $message = ""): Closure
     {
         if (!enum_exists($enumClass)) {
-            throw new Exception("Invalid enum class: $enumClass");
+            throw new ValidationException("Invalid enum class: $enumClass");
         }
 
         if (!is_subclass_of($enumClass, BackedEnum::class)) {
-            throw new Exception("Enum must be a backed enum");
+            throw new ValidationException("Enum must be a backed enum");
         }
 
         return function (string $input) use ($enumClass, $message): ?BackedEnum {
-            $input = static::nullOnEmpty($input);
-
-            if ($input === null) {
+            if (($input = static::nullOnEmpty($input)) === null) {
                 return null;
             }
 
-            $enum = $enumClass::tryFrom($input);
-
-            if ($enum === null) {
-                throw new Exception($message);
+            try {
+                return $enumClass::from($input);
+            } catch (Throwable $throwable) {
+                throw new ValidationException($message, previous: $throwable);
             }
-
-            return $enum;
         };
     }
 
@@ -103,17 +94,14 @@ final class Cast
     public static function float(string $message = ""): Closure
     {
         return function (string $input) use ($message): ?float {
-            $input = static::nullOnEmpty($input);
-
-            if ($input === null) {
+            if (($input = static::nullOnEmpty($input)) === null) {
                 return null;
             }
 
             $value = static::normalizeNumber($input, $message);
-            $floatVal = filter_var($value, FILTER_VALIDATE_FLOAT);
 
-            if ($floatVal === false) {
-                throw new Exception($message);
+            if (($floatVal = filter_var($value, FILTER_VALIDATE_FLOAT)) === false) {
+                throw new ValidationException($message);
             }
 
             return $floatVal;
@@ -129,17 +117,14 @@ final class Cast
     public static function int(string $message = ""): Closure
     {
         return function (string $input) use ($message): ?int {
-            $input = static::nullOnEmpty($input);
-
-            if ($input === null) {
+            if (($input = static::nullOnEmpty($input)) === null) {
                 return null;
             }
 
             $value = static::normalizeNumber($input, $message);
-            $intVal = filter_var($value, FILTER_VALIDATE_INT);
 
-            if ($intVal === false) {
-                throw new Exception($message);
+            if (($intVal = filter_var($value, FILTER_VALIDATE_INT)) === false) {
+                throw new ValidationException($message);
             }
 
             return $intVal;
@@ -155,9 +140,7 @@ final class Cast
     public static function number(string $message = ""): Closure
     {
         return function (string $input) use ($message): int|float|null {
-            $input = static::nullOnEmpty($input);
-
-            if ($input === null) {
+            if (($input = static::nullOnEmpty($input)) === null) {
                 return null;
             }
 
@@ -171,7 +154,7 @@ final class Cast
                 return $floatVal;
             }
 
-            throw new Exception($message);
+            throw new ValidationException($message);
         };
     }
 
@@ -183,13 +166,7 @@ final class Cast
      */
     public static function string(bool $trim = false): Closure
     {
-        return function (string $input) use ($trim): string {
-            if ($trim) {
-                return trim($input);
-            }
-
-            return $input;
-        };
+        return fn(string $input): string => $trim ? trim($input) : $input;
     }
 
     /**
@@ -200,11 +177,7 @@ final class Cast
      */
     protected static function nullOnEmpty(string $input): mixed
     {
-        if (trim($input) === "") {
-            return null;
-        }
-
-        return $input;
+        return trim($input) === "" ? null : $input;
     }
 
     /**
@@ -217,11 +190,6 @@ final class Cast
     protected static function normalizeNumber(string $input, string $message): string
     {
         preg_match_all("/-?\d+(\.\d+)?/", $input, $matches);
-
-        if (empty($matches[0])) {
-            throw new Exception($message);
-        }
-
-        return $matches[0][0];
+        return empty($matches[0]) ? throw new ValidationException($message) : $matches[0][0];
     }
 }

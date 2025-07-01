@@ -4,7 +4,7 @@ namespace Essentio\Core\Extra;
 
 use Closure;
 use DateTimeInterface;
-use Exception;
+use Essentio\Core\ValidationException;
 
 /**
  * @api
@@ -25,7 +25,7 @@ final class Validate
             }
 
             if (!preg_match('/^[a-zA-Z]+$/', $input)) {
-                throw new Exception($message);
+                throw new ValidationException($message);
             }
 
             return $input;
@@ -46,7 +46,7 @@ final class Validate
             }
 
             if (!preg_match('/^[\w-]+$/', $input)) {
-                throw new Exception($message);
+                throw new ValidationException($message);
             }
 
             return $input;
@@ -67,7 +67,7 @@ final class Validate
             }
 
             if (!preg_match('/^[a-zA-Z0-9]+$/', $input)) {
-                throw new Exception($message);
+                throw new ValidationException($message);
             }
 
             return $input;
@@ -88,7 +88,7 @@ final class Validate
             }
 
             if (!filter_var($input, FILTER_VALIDATE_EMAIL)) {
-                throw new Exception($message);
+                throw new ValidationException($message);
             }
 
             return $input;
@@ -115,7 +115,7 @@ final class Validate
                 }
             }
 
-            throw new Exception($message);
+            throw new ValidationException($message);
         };
     }
 
@@ -133,7 +133,7 @@ final class Validate
             }
 
             if (mb_strtolower($input, "UTF-8") !== $input) {
-                throw new Exception($message);
+                throw new ValidationException($message);
             }
 
             return $input;
@@ -154,7 +154,7 @@ final class Validate
             }
 
             if (mb_strtoupper($input, "UTF-8") !== $input) {
-                throw new Exception($message);
+                throw new ValidationException($message);
             }
 
             return $input;
@@ -176,7 +176,7 @@ final class Validate
             }
 
             if (mb_strlen($input) < $min) {
-                throw new Exception($message);
+                throw new ValidationException($message);
             }
 
             return $input;
@@ -198,7 +198,7 @@ final class Validate
             }
 
             if (mb_strlen($input) > $max) {
-                throw new Exception($message);
+                throw new ValidationException($message);
             }
 
             return $input;
@@ -220,7 +220,7 @@ final class Validate
             }
 
             if (!preg_match($pattern, $input)) {
-                throw new Exception($message);
+                throw new ValidationException($message);
             }
 
             return $input;
@@ -248,7 +248,7 @@ final class Validate
             $value = $input instanceof DateTimeInterface ? $input->getTimestamp() : $input;
 
             if ($value < $min || $value > $max) {
-                throw new Exception($message);
+                throw new ValidationException($message);
             }
 
             return $input;
@@ -274,7 +274,7 @@ final class Validate
             $value = $input instanceof DateTimeInterface ? $input->getTimestamp() : $input;
 
             if ($value <= $min) {
-                throw new Exception($message);
+                throw new ValidationException($message);
             }
 
             return $input;
@@ -300,7 +300,7 @@ final class Validate
             $value = $input instanceof DateTimeInterface ? $input->getTimestamp() : $input;
 
             if ($value < $min) {
-                throw new Exception($message);
+                throw new ValidationException($message);
             }
 
             return $input;
@@ -326,7 +326,7 @@ final class Validate
             $value = $input instanceof DateTimeInterface ? $input->getTimestamp() : $input;
 
             if ($value >= $max) {
-                throw new Exception($message);
+                throw new ValidationException($message);
             }
 
             return $input;
@@ -352,7 +352,7 @@ final class Validate
             $value = $input instanceof DateTimeInterface ? $input->getTimestamp() : $input;
 
             if ($value > $max) {
-                throw new Exception($message);
+                throw new ValidationException($message);
             }
 
             return $input;
@@ -369,7 +369,7 @@ final class Validate
     {
         return function (mixed $input) use ($message): mixed {
             if (!isset($input) || (is_string($input) && trim($input) === "")) {
-                throw new Exception($message);
+                throw new ValidationException($message);
             }
 
             return $input;
@@ -392,7 +392,7 @@ final class Validate
             }
 
             if (!in_array($input, $allowed, $strict)) {
-                throw new Exception($message);
+                throw new ValidationException($message);
             }
 
             return $input;

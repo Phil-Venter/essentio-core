@@ -1,5 +1,6 @@
 <?php
 
+use Essentio\Core\FrameworkException;
 use Essentio\Core\Router;
 use Essentio\Core\Request;
 use Essentio\Core\Response;
@@ -160,13 +161,13 @@ it("builds named route URL", function () {
 });
 
 it("throws for unknown named route", function () {
-    expect(fn() => Router::makeUrlByName("missing", []))->toThrow(InvalidArgumentException::class);
+    expect(fn() => Router::makeUrlByName("missing", []))->toThrow(FrameworkException::class);
 });
 
 it("throws if named route param missing", function () {
     Router::route("GET", "articles/:slug", fn() => "")->name("article.view");
 
-    expect(fn() => Router::makeUrlByName("article.view", []))->toThrow(InvalidArgumentException::class);
+    expect(fn() => Router::makeUrlByName("article.view", []))->toThrow(FrameworkException::class);
 });
 
 it("adds query string for extra params in named route", function () {

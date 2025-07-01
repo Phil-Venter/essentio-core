@@ -2,7 +2,6 @@
 
 namespace Essentio\Core;
 
-use InvalidArgumentException;
 use Override;
 use Stringable;
 
@@ -11,9 +10,9 @@ use Stringable;
  */
 final class Router
 {
-    protected const LEAF = "\0LEAF_NODE";
+    protected const LEAF = "__leafnode__";
 
-    protected const PARAM = "\0PARAMETER";
+    protected const PARAM = "__parameter__";
 
     protected static array $middleware = [];
 
@@ -117,7 +116,7 @@ final class Router
     public static function makeUrlByName(string $name, array $params): string
     {
         if (!isset(static::$lookup[$name])) {
-            throw new InvalidArgumentException("Route named [{$name}] not found.");
+            throw new FrameworkException("Route named [{$name}] not found.");
         }
 
         $url = static::$lookup[$name];
@@ -131,7 +130,7 @@ final class Router
         }
 
         if (str_contains($url, ":")) {
-            throw new InvalidArgumentException("Missing parameter for route [{$name}].");
+            throw new FrameworkException("Missing parameter for route [{$name}].");
         }
 
         $query = empty($params) ? "" : "?" . http_build_query($params);

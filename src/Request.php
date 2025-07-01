@@ -2,8 +2,6 @@
 
 namespace Essentio\Core;
 
-use Throwable;
-
 /**
  * @api
  */
@@ -149,7 +147,7 @@ final class Request
                 }
 
                 $sanitized[$field] = $value;
-            } catch (Throwable $e) {
+            } catch (ValidationException $e) {
                 $this->errors[$field][] = $e->getMessage();
             }
         }

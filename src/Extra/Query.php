@@ -4,10 +4,9 @@ namespace Essentio\Core\Extra;
 
 use Closure;
 use DateTimeInterface;
+use Essentio\Core\FrameworkException;
 use Generator;
-use InvalidArgumentException;
 use PDO;
-use RuntimeException;
 use Stringable;
 
 /**
@@ -106,7 +105,7 @@ final class Query
             $sql = match (true) {
                 in_array(strtolower((string) $operator), ["=", "is"], true) => "{$column} IS NULL",
                 in_array(strtolower((string) $operator), ["!=", "<>", "is not", "not"], true) => "{$column} IS NOT NULL",
-                default => throw new InvalidArgumentException("Invalid where condition."),
+                default => throw new FrameworkException("Invalid where condition."),
             };
 
             return $this->whereRaw($sql);
@@ -137,7 +136,7 @@ final class Query
         }
 
         if (!is_array($value)) {
-            throw new InvalidArgumentException("Invalid where condition.");
+            throw new FrameworkException("Invalid where condition.");
         }
 
         if (mb_stripos($operator, "between") === false) {
@@ -146,14 +145,14 @@ final class Query
         }
 
         if (count($value) !== 2) {
-            throw new InvalidArgumentException("Invalid where condition.");
+            throw new FrameworkException("Invalid where condition.");
         }
 
         $value[0] = $formatValue($value[0]);
         $value[1] = $formatValue($value[1]);
 
         if (!is_scalar($value[0]) || !is_scalar($value[1])) {
-            throw new InvalidArgumentException("Invalid where condition.");
+            throw new FrameworkException("Invalid where condition.");
         }
 
         return $this->whereRaw("{$column} {$operator} ? AND ?", $value);
@@ -235,7 +234,7 @@ final class Query
     protected function selectSql(): string
     {
         if (empty($this->table)) {
-            throw new RuntimeException("Table name not specified for query.");
+            throw new FrameworkException("Table name not specified for query.");
         }
 
         $sql = "SELECT " . implode(", ", $this->columns ?: ["*"]) . " FROM {$this->table}";
@@ -296,7 +295,7 @@ final class Query
     public function get(): Generator
     {
         if ($this->pdo === null) {
-            throw new RuntimeException("No PDO to run query.");
+            throw new FrameworkException("No PDO to run query.");
         }
 
         $stmt = $this->pdo->prepare($this->selectSql());
@@ -332,15 +331,15 @@ final class Query
     public function insert(array $data): string|null
     {
         if (array_is_list($data)) {
-            throw new InvalidArgumentException("Data must be associative array.");
+            throw new FrameworkException("Data must be associative array.");
         }
 
         if (empty($this->table)) {
-            throw new RuntimeException("Table name not specified for insert.");
+            throw new FrameworkException("Table name not specified for insert.");
         }
 
         if ($this->pdo === null) {
-            throw new RuntimeException("No PDO to run insert.");
+            throw new FrameworkException("No PDO to run insert.");
         }
 
         $columnList = implode(", ", array_keys($data));
@@ -362,19 +361,19 @@ final class Query
     public function update(array $data): bool
     {
         if (array_is_list($data)) {
-            throw new InvalidArgumentException("Data must be associative array.");
+            throw new FrameworkException("Data must be associative array.");
         }
 
         if (empty($this->table)) {
-            throw new RuntimeException("Table name not specified for update.");
+            throw new FrameworkException("Table name not specified for update.");
         }
 
         if (empty($this->where)) {
-            throw new RuntimeException("Where clause missing for update.");
+            throw new FrameworkException("Where clause missing for update.");
         }
 
         if ($this->pdo === null) {
-            throw new RuntimeException("No PDO to run update.");
+            throw new FrameworkException("No PDO to run update.");
         }
 
         $columnList = implode(", ", array_map(fn($column): string => "{$column} = ?", array_keys($data)));
@@ -392,15 +391,15 @@ final class Query
     public function delete(): bool
     {
         if (empty($this->table)) {
-            throw new RuntimeException("Table name not specified for delete.");
+            throw new FrameworkException("Table name not specified for delete.");
         }
 
         if (empty($this->where)) {
-            throw new RuntimeException("Where clause missing for delete.");
+            throw new FrameworkException("Where clause missing for delete.");
         }
 
         if ($this->pdo === null) {
-            throw new RuntimeException("No PDO to run delete.");
+            throw new FrameworkException("No PDO to run delete.");
         }
 
         $sql = "DELETE FROM {$this->table} WHERE {$this->clean($this->where)}";

@@ -41,6 +41,10 @@ final class Application
      */
     public static function run(): void
     {
+        if (PHP_SAPI === "cli") {
+            exit(1);
+        }
+
         $request = Container::instance()->get(Request::class);
         $response = Container::instance()->get(Response::class);
 
@@ -175,7 +179,7 @@ final class Container
     {
         /** @var string $concrete */
         if (is_string($concrete ??= $id) && !class_exists($concrete, true)) {
-            throw new RuntimeException("Cannot bind [{$id}] to [{$concrete}].");
+            throw new FrameworkException("Cannot bind [{$id}] to [{$concrete}].");
         }
 
         $this->bindings[$id] = $concrete;
@@ -209,7 +213,7 @@ final class Container
                 return new $id(...$dependencies);
             }
 
-            throw new RuntimeException("Service [{$id}] is not bound and cannot be instantiated.");
+            throw new FrameworkException("Service [{$id}] is not bound and cannot be instantiated.");
         }
 
         $once = array_key_exists($id, $this->cache);
@@ -280,6 +284,8 @@ final class Environment
     }
 }
 
+class FrameworkException extends Exception {}
+
 /**
  * @api
  */
@@ -340,7 +346,7 @@ final class Helper
 /**
  * @api
  */
-final class HttpException extends Exception
+final class HttpException extends FrameworkException
 {
     public const HTTP_STATUS = [
         // Success
@@ -433,33 +439,33 @@ final class Jwt
         $header = json_decode($this->decodeBase64($header64), true);
 
         if (!is_array($header) || ($header["alg"] ?? null) !== "HS256") {
-            throw new RuntimeException("Unsupported or missing algorithm");
+            throw new FrameworkException("Unsupported or missing algorithm");
         }
 
         if (!hash_equals($this->sign("$header64.$payload64"), $signature)) {
-            throw new RuntimeException("Invalid token signature");
+            throw new FrameworkException("Invalid token signature");
         }
 
         $payload = json_decode($this->decodeBase64($payload64), true);
 
         if (!is_array($payload)) {
-            throw new RuntimeException("Invalid payload format");
+            throw new FrameworkException("Invalid payload format");
         }
 
         if (($this->issuer ?? null) !== ($payload["iss"] ?? null)) {
-            throw new RuntimeException("Invalid issuer");
+            throw new FrameworkException("Invalid issuer");
         }
 
         if (isset($payload["exp"]) && time() > (int) $payload["exp"]) {
-            throw new RuntimeException("Token has expired");
+            throw new FrameworkException("Token has expired");
         }
 
         if (isset($payload["iat"]) && time() < (int) $payload["iat"]) {
-            throw new RuntimeException("Token not valid yet");
+            throw new FrameworkException("Token not valid yet");
         }
 
         if (isset($payload["nbf"]) && time() < (int) $payload["nbf"]) {
-            throw new RuntimeException("Token not valid yet");
+            throw new FrameworkException("Token not valid yet");
         }
 
         return $payload;
@@ -648,7 +654,7 @@ final class Request
                 }
 
                 $sanitized[$field] = $value;
-            } catch (Throwable $e) {
+            } catch (ValidationException $e) {
                 $this->errors[$field][] = $e->getMessage();
             }
         }
@@ -759,9 +765,9 @@ interface RouteInterface
  */
 final class Router
 {
-    protected const LEAF = "\0LEAF_NODE";
+    protected const LEAF = "__leafnode__";
 
-    protected const PARAM = "\0PARAMETER";
+    protected const PARAM = "__parameter__";
 
     protected static array $middleware = [];
 
@@ -865,7 +871,7 @@ final class Router
     public static function makeUrlByName(string $name, array $params): string
     {
         if (!isset(static::$lookup[$name])) {
-            throw new InvalidArgumentException("Route named [{$name}] not found.");
+            throw new FrameworkException("Route named [{$name}] not found.");
         }
 
         $url = static::$lookup[$name];
@@ -879,7 +885,7 @@ final class Router
         }
 
         if (str_contains($url, ":")) {
-            throw new InvalidArgumentException("Missing parameter for route [{$name}].");
+            throw new FrameworkException("Missing parameter for route [{$name}].");
         }
 
         $query = empty($params) ? "" : "?" . http_build_query($params);
@@ -951,19 +957,24 @@ final class Router
  */
 final class Session
 {
-    protected const FLASH_OLD = "\0FLASH_OLD";
+    protected const FLASH_OLD = "__flash_old__";
 
-    protected const FLASH_NEW = "\0FLASH_NEW";
+    protected const FLASH_NEW = "__flash_new__";
 
-    protected const CSRF_KEY = "\0CSRF_KEY";
+    protected const CSRF_KEY = "__csrf_key__";
 
     /**
-     * Start the session and initialize flash data.
+     * Start the session and prepare flash data for the request.
      *
+     * @param ?SessionHandler $handler
      * @return static
      */
-    public static function create(): static
+    public static function create(?SessionHandler $handler = null): static
     {
+        if ($handler !== null) {
+            session_set_save_handler($handler);
+        }
+
         if (session_status() !== PHP_SESSION_ACTIVE) {
             session_start();
         }
@@ -1056,7 +1067,7 @@ final class Template
 
     protected array $stack = [];
 
-    public function __construct(protected ?string $template = null) {}
+    public function __construct(protected string $template) {}
 
     /**
      * Set a parent layout template.
@@ -1105,7 +1116,7 @@ final class Template
     public function end(): void
     {
         if (empty($this->stack)) {
-            throw new InvalidArgumentException("No segment started");
+            throw new FrameworkException("No segment started");
         }
 
         $name = array_pop($this->stack);
@@ -1120,6 +1131,10 @@ final class Template
      */
     public function render(array $data = []): string
     {
+        if (!file_exists($this->template)) {
+            throw new FrameworkException("Template file not found");
+        }
+
         $content =
             (function (array $data) {
                 ob_start();
@@ -1138,6 +1153,8 @@ final class Template
         return $content;
     }
 }
+
+class ValidationException extends FrameworkException {}
 
 /**
  * Resolve a class from the container.

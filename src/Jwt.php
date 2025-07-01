@@ -2,8 +2,6 @@
 
 namespace Essentio\Core;
 
-use RuntimeException;
-
 /**
  * @api
  */
@@ -56,33 +54,33 @@ final class Jwt
         $header = json_decode($this->decodeBase64($header64), true);
 
         if (!is_array($header) || ($header["alg"] ?? null) !== "HS256") {
-            throw new RuntimeException("Unsupported or missing algorithm");
+            throw new FrameworkException("Unsupported or missing algorithm");
         }
 
         if (!hash_equals($this->sign("$header64.$payload64"), $signature)) {
-            throw new RuntimeException("Invalid token signature");
+            throw new FrameworkException("Invalid token signature");
         }
 
         $payload = json_decode($this->decodeBase64($payload64), true);
 
         if (!is_array($payload)) {
-            throw new RuntimeException("Invalid payload format");
+            throw new FrameworkException("Invalid payload format");
         }
 
         if (($this->issuer ?? null) !== ($payload["iss"] ?? null)) {
-            throw new RuntimeException("Invalid issuer");
+            throw new FrameworkException("Invalid issuer");
         }
 
         if (isset($payload["exp"]) && time() > (int) $payload["exp"]) {
-            throw new RuntimeException("Token has expired");
+            throw new FrameworkException("Token has expired");
         }
 
         if (isset($payload["iat"]) && time() < (int) $payload["iat"]) {
-            throw new RuntimeException("Token not valid yet");
+            throw new FrameworkException("Token not valid yet");
         }
 
         if (isset($payload["nbf"]) && time() < (int) $payload["nbf"]) {
-            throw new RuntimeException("Token not valid yet");
+            throw new FrameworkException("Token not valid yet");
         }
 
         return $payload;

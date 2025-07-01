@@ -41,6 +41,10 @@ final class Application
      */
     public static function run(): void
     {
+        if (PHP_SAPI === "cli") {
+            exit(1);
+        }
+
         $request = Container::instance()->get(Request::class);
         $response = Container::instance()->get(Response::class);
 
@@ -175,7 +179,7 @@ final class Container
     {
         /** @var string $concrete */
         if (is_string($concrete ??= $id) && !class_exists($concrete, true)) {
-            throw new RuntimeException("Cannot bind [{$id}] to [{$concrete}].");
+            throw new FrameworkException("Cannot bind [{$id}] to [{$concrete}].");
         }
 
         $this->bindings[$id] = $concrete;
@@ -209,7 +213,7 @@ final class Container
                 return new $id(...$dependencies);
             }
 
-            throw new RuntimeException("Service [{$id}] is not bound and cannot be instantiated.");
+            throw new FrameworkException("Service [{$id}] is not bound and cannot be instantiated.");
         }
 
         $once = array_key_exists($id, $this->cache);
@@ -280,6 +284,8 @@ final class Environment
     }
 }
 
+class FrameworkException extends Exception {}
+
 /**
  * @api
  */
@@ -340,7 +346,7 @@ final class Helper
 /**
  * @api
  */
-final class HttpException extends Exception
+final class HttpException extends FrameworkException
 {
     public const HTTP_STATUS = [
         // Success
@@ -433,33 +439,33 @@ final class Jwt
         $header = json_decode($this->decodeBase64($header64), true);
 
         if (!is_array($header) || ($header["alg"] ?? null) !== "HS256") {
-            throw new RuntimeException("Unsupported or missing algorithm");
+            throw new FrameworkException("Unsupported or missing algorithm");
         }
 
         if (!hash_equals($this->sign("$header64.$payload64"), $signature)) {
-            throw new RuntimeException("Invalid token signature");
+            throw new FrameworkException("Invalid token signature");
         }
 
         $payload = json_decode($this->decodeBase64($payload64), true);
 
         if (!is_array($payload)) {
-            throw new RuntimeException("Invalid payload format");
+            throw new FrameworkException("Invalid payload format");
         }
 
         if (($this->issuer ?? null) !== ($payload["iss"] ?? null)) {
-            throw new RuntimeException("Invalid issuer");
+            throw new FrameworkException("Invalid issuer");
         }
 
         if (isset($payload["exp"]) && time() > (int) $payload["exp"]) {
-            throw new RuntimeException("Token has expired");
+            throw new FrameworkException("Token has expired");
         }
 
         if (isset($payload["iat"]) && time() < (int) $payload["iat"]) {
-            throw new RuntimeException("Token not valid yet");
+            throw new FrameworkException("Token not valid yet");
         }
 
         if (isset($payload["nbf"]) && time() < (int) $payload["nbf"]) {
-            throw new RuntimeException("Token not valid yet");
+            throw new FrameworkException("Token not valid yet");
         }
 
         return $payload;
@@ -648,7 +654,7 @@ final class Request
                 }
 
                 $sanitized[$field] = $value;
-            } catch (Throwable $e) {
+            } catch (ValidationException $e) {
                 $this->errors[$field][] = $e->getMessage();
             }
         }
@@ -759,9 +765,9 @@ interface RouteInterface
  */
 final class Router
 {
-    protected const LEAF = "\0LEAF_NODE";
+    protected const LEAF = "__leafnode__";
 
-    protected const PARAM = "\0PARAMETER";
+    protected const PARAM = "__parameter__";
 
     protected static array $middleware = [];
 
@@ -865,7 +871,7 @@ final class Router
     public static function makeUrlByName(string $name, array $params): string
     {
         if (!isset(static::$lookup[$name])) {
-            throw new InvalidArgumentException("Route named [{$name}] not found.");
+            throw new FrameworkException("Route named [{$name}] not found.");
         }
 
         $url = static::$lookup[$name];
@@ -879,7 +885,7 @@ final class Router
         }
 
         if (str_contains($url, ":")) {
-            throw new InvalidArgumentException("Missing parameter for route [{$name}].");
+            throw new FrameworkException("Missing parameter for route [{$name}].");
         }
 
         $query = empty($params) ? "" : "?" . http_build_query($params);
@@ -951,19 +957,24 @@ final class Router
  */
 final class Session
 {
-    protected const FLASH_OLD = "\0FLASH_OLD";
+    protected const FLASH_OLD = "__flash_old__";
 
-    protected const FLASH_NEW = "\0FLASH_NEW";
+    protected const FLASH_NEW = "__flash_new__";
 
-    protected const CSRF_KEY = "\0CSRF_KEY";
+    protected const CSRF_KEY = "__csrf_key__";
 
     /**
-     * Start the session and initialize flash data.
+     * Start the session and prepare flash data for the request.
      *
+     * @param ?SessionHandler $handler
      * @return static
      */
-    public static function create(): static
+    public static function create(?SessionHandler $handler = null): static
     {
+        if ($handler !== null) {
+            session_set_save_handler($handler);
+        }
+
         if (session_status() !== PHP_SESSION_ACTIVE) {
             session_start();
         }
@@ -1056,7 +1067,7 @@ final class Template
 
     protected array $stack = [];
 
-    public function __construct(protected ?string $template = null) {}
+    public function __construct(protected string $template) {}
 
     /**
      * Set a parent layout template.
@@ -1105,7 +1116,7 @@ final class Template
     public function end(): void
     {
         if (empty($this->stack)) {
-            throw new InvalidArgumentException("No segment started");
+            throw new FrameworkException("No segment started");
         }
 
         $name = array_pop($this->stack);
@@ -1120,6 +1131,10 @@ final class Template
      */
     public function render(array $data = []): string
     {
+        if (!file_exists($this->template)) {
+            throw new FrameworkException("Template file not found");
+        }
+
         $content =
             (function (array $data) {
                 ob_start();
@@ -1139,6 +1154,8 @@ final class Template
     }
 }
 
+class ValidationException extends FrameworkException {}
+
 /**
  * @api
  */
@@ -1153,16 +1170,12 @@ final class Cast
     public static function bool(string $message = ""): Closure
     {
         return function (string $input) use ($message): ?bool {
-            $input = static::nullOnEmpty($input);
-
-            if ($input === null) {
+            if (($input = static::nullOnEmpty($input)) === null) {
                 return null;
             }
 
-            $bool = filter_var($input, FILTER_VALIDATE_BOOL, FILTER_NULL_ON_FAILURE);
-
-            if ($bool === null) {
-                throw new Exception($message);
+            if (($bool = filter_var($input, FILTER_VALIDATE_BOOL, FILTER_NULL_ON_FAILURE)) === null) {
+                throw new ValidationException($message);
             }
 
             return $bool;
@@ -1178,16 +1191,14 @@ final class Cast
     public static function date(string $message = ""): Closure
     {
         return function (string $input) use ($message): DateTimeImmutable|null {
-            $input = static::nullOnEmpty($input);
-
-            if ($input === null) {
+            if (($input = static::nullOnEmpty($input)) === null) {
                 return null;
             }
 
             try {
                 return new DateTimeImmutable($input);
-            } catch (Exception) {
-                throw new Exception($message);
+            } catch (Throwable $throwable) {
+                throw new ValidationException($message, previous: $throwable);
             }
         };
     }
@@ -1202,27 +1213,23 @@ final class Cast
     public static function enum(string $enumClass, string $message = ""): Closure
     {
         if (!enum_exists($enumClass)) {
-            throw new Exception("Invalid enum class: $enumClass");
+            throw new ValidationException("Invalid enum class: $enumClass");
         }
 
         if (!is_subclass_of($enumClass, BackedEnum::class)) {
-            throw new Exception("Enum must be a backed enum");
+            throw new ValidationException("Enum must be a backed enum");
         }
 
         return function (string $input) use ($enumClass, $message): ?BackedEnum {
-            $input = static::nullOnEmpty($input);
-
-            if ($input === null) {
+            if (($input = static::nullOnEmpty($input)) === null) {
                 return null;
             }
 
-            $enum = $enumClass::tryFrom($input);
-
-            if ($enum === null) {
-                throw new Exception($message);
+            try {
+                return $enumClass::from($input);
+            } catch (Throwable $throwable) {
+                throw new ValidationException($message, previous: $throwable);
             }
-
-            return $enum;
         };
     }
 
@@ -1235,17 +1242,14 @@ final class Cast
     public static function float(string $message = ""): Closure
     {
         return function (string $input) use ($message): ?float {
-            $input = static::nullOnEmpty($input);
-
-            if ($input === null) {
+            if (($input = static::nullOnEmpty($input)) === null) {
                 return null;
             }
 
             $value = static::normalizeNumber($input, $message);
-            $floatVal = filter_var($value, FILTER_VALIDATE_FLOAT);
 
-            if ($floatVal === false) {
-                throw new Exception($message);
+            if (($floatVal = filter_var($value, FILTER_VALIDATE_FLOAT)) === false) {
+                throw new ValidationException($message);
             }
 
             return $floatVal;
@@ -1261,17 +1265,14 @@ final class Cast
     public static function int(string $message = ""): Closure
     {
         return function (string $input) use ($message): ?int {
-            $input = static::nullOnEmpty($input);
-
-            if ($input === null) {
+            if (($input = static::nullOnEmpty($input)) === null) {
                 return null;
             }
 
             $value = static::normalizeNumber($input, $message);
-            $intVal = filter_var($value, FILTER_VALIDATE_INT);
 
-            if ($intVal === false) {
-                throw new Exception($message);
+            if (($intVal = filter_var($value, FILTER_VALIDATE_INT)) === false) {
+                throw new ValidationException($message);
             }
 
             return $intVal;
@@ -1287,9 +1288,7 @@ final class Cast
     public static function number(string $message = ""): Closure
     {
         return function (string $input) use ($message): int|float|null {
-            $input = static::nullOnEmpty($input);
-
-            if ($input === null) {
+            if (($input = static::nullOnEmpty($input)) === null) {
                 return null;
             }
 
@@ -1303,7 +1302,7 @@ final class Cast
                 return $floatVal;
             }
 
-            throw new Exception($message);
+            throw new ValidationException($message);
         };
     }
 
@@ -1315,13 +1314,7 @@ final class Cast
      */
     public static function string(bool $trim = false): Closure
     {
-        return function (string $input) use ($trim): string {
-            if ($trim) {
-                return trim($input);
-            }
-
-            return $input;
-        };
+        return fn(string $input): string => $trim ? trim($input) : $input;
     }
 
     /**
@@ -1332,11 +1325,7 @@ final class Cast
      */
     protected static function nullOnEmpty(string $input): mixed
     {
-        if (trim($input) === "") {
-            return null;
-        }
-
-        return $input;
+        return trim($input) === "" ? null : $input;
     }
 
     /**
@@ -1349,12 +1338,7 @@ final class Cast
     protected static function normalizeNumber(string $input, string $message): string
     {
         preg_match_all("/-?\d+(\.\d+)?/", $input, $matches);
-
-        if (empty($matches[0])) {
-            throw new Exception($message);
-        }
-
-        return $matches[0][0];
+        return empty($matches[0]) ? throw new ValidationException($message) : $matches[0][0];
     }
 }
 
@@ -1377,7 +1361,7 @@ final class HttpClient
         $curl = curl_init();
 
         if ($curl === false) {
-            throw new RuntimeException("Unable to initialize cURL.");
+            throw new FrameworkException("Unable to initialize cURL.");
         }
 
         curl_setopt_array($curl, [
@@ -1400,7 +1384,7 @@ final class HttpClient
             $raw = curl_exec($curl);
 
             if ($raw === false) {
-                throw new RuntimeException("Curl error: " . curl_error($curl));
+                throw new FrameworkException("Curl error: " . curl_error($curl));
             }
 
             $headerSize = curl_getinfo($curl, CURLINFO_HEADER_SIZE);
@@ -1528,7 +1512,7 @@ final class Query
             $sql = match (true) {
                 in_array(strtolower((string) $operator), ["=", "is"], true) => "{$column} IS NULL",
                 in_array(strtolower((string) $operator), ["!=", "<>", "is not", "not"], true) => "{$column} IS NOT NULL",
-                default => throw new InvalidArgumentException("Invalid where condition."),
+                default => throw new FrameworkException("Invalid where condition."),
             };
 
             return $this->whereRaw($sql);
@@ -1559,7 +1543,7 @@ final class Query
         }
 
         if (!is_array($value)) {
-            throw new InvalidArgumentException("Invalid where condition.");
+            throw new FrameworkException("Invalid where condition.");
         }
 
         if (mb_stripos($operator, "between") === false) {
@@ -1568,14 +1552,14 @@ final class Query
         }
 
         if (count($value) !== 2) {
-            throw new InvalidArgumentException("Invalid where condition.");
+            throw new FrameworkException("Invalid where condition.");
         }
 
         $value[0] = $formatValue($value[0]);
         $value[1] = $formatValue($value[1]);
 
         if (!is_scalar($value[0]) || !is_scalar($value[1])) {
-            throw new InvalidArgumentException("Invalid where condition.");
+            throw new FrameworkException("Invalid where condition.");
         }
 
         return $this->whereRaw("{$column} {$operator} ? AND ?", $value);
@@ -1657,7 +1641,7 @@ final class Query
     protected function selectSql(): string
     {
         if (empty($this->table)) {
-            throw new RuntimeException("Table name not specified for query.");
+            throw new FrameworkException("Table name not specified for query.");
         }
 
         $sql = "SELECT " . implode(", ", $this->columns ?: ["*"]) . " FROM {$this->table}";
@@ -1718,7 +1702,7 @@ final class Query
     public function get(): Generator
     {
         if ($this->pdo === null) {
-            throw new RuntimeException("No PDO to run query.");
+            throw new FrameworkException("No PDO to run query.");
         }
 
         $stmt = $this->pdo->prepare($this->selectSql());
@@ -1754,15 +1738,15 @@ final class Query
     public function insert(array $data): string|null
     {
         if (array_is_list($data)) {
-            throw new InvalidArgumentException("Data must be associative array.");
+            throw new FrameworkException("Data must be associative array.");
         }
 
         if (empty($this->table)) {
-            throw new RuntimeException("Table name not specified for insert.");
+            throw new FrameworkException("Table name not specified for insert.");
         }
 
         if ($this->pdo === null) {
-            throw new RuntimeException("No PDO to run insert.");
+            throw new FrameworkException("No PDO to run insert.");
         }
 
         $columnList = implode(", ", array_keys($data));
@@ -1784,19 +1768,19 @@ final class Query
     public function update(array $data): bool
     {
         if (array_is_list($data)) {
-            throw new InvalidArgumentException("Data must be associative array.");
+            throw new FrameworkException("Data must be associative array.");
         }
 
         if (empty($this->table)) {
-            throw new RuntimeException("Table name not specified for update.");
+            throw new FrameworkException("Table name not specified for update.");
         }
 
         if (empty($this->where)) {
-            throw new RuntimeException("Where clause missing for update.");
+            throw new FrameworkException("Where clause missing for update.");
         }
 
         if ($this->pdo === null) {
-            throw new RuntimeException("No PDO to run update.");
+            throw new FrameworkException("No PDO to run update.");
         }
 
         $columnList = implode(", ", array_map(fn($column): string => "{$column} = ?", array_keys($data)));
@@ -1814,15 +1798,15 @@ final class Query
     public function delete(): bool
     {
         if (empty($this->table)) {
-            throw new RuntimeException("Table name not specified for delete.");
+            throw new FrameworkException("Table name not specified for delete.");
         }
 
         if (empty($this->where)) {
-            throw new RuntimeException("Where clause missing for delete.");
+            throw new FrameworkException("Where clause missing for delete.");
         }
 
         if ($this->pdo === null) {
-            throw new RuntimeException("No PDO to run delete.");
+            throw new FrameworkException("No PDO to run delete.");
         }
 
         $sql = "DELETE FROM {$this->table} WHERE {$this->clean($this->where)}";
@@ -1851,7 +1835,7 @@ final class Validate
             }
 
             if (!preg_match('/^[a-zA-Z]+$/', $input)) {
-                throw new Exception($message);
+                throw new ValidationException($message);
             }
 
             return $input;
@@ -1872,7 +1856,7 @@ final class Validate
             }
 
             if (!preg_match('/^[\w-]+$/', $input)) {
-                throw new Exception($message);
+                throw new ValidationException($message);
             }
 
             return $input;
@@ -1893,7 +1877,7 @@ final class Validate
             }
 
             if (!preg_match('/^[a-zA-Z0-9]+$/', $input)) {
-                throw new Exception($message);
+                throw new ValidationException($message);
             }
 
             return $input;
@@ -1914,7 +1898,7 @@ final class Validate
             }
 
             if (!filter_var($input, FILTER_VALIDATE_EMAIL)) {
-                throw new Exception($message);
+                throw new ValidationException($message);
             }
 
             return $input;
@@ -1941,7 +1925,7 @@ final class Validate
                 }
             }
 
-            throw new Exception($message);
+            throw new ValidationException($message);
         };
     }
 
@@ -1959,7 +1943,7 @@ final class Validate
             }
 
             if (mb_strtolower($input, "UTF-8") !== $input) {
-                throw new Exception($message);
+                throw new ValidationException($message);
             }
 
             return $input;
@@ -1980,7 +1964,7 @@ final class Validate
             }
 
             if (mb_strtoupper($input, "UTF-8") !== $input) {
-                throw new Exception($message);
+                throw new ValidationException($message);
             }
 
             return $input;
@@ -2002,7 +1986,7 @@ final class Validate
             }
 
             if (mb_strlen($input) < $min) {
-                throw new Exception($message);
+                throw new ValidationException($message);
             }
 
             return $input;
@@ -2024,7 +2008,7 @@ final class Validate
             }
 
             if (mb_strlen($input) > $max) {
-                throw new Exception($message);
+                throw new ValidationException($message);
             }
 
             return $input;
@@ -2046,7 +2030,7 @@ final class Validate
             }
 
             if (!preg_match($pattern, $input)) {
-                throw new Exception($message);
+                throw new ValidationException($message);
             }
 
             return $input;
@@ -2074,7 +2058,7 @@ final class Validate
             $value = $input instanceof DateTimeInterface ? $input->getTimestamp() : $input;
 
             if ($value < $min || $value > $max) {
-                throw new Exception($message);
+                throw new ValidationException($message);
             }
 
             return $input;
@@ -2100,7 +2084,7 @@ final class Validate
             $value = $input instanceof DateTimeInterface ? $input->getTimestamp() : $input;
 
             if ($value <= $min) {
-                throw new Exception($message);
+                throw new ValidationException($message);
             }
 
             return $input;
@@ -2126,7 +2110,7 @@ final class Validate
             $value = $input instanceof DateTimeInterface ? $input->getTimestamp() : $input;
 
             if ($value < $min) {
-                throw new Exception($message);
+                throw new ValidationException($message);
             }
 
             return $input;
@@ -2152,7 +2136,7 @@ final class Validate
             $value = $input instanceof DateTimeInterface ? $input->getTimestamp() : $input;
 
             if ($value >= $max) {
-                throw new Exception($message);
+                throw new ValidationException($message);
             }
 
             return $input;
@@ -2178,7 +2162,7 @@ final class Validate
             $value = $input instanceof DateTimeInterface ? $input->getTimestamp() : $input;
 
             if ($value > $max) {
-                throw new Exception($message);
+                throw new ValidationException($message);
             }
 
             return $input;
@@ -2195,7 +2179,7 @@ final class Validate
     {
         return function (mixed $input) use ($message): mixed {
             if (!isset($input) || (is_string($input) && trim($input) === "")) {
-                throw new Exception($message);
+                throw new ValidationException($message);
             }
 
             return $input;
@@ -2218,7 +2202,7 @@ final class Validate
             }
 
             if (!in_array($input, $allowed, $strict)) {
-                throw new Exception($message);
+                throw new ValidationException($message);
             }
 
             return $input;
