@@ -141,8 +141,9 @@ Whether you’re building tools, APIs, internal apps, or microservices—Essenti
 | `Template`            | Layout/segment PHP-based template engine          |
 | `Jwt`                 | Stateless JWT encoder/decoder                     |
 | `Environment`         | `.env` file parser with auto-casting              |
-| `HttpException`       | Structured HTTP error generator                   |
 | `FrameworkException`  | Base exception type for internal framework errors |
+| `ValidationException` | Thrown when validation rules fail                 |
+| `HttpException`       | Structured HTTP error generator                   |
 
 ---
 
@@ -210,7 +211,6 @@ Whether you’re building tools, APIs, internal apps, or microservices—Essenti
 | `HttpClient`          | Minimal HTTP client using cURL         |
 | `Query`               | Fluent SQL query builder (PDO-based)   |
 | `Validate`            | Validation rules (regex, bounds, etc.) |
-| `ValidationException` | Thrown when validation rules fail      |
 
 #### 🌍 Additional Helpers
 
@@ -248,31 +248,37 @@ If it happens, it’s because you wrote it.
 Measured using [cloc](https://github.com/AlDanial/cloc):
 
 **Base:**
+<!-- cloc-base -->
 ```
--------------------------------------------------------------------------------
-Language                     files          blank        comment           code
--------------------------------------------------------------------------------
-PHP                              1            199            575            767
--------------------------------------------------------------------------------
+-----------------------------------------------------
+Language    files    blank  comment     code    Total
+-----------------------------------------------------
+PHP             1      202      381      774     1357
+-----------------------------------------------------
 ```
+<!-- ./cloc-base -->
 
 **Full (with Extras):**
+<!-- cloc-full -->
 ```
--------------------------------------------------------------------------------
-Language                     files          blank        comment           code
--------------------------------------------------------------------------------
-PHP                              1            367            888           1364
--------------------------------------------------------------------------------
+-----------------------------------------------------
+Language    files    blank  comment     code    Total
+-----------------------------------------------------
+PHP             1      370      573     1371     2314
+-----------------------------------------------------
 ```
+<!-- ./cloc-full -->
 
 **Pre build (src):**
+<!-- cloc-src -->
 ```
--------------------------------------------------------------------------------
-Language                     files          blank        comment           code
--------------------------------------------------------------------------------
-PHP                             21            398            888           1440
--------------------------------------------------------------------------------
+-----------------------------------------------------
+Language    files    blank  comment     code    Total
+-----------------------------------------------------
+PHP            22      410      598     1472     2480
+-----------------------------------------------------
 ```
+<!-- ./cloc-src -->
 
 ---
 

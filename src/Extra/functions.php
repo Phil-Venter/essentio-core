@@ -1,8 +1,8 @@
 <?php
 
+use Essentio\Core\Response;
 use Essentio\Core\Extra\HttpClient;
 use Essentio\Core\Extra\Query;
-use Essentio\Core\Response;
 
 /**
  * Send an HTTP request via HttpClient and return a Response.
@@ -20,8 +20,6 @@ function curl(string $method, string $url, array $headers = [], string $body = "
 
 /**
  * Get a Query builder instance.
- *
- * @return Query
  */
 function query(): Query
 {

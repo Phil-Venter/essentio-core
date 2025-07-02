@@ -5,26 +5,22 @@ namespace Essentio\Core;
 /**
  * @api
  */
-final class Jwt
+final readonly class Jwt
 {
-    public function __construct(protected string $secret, protected ?string $issuer = null) {}
+    public function __construct(private string $secret, private ?string $issuer = null) {}
 
     /**
      * Create a new Jwt instance from environment values.
-     *
-     * @param Environment $env
-     * @return static
      */
-    public static function create(Environment $env): static
+    public static function create(Environment $environment): static
     {
-        return new static($env->get("JWT_SECRET") ?? "", $env->get("JWT_ISSUER"));
+        return new self($environment->get("JWT_SECRET") ?? "", $environment->get("JWT_ISSUER"));
     }
 
     /**
      * Encode a payload into a JWT string.
      *
-     * @param array $payload
-     * @return string
+     * @param array<string,mixed> $payload
      */
     public function encode(array $payload): string
     {
@@ -43,8 +39,7 @@ final class Jwt
     /**
      * Decode and validate a JWT string.
      *
-     * @param string $token
-     * @return array
+     * @return array<string,mixed>
      */
     public function decode(string $token): array
     {
@@ -57,7 +52,7 @@ final class Jwt
             throw new FrameworkException("Unsupported or missing algorithm");
         }
 
-        if (!hash_equals($this->sign("$header64.$payload64"), $signature)) {
+        if (!hash_equals($this->sign(sprintf("%s.%s", $header64, $payload64)), $signature)) {
             throw new FrameworkException("Invalid token signature");
         }
 
@@ -88,24 +83,18 @@ final class Jwt
 
     /**
      * Encode data to base64url format.
-     *
-     * @param string $data
-     * @return string
      */
-    protected function encodeBase64(string $data): string
+    private function encodeBase64(string $data): string
     {
         return rtrim(strtr(base64_encode($data), "+/", "-_"), "=");
     }
 
     /**
      * Decode data from base64url format.
-     *
-     * @param string $data
-     * @return string
      */
-    protected function decodeBase64(string $data): string
+    private function decodeBase64(string $data): string
     {
-        if ($remainder = strlen($data) % 4) {
+        if (($remainder = strlen($data) % 4) !== 0) {
             $data .= str_repeat("=", 4 - $remainder);
         }
 
@@ -114,11 +103,8 @@ final class Jwt
 
     /**
      * Sign input string using HMAC-SHA256.
-     *
-     * @param string $input
-     * @return string
      */
-    protected function sign(string $input): string
+    private function sign(string $input): string
     {
         return hash_hmac("sha256", $input, $this->secret, true);
     }

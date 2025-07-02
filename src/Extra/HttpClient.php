@@ -13,11 +13,7 @@ final class HttpClient
     /**
      * Send an HTTP request and return a Response.
      *
-     * @param string $method
-     * @param string $url
-     * @param array $headers
-     * @param string $body
-     * @return Response
+     * @param array<string,mixed> $headers
      */
     public static function request(string $method, string $url, array $headers = [], string $body = ""): Response
     {
@@ -39,7 +35,7 @@ final class HttpClient
             CURLOPT_SSL_VERIFYPEER => false,
             CURLOPT_SSL_VERIFYHOST => false,
             CURLOPT_CUSTOMREQUEST => strtoupper($method),
-            CURLOPT_HTTPHEADER => array_map(fn($k, $v): string => "{$k}: {$v}", array_keys($headers), $headers),
+            CURLOPT_HTTPHEADER => array_map(fn($k, $v): string => sprintf("%s: %s", $k, $v), array_keys($headers), $headers),
             CURLOPT_POSTFIELDS => $body,
         ]);
 
@@ -63,10 +59,10 @@ final class HttpClient
             $headerLines = explode("\r\n", trim($headerText));
             $parsedHeaders = [];
 
-            foreach ($headerLines as $line) {
-                if (str_contains($line, ":")) {
+            foreach ($headerLines as $headerLine) {
+                if (str_contains($headerLine, ":")) {
                     /** @psalm-suppress PossiblyUndefinedArrayOffset */
-                    [$key, $value] = explode(":", $line, 2);
+                    [$key, $value] = explode(":", $headerLine, 2);
                     $parsedHeaders[trim($key)] = trim($value);
                 }
             }

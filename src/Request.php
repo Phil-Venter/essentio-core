@@ -13,26 +13,24 @@ final class Request
         public readonly string $method,
         public readonly int $port,
         public readonly string $path,
-        protected array $query,
+        private array $query,
         public readonly string $contentType,
         public readonly array $headers,
         public readonly array $cookies,
         public readonly array $files,
-        protected array $body,
+        private array $body,
         public array $parameters
     ) {}
 
     /**
      * Create a Request from global or custom input.
      *
-     * @param array<string, mixed>|null $server
-     * @param array<string, string>|null $headers
-     * @param array<string, mixed>|null $query
-     * @param array<string, mixed>|null $post
-     * @param array<string, mixed>|null $cookies
-     * @param array<string, mixed>|null $files
-     * @param string|null $body
-     * @return static
+     * @param array<string,mixed>|null $server
+     * @param array<string,string>|null $headers
+     * @param array<string,mixed>|null $query
+     * @param array<string,mixed>|null $post
+     * @param array<string,mixed>|null $cookies
+     * @param array<string,mixed>|null $files
      */
     public static function create(
         ?array $server = null,
@@ -48,8 +46,12 @@ final class Request
         $query ??= $_GET;
         $cookies ??= $_COOKIE;
         $files ??= $_FILES;
-        $headers ??= function_exists("getallheaders") ? (getallheaders() ?: []) : [];
+        $headers ??= function_exists("getallheaders") ? getallheaders() : [];
         $rawInput = $body ?? file_get_contents("php://input") ?: "";
+
+        if ($headers === false) {
+            $headers = [];
+        }
 
         /** @psalm-suppress PossiblyInvalidArgument */
         $method = strtoupper($post["_method"] ?? ($server["REQUEST_METHOD"] ?? "GET"));
@@ -67,23 +69,26 @@ final class Request
         $contentType = explode(";", $headers["Content-Type"] ?? "", 2)[0];
 
         $flatFiles = [];
-        foreach ($files as $info) {
-            if (!is_array($info["name"] ?? null)) {
-                if (($info["error"] ?? null) === UPLOAD_ERR_OK) {
-                    $flatFiles[] = $info;
+        foreach ($files as $file) {
+            if (!is_array($file["name"] ?? null)) {
+                if (($file["error"] ?? null) === UPLOAD_ERR_OK) {
+                    $flatFiles[] = $file;
                 }
 
                 continue;
             }
 
             /** @psalm-suppress PossiblyInvalidArgument */
-            for ($i = 0; $i < count($info["name"]); $i++) {
-                if ($info["error"][$i] !== UPLOAD_ERR_OK) {
+            $counter = count($file["name"]);
+
+            /** @psalm-suppress PossiblyInvalidArgument */
+            for ($i = 0; $i < $counter; $i++) {
+                if ($file["error"][$i] !== UPLOAD_ERR_OK) {
                     continue;
                 }
 
                 $temp = [];
-                foreach ($info as $key => $vals) {
+                foreach ($file as $key => $vals) {
                     $temp[$key] = $vals[$i];
                 }
 
@@ -99,14 +104,11 @@ final class Request
             default => $post,
         };
 
-        return new static($method, $port, $path, $query, $contentType, $headers, $cookies, $flatFiles, $parsedBody, []);
+        return new self($method, $port, $path, $query, $contentType, $headers, $cookies, $flatFiles, $parsedBody, []);
     }
 
     /**
      * Get a query or path parameter.
-     *
-     * @param string $field
-     * @return mixed
      */
     public function get(string $field): mixed
     {
@@ -115,9 +117,6 @@ final class Request
 
     /**
      * Get a value from the request body or parameters.
-     *
-     * @param string $field
-     * @return mixed
      */
     public function input(string $field): mixed
     {
@@ -130,8 +129,8 @@ final class Request
      * Sanitize and validate input fields.
      *
      * @template T as string
-     * @param array<T, callable>|array<T, list<callable>> $rules
-     * @return array<T, mixed>|false
+     * @param array<T,callable>|array<T,list<callable>> $rules
+     * @return array<T,mixed>|false
      */
     public function sanitize(array $rules): array|false
     {
@@ -152,6 +151,6 @@ final class Request
             }
         }
 
-        return empty($this->errors) ? $sanitized : false;
+        return $this->errors === [] ? $sanitized : false;
     }
 }

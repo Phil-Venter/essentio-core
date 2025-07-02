@@ -26,6 +26,22 @@ it("inserts a row and returns its ID", function () {
     expect($id)->toBe("1");
 });
 
+it("fetches using closure based where", function () {
+    $pdo = setupDatabase();
+
+    (new Query($pdo))->table("users")->insert(["name" => "Alice", "active" => 1]);
+
+    $user = (new Query($pdo))
+        ->table("users")
+        ->where(function ($query) {
+            $query->where("name", "=", "Alice")->where("active", "=", 1);
+        })
+        ->first();
+
+    expect($user["name"])->toBe("Alice");
+    expect((int) $user["active"])->toBe(1);
+});
+
 it("retrieves a single row with where clause", function () {
     $pdo = setupDatabase();
     $pdo->exec("INSERT INTO users (name, active) VALUES ('Bob', 1)");

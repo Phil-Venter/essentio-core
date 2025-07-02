@@ -4,46 +4,47 @@ namespace Essentio\Core\Extra;
 
 use Closure;
 use DateTimeInterface;
-use Essentio\Core\FrameworkException;
 use Generator;
 use PDO;
 use Stringable;
+
+use Essentio\Core\FrameworkException;
 
 /**
  * @api
  */
 final class Query
 {
-    protected string $bool = "AND";
+    private string $bool = "AND";
 
-    protected array $columns = [];
+    private array $columns = [];
 
-    protected string $table = "";
+    private string $table = "";
 
-    protected array $where = [];
+    /** @var list<string> $where */
+    private array $where = [];
 
-    protected array $whereParams = [];
+    private array $whereParams = [];
 
-    protected array $groupBys = [];
+    private array $groupBys = [];
 
-    protected array $having = [];
+    /** @var list<string> $having */
+    private array $having = [];
 
-    protected array $havingParams = [];
+    private array $havingParams = [];
 
-    protected array $orderBys = [];
+    private array $orderBys = [];
 
-    protected ?int $limit = null;
+    private ?int $limit = null;
 
-    protected ?int $offset = null;
+    private ?int $offset = null;
 
-    public function __construct(protected ?PDO $pdo = null) {}
+    public function __construct(private readonly ?PDO $pdo = null) {}
 
     /**
      * Use OR for the next condition.
-     *
-     * @return static
      */
-    public function or(): static
+    public function or(): self
     {
         $this->bool = "OR";
         return $this;
@@ -51,23 +52,20 @@ final class Query
 
     /**
      * Consume current boolean operator.
-     *
-     * @return string
      */
-    protected function consumeBool(): string
+    private function consumeBool(): string
     {
         $bool = $this->bool;
         $this->bool = "AND";
-        return " $bool ";
+        return sprintf(" %s ", $bool);
     }
 
     /**
      * Select columns.
      *
-     * @param array|string ...$columns
-     * @return static
+     * @param list<string>|string ...$columns
      */
-    public function select(array|string ...$columns): static
+    public function select(array|string ...$columns): self
     {
         $columns = array_values($columns);
         $this->columns = array_merge($this->columns, $columns);
@@ -76,11 +74,8 @@ final class Query
 
     /**
      * Set the table for the query.
-     *
-     * @param string $table
-     * @return static
      */
-    public function table(string $table): static
+    public function table(string $table): self
     {
         $this->table = $table;
         return $this;
@@ -88,23 +83,18 @@ final class Query
 
     /**
      * Add a where clause.
-     *
-     * @param string|Closure $column
-     * @param string|null $operator
-     * @param mixed $value
-     * @return static
      */
-    public function where(string|Closure $column, ?string $operator = null, mixed $value = null): static
+    public function where(string|Closure $column, ?string $operator = null, mixed $value = null): self
     {
         if ($column instanceof Closure) {
-            $column($query = new static());
-            return $this->whereRaw("({$this->clean($query->where)})", $query->whereParams);
+            $column($query = new self());
+            return $this->whereRaw(sprintf("(%s)", $this->clean($query->where)), $query->whereParams);
         }
 
         if ($value === null) {
             $sql = match (true) {
-                in_array(strtolower((string) $operator), ["=", "is"], true) => "{$column} IS NULL",
-                in_array(strtolower((string) $operator), ["!=", "<>", "is not", "not"], true) => "{$column} IS NOT NULL",
+                in_array(strtolower((string) $operator), ["=", "is"], true) => $column . " IS NULL",
+                in_array(strtolower((string) $operator), ["!=", "<>", "is not", "not"], true) => $column . " IS NOT NULL",
                 default => throw new FrameworkException("Invalid where condition."),
             };
 
@@ -121,7 +111,7 @@ final class Query
 
         if (is_scalar($value)) {
             $operator ??= "=";
-            return $this->whereRaw("{$column} {$operator} ?", [$value]);
+            return $this->whereRaw(sprintf("%s %s ?", $column, $operator), [$value]);
         }
 
         $operator ??= "IN";
@@ -131,8 +121,8 @@ final class Query
         }
 
         if ($value instanceof Closure) {
-            $value($query = new static());
-            return $this->whereRaw("{$column} {$operator} ({$query->selectSql()})", $query->getParams());
+            $value($query = new self());
+            return $this->whereRaw(sprintf("%s %s (%s)", $column, $operator, $query->selectSql()), $query->getParams());
         }
 
         if (!is_array($value)) {
@@ -141,7 +131,7 @@ final class Query
 
         if (mb_stripos($operator, "between") === false) {
             $placeholders = implode(", ", array_fill(0, count($value), "?"));
-            return $this->whereRaw("{$column} {$operator} ({$placeholders})", $value);
+            return $this->whereRaw(sprintf("%s %s (%s)", $column, $operator, $placeholders), $value);
         }
 
         if (count($value) !== 2) {
@@ -155,19 +145,17 @@ final class Query
             throw new FrameworkException("Invalid where condition.");
         }
 
-        return $this->whereRaw("{$column} {$operator} ? AND ?", $value);
+        return $this->whereRaw(sprintf("%s %s ? AND ?", $column, $operator), $value);
     }
 
     /**
      * Add raw where condition.
      *
-     * @param string $statement
-     * @param array $data
-     * @return static
+     * @param array<string,mixed>|list<mixed> $data
      */
-    public function whereRaw(string $statement, array $data = []): static
+    public function whereRaw(string $statement, array $data = []): self
     {
-        $this->where[] = "{$this->consumeBool()} {$statement}";
+        $this->where[] = sprintf("%s %s", $this->consumeBool(), $statement);
         $this->whereParams = array_merge($this->whereParams, $data);
         return $this;
     }
@@ -175,10 +163,9 @@ final class Query
     /**
      * Add group by clauses.
      *
-     * @param array|string ...$groupBys
-     * @return static
+     * @param list<string>|string ...$groupBys
      */
-    public function groupBy(array|string ...$groupBys): static
+    public function groupBy(array|string ...$groupBys): self
     {
         $groupBys = array_values($groupBys);
         $this->groupBys = array_merge($this->groupBys, $groupBys);
@@ -188,38 +175,28 @@ final class Query
     /**
      * Add raw having clause.
      *
-     * @param string $statement
-     * @param array $data
-     * @return static
+     * @param array<string,mixed> $data
      */
-    public function havingRaw(string $statement, array $data = []): static
+    public function havingRaw(string $statement, array $data = []): self
     {
-        $this->having[] = "{$this->consumeBool()} {$statement}";
+        $this->having[] = sprintf("%s %s", $this->consumeBool(), $statement);
         $this->havingParams = array_merge($this->havingParams, $data);
         return $this;
     }
 
     /**
      * Add order by clause.
-     *
-     * @param string $column
-     * @param string $direction
-     * @return static
      */
-    public function orderBy(string $column, string $direction = "ASC"): static
+    public function orderBy(string $column, string $direction = "ASC"): self
     {
-        $this->orderBys[] = "{$column} {$direction}";
+        $this->orderBys[] = sprintf("%s %s", $column, $direction);
         return $this;
     }
 
     /**
      * Set limit and optional offset.
-     *
-     * @param int $limit
-     * @param int|null $offset
-     * @return static
      */
-    public function limit(int $limit, ?int $offset = null): static
+    public function limit(int $limit, ?int $offset = null): self
     {
         $this->limit = $limit;
         $this->offset = $offset;
@@ -228,38 +205,36 @@ final class Query
 
     /**
      * Generate SQL for select.
-     *
-     * @return string
      */
-    protected function selectSql(): string
+    private function selectSql(): string
     {
-        if (empty($this->table)) {
+        if ($this->table === "" || $this->table === "0") {
             throw new FrameworkException("Table name not specified for query.");
         }
 
-        $sql = "SELECT " . implode(", ", $this->columns ?: ["*"]) . " FROM {$this->table}";
+        $sql = "SELECT " . implode(", ", $this->columns !== [] ? $this->columns : ["*"]) . (" FROM " . $this->table);
 
-        if (!empty($this->where)) {
-            $sql .= " WHERE {$this->clean($this->where)}";
+        if ($this->where !== []) {
+            $sql .= " WHERE " . $this->clean($this->where);
         }
 
-        if (!empty($this->groupBys)) {
+        if ($this->groupBys !== []) {
             $sql .= " GROUP BY " . implode(", ", $this->groupBys);
 
-            if (!empty($this->having)) {
-                $sql .= " HAVING {$this->clean($this->having)}";
+            if ($this->having !== []) {
+                $sql .= " HAVING " . $this->clean($this->having);
             }
         }
 
-        if (!empty($this->orderBys)) {
+        if ($this->orderBys !== []) {
             $sql .= " ORDER BY " . implode(", ", $this->orderBys);
         }
 
         if ($this->limit !== null) {
-            $sql .= " LIMIT {$this->limit}";
+            $sql .= " LIMIT " . $this->limit;
 
             if ($this->offset !== null) {
-                $sql .= " OFFSET {$this->offset}";
+                $sql .= " OFFSET " . $this->offset;
             }
         }
 
@@ -269,20 +244,17 @@ final class Query
     /**
      * Remove leading boolean operator.
      *
-     * @param array $statements
-     * @return string
+     * @param list<string> $statements
      */
-    protected function clean(array $statements): string
+    private function clean(array $statements): string
     {
         return (string) preg_replace("/^\s*(AND|OR)\s*/", "", implode(" ", $statements));
     }
 
     /**
      * Get combined query parameters.
-     *
-     * @return array
      */
-    protected function getParams(): array
+    private function getParams(): array
     {
         return array_merge($this->whereParams, $this->havingParams);
     }
@@ -290,11 +262,11 @@ final class Query
     /**
      * Execute and return query results.
      *
-     * @psalm-return Generator<int, mixed, mixed, never>
+     * @return Generator<array<string,mixed>>
      */
     public function get(): Generator
     {
-        if ($this->pdo === null) {
+        if (!$this->pdo instanceof PDO) {
             throw new FrameworkException("No PDO to run query.");
         }
 
@@ -309,7 +281,7 @@ final class Query
     /**
      * Get first result or empty array.
      *
-     * @return array
+     * @return array<string,mixed>
      */
     public function first(): array
     {
@@ -325,26 +297,26 @@ final class Query
     /**
      * Insert a new row and return ID.
      *
-     * @param array $data
-     * @return null|string
+     * @param array<string,mixed> $data
      */
     public function insert(array $data): string|null
     {
+        /** @psalm-suppress TypeDoesNotContainType */
         if (array_is_list($data)) {
             throw new FrameworkException("Data must be associative array.");
         }
 
-        if (empty($this->table)) {
+        if ($this->table === "" || $this->table === "0") {
             throw new FrameworkException("Table name not specified for insert.");
         }
 
-        if ($this->pdo === null) {
+        if (!$this->pdo instanceof PDO) {
             throw new FrameworkException("No PDO to run insert.");
         }
 
         $columnList = implode(", ", array_keys($data));
         $placeholders = implode(", ", array_fill(0, count($data), "?"));
-        $sql = "INSERT INTO {$this->table} ({$columnList}) VALUES ({$placeholders})";
+        $sql = sprintf("INSERT INTO %s (%s) VALUES (%s)", $this->table, $columnList, $placeholders);
 
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute(array_values($data));
@@ -355,29 +327,29 @@ final class Query
     /**
      * Update matching rows.
      *
-     * @param array $data
-     * @return bool
+     * @param array<string,mixed> $data
      */
     public function update(array $data): bool
     {
+        /** @psalm-suppress TypeDoesNotContainType */
         if (array_is_list($data)) {
             throw new FrameworkException("Data must be associative array.");
         }
 
-        if (empty($this->table)) {
+        if ($this->table === "" || $this->table === "0") {
             throw new FrameworkException("Table name not specified for update.");
         }
 
-        if (empty($this->where)) {
+        if ($this->where === []) {
             throw new FrameworkException("Where clause missing for update.");
         }
 
-        if ($this->pdo === null) {
+        if (!$this->pdo instanceof PDO) {
             throw new FrameworkException("No PDO to run update.");
         }
 
-        $columnList = implode(", ", array_map(fn($column): string => "{$column} = ?", array_keys($data)));
-        $sql = "UPDATE {$this->table} SET {$columnList} WHERE {$this->clean($this->where)}";
+        $columnList = implode(", ", array_map(fn($column): string => $column . " = ?", array_keys($data)));
+        $sql = sprintf("UPDATE %s SET %s WHERE %s", $this->table, $columnList, $this->clean($this->where));
 
         $stmt = $this->pdo->prepare($sql);
         return $stmt->execute([...array_values($data), ...$this->whereParams]);
@@ -385,24 +357,22 @@ final class Query
 
     /**
      * Delete matching rows.
-     *
-     * @return bool
      */
     public function delete(): bool
     {
-        if (empty($this->table)) {
+        if ($this->table === "" || $this->table === "0") {
             throw new FrameworkException("Table name not specified for delete.");
         }
 
-        if (empty($this->where)) {
+        if ($this->where === []) {
             throw new FrameworkException("Where clause missing for delete.");
         }
 
-        if ($this->pdo === null) {
+        if (!$this->pdo instanceof PDO) {
             throw new FrameworkException("No PDO to run delete.");
         }
 
-        $sql = "DELETE FROM {$this->table} WHERE {$this->clean($this->where)}";
+        $sql = sprintf("DELETE FROM %s WHERE %s", $this->table, $this->clean($this->where));
         $stmt = $this->pdo->prepare($sql);
 
         return $stmt->execute($this->whereParams);

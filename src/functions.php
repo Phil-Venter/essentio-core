@@ -29,7 +29,7 @@ function app(string $id): object
  *
  * @template T
  * @param class-string<T> $id
- * @param array<string, mixed>|list<mixed> $dependencies
+ * @param array<string,mixed>|list<mixed> $dependencies
  * @return T
  */
 function make(string $id, array $dependencies = []): object
@@ -42,8 +42,7 @@ function make(string $id, array $dependencies = []): object
  *
  * @template T
  * @param class-string<T> $id
- * @param callable $concrete
- * @return void
+ * @param callable():T|class-string<T>|null $concrete
  */
 function bind(string $id, callable|string|null $concrete = null): void
 {
@@ -55,8 +54,7 @@ function bind(string $id, callable|string|null $concrete = null): void
  *
  * @template T
  * @param class-string<T> $id
- * @param callable $concrete
- * @return void
+ * @param callable():T|class-string<T>|null $concrete
  */
 function once(string $id, callable|string|null $concrete = null): void
 {
@@ -65,9 +63,6 @@ function once(string $id, callable|string|null $concrete = null): void
 
 /**
  * Get the absolute path from base path.
- *
- * @param string $path
- * @return string
  */
 function base_path(string $path): string
 {
@@ -76,9 +71,6 @@ function base_path(string $path): string
 
 /**
  * Get environment variable from .env file.
- *
- * @param string $key
- * @return mixed
  */
 function env(string $key): mixed
 {
@@ -87,9 +79,6 @@ function env(string $key): mixed
 
 /**
  * Get CLI argument by key.
- *
- * @param int|string $key
- * @return mixed
  */
 function arg(int|string $key): mixed
 {
@@ -98,20 +87,12 @@ function arg(int|string $key): mixed
 
 /**
  * Register and execute a CLI command.
- *
- * @param string $name
- * @param callable $handle
- * @return void
  */
 function command(string $name, callable $handle): void
 {
-    $argument = app(Argument::class);
-
-    if ($argument->command !== $name) {
-        return;
+    if (($argument = app(Argument::class))->command === $name) {
+        exit(is_int($result = $handle($argument)) ? $result : 0);
     }
-
-    exit(is_int($result = $handle($argument)) ? $result : 0);
 }
 
 /**
@@ -123,14 +104,11 @@ function command(string $name, callable $handle): void
  */
 function request(string $key = ""): mixed
 {
-    return func_num_args() ? app(Request::class)->get($key) : app(Request::class);
+    return func_num_args() !== 0 ? app(Request::class)->get($key) : app(Request::class);
 }
 
 /**
  * Get an input field from the request body or parameters.
- *
- * @param string $field
- * @return mixed
  */
 function input(string $field): mixed
 {
@@ -141,9 +119,9 @@ function input(string $field): mixed
  * Sanitize and validate user input.
  *
  * @template T as string
- * @param array<T, callable>|array<T, list<callable>> $rules
- * @param callable $callback
- * @return array<T, mixed>|false
+ * @param array<T,callable>|array<T,list<callable>> $rules
+ * @param callable(array<string,list<string>>):void $callback
+ * @return array<T,mixed>|false
  */
 function sanitize(array $rules, callable $callback): array|false
 {
@@ -156,10 +134,6 @@ function sanitize(array $rules, callable $callback): array|false
 
 /**
  * Get or set a session value.
- *
- * @param string $key
- * @param mixed $value
- * @return mixed
  */
 function session(string $key, mixed $value = null): mixed
 {
@@ -168,10 +142,6 @@ function session(string $key, mixed $value = null): mixed
 
 /**
  * Get or set a flash session value.
- *
- * @param string $key
- * @param mixed $value
- * @return mixed
  */
 function flash(string $key, mixed $value = null): mixed
 {
@@ -187,13 +157,13 @@ function flash(string $key, mixed $value = null): mixed
  */
 function csrf(string $csrf = ""): string|bool
 {
-    return func_num_args() ? app(Session::class)->verifyCsrf($csrf) : app(Session::class)->getCsrf();
+    return func_num_args() !== 0 ? app(Session::class)->verifyCsrf($csrf) : app(Session::class)->getCsrf();
 }
 
 /**
  * Encode or decode a JWT payload.
  *
- * @template T of array|string
+ * @template T of array<string,mixed>|string
  * @param T $payload
  * @return (T is string ? array : string)
  */
@@ -204,9 +174,6 @@ function jwt(array|string $payload): array|string
 
 /**
  * Register middleware globally or scoped within a group.
- *
- * @param callable $middleware
- * @return void
  */
 function middleware(callable $middleware): void
 {
@@ -215,10 +182,6 @@ function middleware(callable $middleware): void
 
 /**
  * Define a route group with shared prefix.
- *
- * @param string $prefix
- * @param callable $group
- * @return void
  */
 function group(string $prefix, callable $group): void
 {
@@ -227,10 +190,6 @@ function group(string $prefix, callable $group): void
 
 /**
  * Register a GET route.
- *
- * @param string $path
- * @param callable $handle
- * @return RouteInterface
  */
 function get(string $path, callable $handle): RouteInterface
 {
@@ -239,10 +198,6 @@ function get(string $path, callable $handle): RouteInterface
 
 /**
  * Register a POST route.
- *
- * @param string $path
- * @param callable $handle
- * @return RouteInterface
  */
 function post(string $path, callable $handle): RouteInterface
 {
@@ -251,10 +206,6 @@ function post(string $path, callable $handle): RouteInterface
 
 /**
  * Register a PUT route.
- *
- * @param string $path
- * @param callable $handle
- * @return RouteInterface
  */
 function put(string $path, callable $handle): RouteInterface
 {
@@ -263,10 +214,6 @@ function put(string $path, callable $handle): RouteInterface
 
 /**
  * Register a PATCH route.
- *
- * @param string $path
- * @param callable $handle
- * @return RouteInterface
  */
 function patch(string $path, callable $handle): RouteInterface
 {
@@ -275,10 +222,6 @@ function patch(string $path, callable $handle): RouteInterface
 
 /**
  * Register a DELETE route.
- *
- * @param string $path
- * @param callable $handle
- * @return RouteInterface
  */
 function delete(string $path, callable $handle): RouteInterface
 {
@@ -288,9 +231,7 @@ function delete(string $path, callable $handle): RouteInterface
 /**
  * Generate a named route URL.
  *
- * @param string $name
- * @param array<string, scalar> $params
- * @return string
+ * @param array<string,scalar> $params
  */
 function named_url(string $name, array $params = []): string
 {
@@ -300,9 +241,7 @@ function named_url(string $name, array $params = []): string
 /**
  * Render a PHP template to string.
  *
- * @param string $template
- * @param array<string, mixed> $data
- * @return string
+ * @param array<string,mixed> $data
  */
 function render(string $template, array $data = []): string
 {
@@ -311,10 +250,6 @@ function render(string $template, array $data = []): string
 
 /**
  * Create a redirect response.
- *
- * @param string $uri
- * @param int $status
- * @return Response
  */
 function redirect(string $uri, int $status = 302): Response
 {
@@ -325,10 +260,6 @@ function redirect(string $uri, int $status = 302): Response
 
 /**
  * Create an HTML response.
- *
- * @param string $html
- * @param int $status
- * @return Response
  */
 function html(string $html, int $status = 200): Response
 {
@@ -340,10 +271,6 @@ function html(string $html, int $status = 200): Response
 
 /**
  * Create a JSON response.
- *
- * @param mixed $data
- * @param int $status
- * @return Response
  */
 function json(mixed $data, int $status = 200): Response
 {
@@ -355,10 +282,6 @@ function json(mixed $data, int $status = 200): Response
 
 /**
  * Create a plain text response.
- *
- * @param string $text
- * @param int $status
- * @return Response
  */
 function text(string $text, int $status = 200): Response
 {
@@ -371,10 +294,7 @@ function text(string $text, int $status = 200): Response
 /**
  * Render a view and return an HTML response.
  *
- * @param string $template
- * @param array<string, mixed> $data
- * @param int $status
- * @return Response
+ * @param array<string,mixed> $data
  */
 function view(string $template, array $data = [], int $status = 200): Response
 {
@@ -384,9 +304,6 @@ function view(string $template, array $data = [], int $status = 200): Response
 /**
  * Conditionally throw an exception.
  *
- * @param bool $condition
- * @param Throwable|string $e
- * @return void
  * @throws Throwable
  */
 function throw_if(bool $condition, Throwable|string $e): void

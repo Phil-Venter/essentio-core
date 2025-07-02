@@ -7,21 +7,19 @@ namespace Essentio\Core;
  */
 final class Argument
 {
-    public function __construct(public readonly string $command = "", protected array $arguments = []) {}
+    public function __construct(public readonly string $command = "", private array $arguments = []) {}
 
     /**
      * Parse CLI arguments into command and options.
      *
-     * @param Helper $helper
      * @param list<string>|null $argv
-     * @return static
      */
     public static function create(Helper $helper, ?array $argv = null): static
     {
         $argv ??= $_SERVER["argv"] ?? [];
 
         if (count($argv) <= 1) {
-            return new static();
+            return new self();
         }
 
         array_shift($argv);
@@ -56,12 +54,8 @@ final class Argument
                 $key = $arg[1];
                 $value = substr((string) $arg, 2);
 
-                if (empty($value)) {
-                    if (isset($argv[0]) && $argv[0][0] !== "-") {
-                        $value = array_shift($argv);
-                    } else {
-                        $value = true;
-                    }
+                if ($value === '' || $value === '0') {
+                    $value = isset($argv[0]) && $argv[0][0] !== "-" ? array_shift($argv) : true;
                 }
 
                 $arguments[$key] = $helper->autoCast($value);
@@ -75,14 +69,11 @@ final class Argument
             }
         }
 
-        return new static($command, $arguments);
+        return new self($command, $arguments);
     }
 
     /**
      * Get an argument by key or index.
-     *
-     * @param int|string $key
-     * @return mixed
      */
     public function get(int|string $key): mixed
     {

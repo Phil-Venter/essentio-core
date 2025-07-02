@@ -22,12 +22,13 @@
     },
     "minimum-stability": "stable",
     "scripts": {
-        "runner": "composer format && composer analyze && composer test && composer build:base 'dist/base.php' && composer build:full 'dist/full.php'",
+        "runner": "composer format && composer analyze && composer test && composer build:base 'dist/base.php' && composer build:full 'dist/full.php' && composer cloc:update",
         "format": "./vendor/bin/rector",
         "analyze": "./vendor/bin/psalm",
         "test": "./vendor/bin/pest",
         "build:base": "php ./bin/build.php",
-        "build:full": "php ./bin/build.php --extra"
+        "build:full": "php ./bin/build.php --extra",
+        "cloc:update": "php ./bin/cloc.php"
     },
     "config": {
         "allow-plugins": {

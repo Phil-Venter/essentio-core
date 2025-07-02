@@ -7,9 +7,6 @@ final class Application
 {
     /**
      * Bootstrap the application for CLI mode.
-     *
-     * @param string $basePath
-     * @return void
      */
     public static function cli(string $basePath): void
     {
@@ -20,9 +17,6 @@ final class Application
 
     /**
      * Bootstrap the application for HTTP mode.
-     *
-     * @param string $basePath
-     * @return void
      */
     public static function http(string $basePath): void
     {
@@ -36,8 +30,6 @@ final class Application
 
     /**
      * Run the application and handle the request.
-     *
-     * @return void
      */
     public static function run(): void
     {
@@ -64,21 +56,19 @@ final class Application
  */
 final class Argument
 {
-    public function __construct(public readonly string $command = "", protected array $arguments = []) {}
+    public function __construct(public readonly string $command = "", private array $arguments = []) {}
 
     /**
      * Parse CLI arguments into command and options.
      *
-     * @param Helper $helper
      * @param list<string>|null $argv
-     * @return static
      */
     public static function create(Helper $helper, ?array $argv = null): static
     {
         $argv ??= $_SERVER["argv"] ?? [];
 
         if (count($argv) <= 1) {
-            return new static();
+            return new self();
         }
 
         array_shift($argv);
@@ -113,12 +103,8 @@ final class Argument
                 $key = $arg[1];
                 $value = substr((string) $arg, 2);
 
-                if (empty($value)) {
-                    if (isset($argv[0]) && $argv[0][0] !== "-") {
-                        $value = array_shift($argv);
-                    } else {
-                        $value = true;
-                    }
+                if ($value === '' || $value === '0') {
+                    $value = isset($argv[0]) && $argv[0][0] !== "-" ? array_shift($argv) : true;
                 }
 
                 $arguments[$key] = $helper->autoCast($value);
@@ -132,14 +118,11 @@ final class Argument
             }
         }
 
-        return new static($command, $arguments);
+        return new self($command, $arguments);
     }
 
     /**
      * Get an argument by key or index.
-     *
-     * @param int|string $key
-     * @return mixed
      */
     public function get(int|string $key): mixed
     {
@@ -152,20 +135,18 @@ final class Argument
  */
 final class Container
 {
-    protected static $instance;
+    private static $instance;
 
-    protected array $bindings = [];
+    private array $bindings = [];
 
-    protected array $cache = [];
+    private array $cache = [];
 
     /**
      * Get the container singleton instance.
-     *
-     * @return static
      */
     public static function instance(): static
     {
-        return static::$instance ??= new static();
+        return static::$instance ??= new self();
     }
 
     /**
@@ -179,7 +160,7 @@ final class Container
     {
         /** @var string $concrete */
         if (is_string($concrete ??= $id) && !class_exists($concrete, true)) {
-            throw new FrameworkException("Cannot bind [{$id}] to [{$concrete}].");
+            throw new FrameworkException(sprintf('Cannot bind [%s] to [%s].', $id, $concrete));
         }
 
         $this->bindings[$id] = $concrete;
@@ -213,7 +194,7 @@ final class Container
                 return new $id(...$dependencies);
             }
 
-            throw new FrameworkException("Service [{$id}] is not bound and cannot be instantiated.");
+            throw new FrameworkException(sprintf('Service [%s] is not bound and cannot be instantiated.', $id));
         }
 
         $once = array_key_exists($id, $this->cache);
@@ -242,25 +223,33 @@ final class Container
  */
 final class Environment
 {
-    public function __construct(protected array $data = []) {}
+    public function __construct(private array $data = []) {}
 
     /**
      * Load and parse environment variables from a .env file.
-     *
-     * @param Helper $helper
-     * @param string|null $file
-     * @return static
      */
     public static function create(Helper $helper, ?string $file = null): static
     {
         if (!file_exists($file = $helper->fromBase($file ?? ".env"))) {
-            return new static();
+            return new self();
         }
 
         $data = [];
 
         foreach (file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] as $line) {
-            if (empty($line) || $line[0] === "#" || !str_contains($line, "=")) {
+            if ($line === '') {
+                continue;
+            }
+
+            if ($line === '0') {
+                continue;
+            }
+
+            if ($line[0] === "#") {
+                continue;
+            }
+
+            if (!str_contains($line, "=")) {
                 continue;
             }
 
@@ -269,14 +258,11 @@ final class Environment
             $data[trim($key)] = $helper->autoCast(trim($value));
         }
 
-        return new static($data);
+        return new self($data);
     }
 
     /**
      * Get a value from the environment data.
-     *
-     * @param string $key
-     * @return mixed
      */
     public function get(string $key): mixed
     {
@@ -289,26 +275,20 @@ class FrameworkException extends Exception {}
 /**
  * @api
  */
-final class Helper
+final readonly class Helper
 {
-    public function __construct(protected string $basePath) {}
+    public function __construct(private string $basePath) {}
 
     /**
      * Create a new Helper with the given base path.
-     *
-     * @param string $basePath
-     * @return static
      */
     public static function create(string $basePath): static
     {
-        return new static(rtrim($basePath, "/"));
+        return new self(rtrim($basePath, "/"));
     }
 
     /**
      * Resolve a relative path from the base path.
-     *
-     * @param string $path
-     * @return string
      */
     public function fromBase(string $path): string
     {
@@ -317,9 +297,6 @@ final class Helper
 
     /**
      * Convert a string to a native type if possible.
-     *
-     * @param mixed $value
-     * @return mixed
      */
     public function autoCast(mixed $value): mixed
     {
@@ -375,41 +352,32 @@ final class HttpException extends FrameworkException
 
     /**
      * Create a new HTTP exception with status and optional message.
-     *
-     * @param int $status
-     * @param string|null $message
-     * @param Throwable|null $previous
-     * @return static
      */
-    public static function create(int $status, ?string $message = null, ?Throwable $previous = null): static
+    public static function create(int $status, ?string $message = null, ?Throwable $throwable = null): static
     {
-        return new static($message ?? (static::HTTP_STATUS[$status] ?? "Unknown Error"), $status, $previous);
+        return new self($message ?? (self::HTTP_STATUS[$status] ?? "Unknown Error"), $status, $throwable);
     }
 }
 
 /**
  * @api
  */
-final class Jwt
+final readonly class Jwt
 {
-    public function __construct(protected string $secret, protected ?string $issuer = null) {}
+    public function __construct(private string $secret, private ?string $issuer = null) {}
 
     /**
      * Create a new Jwt instance from environment values.
-     *
-     * @param Environment $env
-     * @return static
      */
-    public static function create(Environment $env): static
+    public static function create(Environment $environment): static
     {
-        return new static($env->get("JWT_SECRET") ?? "", $env->get("JWT_ISSUER"));
+        return new self($environment->get("JWT_SECRET") ?? "", $environment->get("JWT_ISSUER"));
     }
 
     /**
      * Encode a payload into a JWT string.
      *
-     * @param array $payload
-     * @return string
+     * @param array<string,mixed> $payload
      */
     public function encode(array $payload): string
     {
@@ -428,8 +396,7 @@ final class Jwt
     /**
      * Decode and validate a JWT string.
      *
-     * @param string $token
-     * @return array
+     * @return array<string,mixed>
      */
     public function decode(string $token): array
     {
@@ -442,7 +409,7 @@ final class Jwt
             throw new FrameworkException("Unsupported or missing algorithm");
         }
 
-        if (!hash_equals($this->sign("$header64.$payload64"), $signature)) {
+        if (!hash_equals($this->sign(sprintf("%s.%s", $header64, $payload64)), $signature)) {
             throw new FrameworkException("Invalid token signature");
         }
 
@@ -473,24 +440,18 @@ final class Jwt
 
     /**
      * Encode data to base64url format.
-     *
-     * @param string $data
-     * @return string
      */
-    protected function encodeBase64(string $data): string
+    private function encodeBase64(string $data): string
     {
         return rtrim(strtr(base64_encode($data), "+/", "-_"), "=");
     }
 
     /**
      * Decode data from base64url format.
-     *
-     * @param string $data
-     * @return string
      */
-    protected function decodeBase64(string $data): string
+    private function decodeBase64(string $data): string
     {
-        if ($remainder = strlen($data) % 4) {
+        if (($remainder = strlen($data) % 4) !== 0) {
             $data .= str_repeat("=", 4 - $remainder);
         }
 
@@ -499,11 +460,8 @@ final class Jwt
 
     /**
      * Sign input string using HMAC-SHA256.
-     *
-     * @param string $input
-     * @return string
      */
-    protected function sign(string $input): string
+    private function sign(string $input): string
     {
         return hash_hmac("sha256", $input, $this->secret, true);
     }
@@ -520,26 +478,24 @@ final class Request
         public readonly string $method,
         public readonly int $port,
         public readonly string $path,
-        protected array $query,
+        private array $query,
         public readonly string $contentType,
         public readonly array $headers,
         public readonly array $cookies,
         public readonly array $files,
-        protected array $body,
+        private array $body,
         public array $parameters
     ) {}
 
     /**
      * Create a Request from global or custom input.
      *
-     * @param array<string, mixed>|null $server
-     * @param array<string, string>|null $headers
-     * @param array<string, mixed>|null $query
-     * @param array<string, mixed>|null $post
-     * @param array<string, mixed>|null $cookies
-     * @param array<string, mixed>|null $files
-     * @param string|null $body
-     * @return static
+     * @param array<string,mixed>|null $server
+     * @param array<string,string>|null $headers
+     * @param array<string,mixed>|null $query
+     * @param array<string,mixed>|null $post
+     * @param array<string,mixed>|null $cookies
+     * @param array<string,mixed>|null $files
      */
     public static function create(
         ?array $server = null,
@@ -555,8 +511,12 @@ final class Request
         $query ??= $_GET;
         $cookies ??= $_COOKIE;
         $files ??= $_FILES;
-        $headers ??= function_exists("getallheaders") ? (getallheaders() ?: []) : [];
+        $headers ??= function_exists("getallheaders") ? getallheaders() : [];
         $rawInput = $body ?? file_get_contents("php://input") ?: "";
+
+        if ($headers === false) {
+            $headers = [];
+        }
 
         /** @psalm-suppress PossiblyInvalidArgument */
         $method = strtoupper($post["_method"] ?? ($server["REQUEST_METHOD"] ?? "GET"));
@@ -574,23 +534,26 @@ final class Request
         $contentType = explode(";", $headers["Content-Type"] ?? "", 2)[0];
 
         $flatFiles = [];
-        foreach ($files as $info) {
-            if (!is_array($info["name"] ?? null)) {
-                if (($info["error"] ?? null) === UPLOAD_ERR_OK) {
-                    $flatFiles[] = $info;
+        foreach ($files as $file) {
+            if (!is_array($file["name"] ?? null)) {
+                if (($file["error"] ?? null) === UPLOAD_ERR_OK) {
+                    $flatFiles[] = $file;
                 }
 
                 continue;
             }
 
             /** @psalm-suppress PossiblyInvalidArgument */
-            for ($i = 0; $i < count($info["name"]); $i++) {
-                if ($info["error"][$i] !== UPLOAD_ERR_OK) {
+            $counter = count($file["name"]);
+
+            /** @psalm-suppress PossiblyInvalidArgument */
+            for ($i = 0; $i < $counter; $i++) {
+                if ($file["error"][$i] !== UPLOAD_ERR_OK) {
                     continue;
                 }
 
                 $temp = [];
-                foreach ($info as $key => $vals) {
+                foreach ($file as $key => $vals) {
                     $temp[$key] = $vals[$i];
                 }
 
@@ -606,14 +569,11 @@ final class Request
             default => $post,
         };
 
-        return new static($method, $port, $path, $query, $contentType, $headers, $cookies, $flatFiles, $parsedBody, []);
+        return new self($method, $port, $path, $query, $contentType, $headers, $cookies, $flatFiles, $parsedBody, []);
     }
 
     /**
      * Get a query or path parameter.
-     *
-     * @param string $field
-     * @return mixed
      */
     public function get(string $field): mixed
     {
@@ -622,9 +582,6 @@ final class Request
 
     /**
      * Get a value from the request body or parameters.
-     *
-     * @param string $field
-     * @return mixed
      */
     public function input(string $field): mixed
     {
@@ -637,8 +594,8 @@ final class Request
      * Sanitize and validate input fields.
      *
      * @template T as string
-     * @param array<T, callable>|array<T, list<callable>> $rules
-     * @return array<T, mixed>|false
+     * @param array<T,callable>|array<T,list<callable>> $rules
+     * @return array<T,mixed>|false
      */
     public function sanitize(array $rules): array|false
     {
@@ -659,7 +616,7 @@ final class Request
             }
         }
 
-        return empty($this->errors) ? $sanitized : false;
+        return $this->errors === [] ? $sanitized : false;
     }
 }
 
@@ -676,9 +633,6 @@ final class Response
 
     /**
      * Set the HTTP status code.
-     *
-     * @param int $status
-     * @return static
      */
     public function setStatus(int $status): static
     {
@@ -689,8 +643,7 @@ final class Response
     /**
      * Add headers to the response.
      *
-     * @param array<string, string|list<string>> $headers
-     * @return static
+     * @param array<string,string|list<string>> $headers
      */
     public function addHeaders(array $headers): static
     {
@@ -701,8 +654,7 @@ final class Response
     /**
      * Replace all response headers.
      *
-     * @param array<string, string|list<string>> $headers
-     * @return static
+     * @param array<string,string|list<string>> $headers
      */
     public function setHeaders(array $headers): static
     {
@@ -712,9 +664,6 @@ final class Response
 
     /**
      * Set the response body.
-     *
-     * @param bool|float|int|string|Stringable|null $body
-     * @return static
      */
     public function setBody(bool|float|int|string|Stringable|null $body): static
     {
@@ -724,8 +673,6 @@ final class Response
 
     /**
      * Send the HTTP response to the client.
-     *
-     * @return void
      */
     public function send(): void
     {
@@ -738,10 +685,10 @@ final class Response
         foreach ($this->headers as $key => $value) {
             if (is_array($value)) {
                 foreach ($value as $i => $v) {
-                    header("{$key}: {$v}", $i === 0);
+                    header(sprintf("%s: %s", $key, $v), $i === 0);
                 }
             } else {
-                header("{$key}: {$value}", true);
+                header(sprintf("%s: %s", $key, $value), true);
             }
         }
 
@@ -757,6 +704,9 @@ interface RouteInterface
 {
     public function name(string $name): static;
 
+    /**
+     * @param callable(Request,callable):Response $middleware
+     */
     public function middleware(callable $middleware): static;
 }
 
@@ -769,19 +719,18 @@ final class Router
 
     protected const PARAM = "__parameter__";
 
-    protected static array $middleware = [];
+    private static array $middleware = [];
 
-    protected static string $prefix = "";
+    private static string $prefix = "";
 
-    protected static array $routes = [];
+    private static array $routes = [];
 
-    protected static array $lookup = [];
+    private static array $lookup = [];
 
     /**
      * Register middleware for current route scope.
      *
      * @param callable(Request, callable(Request): Response): Response $middleware
-     * @return void
      */
     public static function middleware(callable $middleware): void
     {
@@ -791,9 +740,7 @@ final class Router
     /**
      * Group routes under a common prefix and middleware.
      *
-     * @param string $prefix
      * @param callable(): void $group
-     * @return void
      */
     public static function group(string $prefix, callable $group): void
     {
@@ -806,10 +753,7 @@ final class Router
     /**
      * Register a route handler for a method and path.
      *
-     * @param string $method
-     * @param string $path
      * @param callable(Request): mixed $handler
-     * @return RouteInterface
      */
     public static function route(string $method, string $path, callable $handler): RouteInterface
     {
@@ -821,7 +765,7 @@ final class Router
         foreach (explode("/", $path) as $segment) {
             if (str_starts_with($segment, ":")) {
                 /** @psalm-suppress UnsupportedPropertyReferenceUsage */
-                $node = &$node[static::PARAM];
+                $node = &$node[self::PARAM];
                 $params[] = substr($segment, 1);
             } else {
                 $node = &$node[$segment];
@@ -830,7 +774,7 @@ final class Router
 
         $middleware = static::$middleware;
 
-        return $node[static::LEAF][$method] = new class ($path, $params, $middleware, $handler) implements RouteInterface {
+        return $node[self::LEAF][$method] = new class ($path, $params, $middleware, $handler) implements RouteInterface {
             public function __construct(public string $path, public array $params, public array $middleware, public $handler) {}
 
             #[Override]
@@ -851,10 +795,6 @@ final class Router
 
     /**
      * Assign a name to a route path.
-     *
-     * @param string $name
-     * @param string $path
-     * @return void
      */
     public static function setName(string $name, string $path): void
     {
@@ -864,14 +804,12 @@ final class Router
     /**
      * Generate a URL for a named route with parameters.
      *
-     * @param string $name
      * @param array<string, scalar> $params
-     * @return string
      */
     public static function makeUrlByName(string $name, array $params): string
     {
         if (!isset(static::$lookup[$name])) {
-            throw new FrameworkException("Route named [{$name}] not found.");
+            throw new FrameworkException(sprintf('Route named [%s] not found.', $name));
         }
 
         $url = static::$lookup[$name];
@@ -885,19 +823,15 @@ final class Router
         }
 
         if (str_contains($url, ":")) {
-            throw new FrameworkException("Missing parameter for route [{$name}].");
+            throw new FrameworkException(sprintf('Missing parameter for route [%s].', $name));
         }
 
-        $query = empty($params) ? "" : "?" . http_build_query($params);
-        return "/{$url}{$query}";
+        $query = $params === [] ? "" : "?" . http_build_query($params);
+        return sprintf('/%s%s', $url, $query);
     }
 
     /**
      * Match a request and execute the route handler.
-     *
-     * @param Request $request
-     * @param Response $response
-     * @return Response
      */
     public static function dispatch(Request $request, Response $response): Response
     {
@@ -913,29 +847,29 @@ final class Router
                 continue;
             }
 
-            if (isset($node[static::PARAM])) {
+            if (isset($node[self::PARAM])) {
                 $paramValues[] = $segment;
-                $node = $node[static::PARAM];
+                $node = $node[self::PARAM];
                 continue;
             }
 
             throw HttpException::create(404);
         }
 
-        if (!isset($node[static::LEAF])) {
+        if (!isset($node[self::LEAF])) {
             throw HttpException::create(404);
         }
 
-        if (!isset($node[static::LEAF][$request->method])) {
+        if (!isset($node[self::LEAF][$request->method])) {
             throw HttpException::create(405);
         }
 
-        $route = $node[static::LEAF][$request->method];
+        $route = $node[self::LEAF][$request->method];
         $request->parameters = array_combine($route->params, $paramValues);
         $handler = $route->handler;
 
         foreach (array_reverse($route->middleware) as $mw) {
-            $handler = fn(Request $req) => $mw($req, $handler);
+            $handler = fn(Request $request) => $mw($request, $handler);
         }
 
         $result = $handler($request);
@@ -944,7 +878,7 @@ final class Router
             return $result;
         }
 
-        if (($result instanceof Stringable || is_scalar($result)) && !empty(trim((string) $result))) {
+        if (($result instanceof Stringable || is_scalar($result)) && !in_array(trim((string) $result), ['', '0'], true)) {
             return $response->setBody($result);
         }
 
@@ -965,31 +899,24 @@ final class Session
 
     /**
      * Start the session and prepare flash data for the request.
-     *
-     * @param ?SessionHandler $handler
-     * @return static
      */
-    public static function create(?SessionHandler $handler = null): static
+    public static function create(?SessionHandler $sessionHandler = null): static
     {
-        if ($handler !== null) {
-            session_set_save_handler($handler);
+        if ($sessionHandler instanceof SessionHandler) {
+            session_set_save_handler($sessionHandler);
         }
 
         if (session_status() !== PHP_SESSION_ACTIVE) {
             session_start();
         }
 
-        $_SESSION[static::FLASH_OLD] = $_SESSION[static::FLASH_NEW] ?? [];
-        $_SESSION[static::FLASH_NEW] = [];
-        return new static();
+        $_SESSION[self::FLASH_OLD] = $_SESSION[self::FLASH_NEW] ?? [];
+        $_SESSION[self::FLASH_NEW] = [];
+        return new self();
     }
 
     /**
      * Set a session value.
-     *
-     * @param string $key
-     * @param mixed $value
-     * @return mixed
      */
     public function set(string $key, mixed $value): mixed
     {
@@ -998,9 +925,6 @@ final class Session
 
     /**
      * Get a session value.
-     *
-     * @param string $key
-     * @return mixed
      */
     public function get(string $key): mixed
     {
@@ -1009,47 +933,35 @@ final class Session
 
     /**
      * Set flash data for the next request.
-     *
-     * @param string $key
-     * @param mixed $value
-     * @return mixed
      */
     public function setFlash(string $key, mixed $value): mixed
     {
-        return $_SESSION[static::FLASH_NEW][$key] = $value;
+        return $_SESSION[self::FLASH_NEW][$key] = $value;
     }
 
     /**
      * Get flash data from the previous request.
-     *
-     * @param string $key
-     * @return mixed
      */
     public function getFlash(string $key): mixed
     {
-        return $_SESSION[static::FLASH_OLD][$key] ?? null;
+        return $_SESSION[self::FLASH_OLD][$key] ?? null;
     }
 
     /**
      * Get or generate a CSRF token.
-     *
-     * @return string
      */
     public function getCsrf(): string
     {
-        return $_SESSION[static::CSRF_KEY] ??= bin2hex(random_bytes(32));
+        return $_SESSION[self::CSRF_KEY] ??= bin2hex(random_bytes(32));
     }
 
     /**
      * Validate and rotate a CSRF token.
-     *
-     * @param string $csrf
-     * @return bool
      */
     public function verifyCsrf(string $csrf): bool
     {
-        if ($valid = hash_equals($_SESSION[static::CSRF_KEY] ?? "", $csrf)) {
-            $_SESSION[static::CSRF_KEY] = bin2hex(random_bytes(32));
+        if ($valid = hash_equals($_SESSION[self::CSRF_KEY] ?? "", $csrf)) {
+            $_SESSION[self::CSRF_KEY] = bin2hex(random_bytes(32));
         }
 
         return $valid;
@@ -1061,30 +973,24 @@ final class Session
  */
 final class Template
 {
-    protected array $segments = [];
+    private array $segments = [];
 
-    protected ?self $layout = null;
+    private ?self $layout = null;
 
-    protected array $stack = [];
+    private array $stack = [];
 
-    public function __construct(protected string $template) {}
+    public function __construct(private readonly string $template) {}
 
     /**
      * Set a parent layout template.
-     *
-     * @param string $template
-     * @return void
      */
     public function layout(string $template): void
     {
-        $this->layout = new static($template);
+        $this->layout = new self($template);
     }
 
     /**
      * Get the content of a named segment.
-     *
-     * @param string $name
-     * @return string|null
      */
     public function yield(string $name): ?string
     {
@@ -1093,10 +999,6 @@ final class Template
 
     /**
      * Start or set a segment's content.
-     *
-     * @param string $name
-     * @param string|null $value
-     * @return void
      */
     public function segment(string $name, ?string $value = null): void
     {
@@ -1110,12 +1012,10 @@ final class Template
 
     /**
      * End the current segment buffer.
-     *
-     * @return void
      */
     public function end(): void
     {
-        if (empty($this->stack)) {
+        if ($this->stack === []) {
             throw new FrameworkException("No segment started");
         }
 
@@ -1127,7 +1027,6 @@ final class Template
      * Render the view and optional layout.
      *
      * @param array<string, mixed> $data
-     * @return string
      */
     public function render(array $data = []): string
     {
@@ -1136,7 +1035,7 @@ final class Template
         }
 
         $content =
-            (function (array $data) {
+            (function (array $data): string|false {
                 ob_start();
                 extract($data);
                 include $this->template;
@@ -1144,7 +1043,7 @@ final class Template
             })($data) ?:
             "";
 
-        if ($this->layout !== null) {
+        if ($this->layout instanceof \Essentio\Core\Template) {
             $this->segments["content"] = $content;
             $this->layout->segments = $this->segments;
             return $this->layout->render();
@@ -1163,14 +1062,11 @@ final class Cast
 {
     /**
      * Cast input to bool or throw.
-     *
-     * @param string $message
-     * @return Closure
      */
     public static function bool(string $message = ""): Closure
     {
         return function (string $input) use ($message): ?bool {
-            if (($input = static::nullOnEmpty($input)) === null) {
+            if (($input = self::nullOnEmpty($input)) === null) {
                 return null;
             }
 
@@ -1184,14 +1080,11 @@ final class Cast
 
     /**
      * Cast input to DateTimeImmutable or throw.
-     *
-     * @param string $message
-     * @return Closure
      */
     public static function date(string $message = ""): Closure
     {
         return function (string $input) use ($message): DateTimeImmutable|null {
-            if (($input = static::nullOnEmpty($input)) === null) {
+            if (($input = self::nullOnEmpty($input)) === null) {
                 return null;
             }
 
@@ -1207,13 +1100,11 @@ final class Cast
      * Cast input to enum value or throw.
      *
      * @param class-string<BackedEnum> $enumClass
-     * @param string $message
-     * @return Closure
      */
     public static function enum(string $enumClass, string $message = ""): Closure
     {
         if (!enum_exists($enumClass)) {
-            throw new ValidationException("Invalid enum class: $enumClass");
+            throw new ValidationException('Invalid enum class: ' . $enumClass);
         }
 
         if (!is_subclass_of($enumClass, BackedEnum::class)) {
@@ -1221,7 +1112,7 @@ final class Cast
         }
 
         return function (string $input) use ($enumClass, $message): ?BackedEnum {
-            if (($input = static::nullOnEmpty($input)) === null) {
+            if (($input = self::nullOnEmpty($input)) === null) {
                 return null;
             }
 
@@ -1235,18 +1126,15 @@ final class Cast
 
     /**
      * Cast input to float or throw.
-     *
-     * @param string $message
-     * @return Closure
      */
     public static function float(string $message = ""): Closure
     {
         return function (string $input) use ($message): ?float {
-            if (($input = static::nullOnEmpty($input)) === null) {
+            if (($input = self::nullOnEmpty($input)) === null) {
                 return null;
             }
 
-            $value = static::normalizeNumber($input, $message);
+            $value = self::normalizeNumber($input, $message);
 
             if (($floatVal = filter_var($value, FILTER_VALIDATE_FLOAT)) === false) {
                 throw new ValidationException($message);
@@ -1258,18 +1146,15 @@ final class Cast
 
     /**
      * Cast input to int or throw.
-     *
-     * @param string $message
-     * @return Closure
      */
     public static function int(string $message = ""): Closure
     {
         return function (string $input) use ($message): ?int {
-            if (($input = static::nullOnEmpty($input)) === null) {
+            if (($input = self::nullOnEmpty($input)) === null) {
                 return null;
             }
 
-            $value = static::normalizeNumber($input, $message);
+            $value = self::normalizeNumber($input, $message);
 
             if (($intVal = filter_var($value, FILTER_VALIDATE_INT)) === false) {
                 throw new ValidationException($message);
@@ -1281,18 +1166,15 @@ final class Cast
 
     /**
      * Cast input to int or float or throw.
-     *
-     * @param string $message
-     * @return Closure
      */
     public static function number(string $message = ""): Closure
     {
         return function (string $input) use ($message): int|float|null {
-            if (($input = static::nullOnEmpty($input)) === null) {
+            if (($input = self::nullOnEmpty($input)) === null) {
                 return null;
             }
 
-            $value = static::normalizeNumber($input, $message);
+            $value = self::normalizeNumber($input, $message);
 
             if (($intVal = filter_var($value, FILTER_VALIDATE_INT)) !== false) {
                 return $intVal;
@@ -1308,9 +1190,6 @@ final class Cast
 
     /**
      * Return string input, optionally trimmed.
-     *
-     * @param bool $trim
-     * @return Closure
      */
     public static function string(bool $trim = false): Closure
     {
@@ -1319,23 +1198,16 @@ final class Cast
 
     /**
      * Return null if input is empty.
-     *
-     * @param string $input
-     * @return mixed
      */
-    protected static function nullOnEmpty(string $input): mixed
+    private static function nullOnEmpty(string $input): mixed
     {
         return trim($input) === "" ? null : $input;
     }
 
     /**
      * Extract number from input string.
-     *
-     * @param string $input
-     * @param string $message
-     * @return string
      */
-    protected static function normalizeNumber(string $input, string $message): string
+    private static function normalizeNumber(string $input, string $message): string
     {
         preg_match_all("/-?\d+(\.\d+)?/", $input, $matches);
         return empty($matches[0]) ? throw new ValidationException($message) : $matches[0][0];
@@ -1350,11 +1222,7 @@ final class HttpClient
     /**
      * Send an HTTP request and return a Response.
      *
-     * @param string $method
-     * @param string $url
-     * @param array $headers
-     * @param string $body
-     * @return Response
+     * @param array<string,mixed> $headers
      */
     public static function request(string $method, string $url, array $headers = [], string $body = ""): Response
     {
@@ -1376,7 +1244,7 @@ final class HttpClient
             CURLOPT_SSL_VERIFYPEER => false,
             CURLOPT_SSL_VERIFYHOST => false,
             CURLOPT_CUSTOMREQUEST => strtoupper($method),
-            CURLOPT_HTTPHEADER => array_map(fn($k, $v): string => "{$k}: {$v}", array_keys($headers), $headers),
+            CURLOPT_HTTPHEADER => array_map(fn($k, $v): string => sprintf("%s: %s", $k, $v), array_keys($headers), $headers),
             CURLOPT_POSTFIELDS => $body,
         ]);
 
@@ -1400,10 +1268,10 @@ final class HttpClient
             $headerLines = explode("\r\n", trim($headerText));
             $parsedHeaders = [];
 
-            foreach ($headerLines as $line) {
-                if (str_contains($line, ":")) {
+            foreach ($headerLines as $headerLine) {
+                if (str_contains($headerLine, ":")) {
                     /** @psalm-suppress PossiblyUndefinedArrayOffset */
-                    [$key, $value] = explode(":", $line, 2);
+                    [$key, $value] = explode(":", $headerLine, 2);
                     $parsedHeaders[trim($key)] = trim($value);
                 }
             }
@@ -1421,36 +1289,36 @@ final class HttpClient
  */
 final class Query
 {
-    protected string $bool = "AND";
+    private string $bool = "AND";
 
-    protected array $columns = [];
+    private array $columns = [];
 
-    protected string $table = "";
+    private string $table = "";
 
-    protected array $where = [];
+    /** @var list<string> $where */
+    private array $where = [];
 
-    protected array $whereParams = [];
+    private array $whereParams = [];
 
-    protected array $groupBys = [];
+    private array $groupBys = [];
 
-    protected array $having = [];
+    /** @var list<string> $having */
+    private array $having = [];
 
-    protected array $havingParams = [];
+    private array $havingParams = [];
 
-    protected array $orderBys = [];
+    private array $orderBys = [];
 
-    protected ?int $limit = null;
+    private ?int $limit = null;
 
-    protected ?int $offset = null;
+    private ?int $offset = null;
 
-    public function __construct(protected ?PDO $pdo = null) {}
+    public function __construct(private readonly ?PDO $pdo = null) {}
 
     /**
      * Use OR for the next condition.
-     *
-     * @return static
      */
-    public function or(): static
+    public function or(): self
     {
         $this->bool = "OR";
         return $this;
@@ -1458,23 +1326,20 @@ final class Query
 
     /**
      * Consume current boolean operator.
-     *
-     * @return string
      */
-    protected function consumeBool(): string
+    private function consumeBool(): string
     {
         $bool = $this->bool;
         $this->bool = "AND";
-        return " $bool ";
+        return sprintf(" %s ", $bool);
     }
 
     /**
      * Select columns.
      *
-     * @param array|string ...$columns
-     * @return static
+     * @param list<string>|string ...$columns
      */
-    public function select(array|string ...$columns): static
+    public function select(array|string ...$columns): self
     {
         $columns = array_values($columns);
         $this->columns = array_merge($this->columns, $columns);
@@ -1483,11 +1348,8 @@ final class Query
 
     /**
      * Set the table for the query.
-     *
-     * @param string $table
-     * @return static
      */
-    public function table(string $table): static
+    public function table(string $table): self
     {
         $this->table = $table;
         return $this;
@@ -1495,23 +1357,18 @@ final class Query
 
     /**
      * Add a where clause.
-     *
-     * @param string|Closure $column
-     * @param string|null $operator
-     * @param mixed $value
-     * @return static
      */
-    public function where(string|Closure $column, ?string $operator = null, mixed $value = null): static
+    public function where(string|Closure $column, ?string $operator = null, mixed $value = null): self
     {
         if ($column instanceof Closure) {
-            $column($query = new static());
-            return $this->whereRaw("({$this->clean($query->where)})", $query->whereParams);
+            $column($query = new self());
+            return $this->whereRaw(sprintf("(%s)", $this->clean($query->where)), $query->whereParams);
         }
 
         if ($value === null) {
             $sql = match (true) {
-                in_array(strtolower((string) $operator), ["=", "is"], true) => "{$column} IS NULL",
-                in_array(strtolower((string) $operator), ["!=", "<>", "is not", "not"], true) => "{$column} IS NOT NULL",
+                in_array(strtolower((string) $operator), ["=", "is"], true) => $column . " IS NULL",
+                in_array(strtolower((string) $operator), ["!=", "<>", "is not", "not"], true) => $column . " IS NOT NULL",
                 default => throw new FrameworkException("Invalid where condition."),
             };
 
@@ -1528,7 +1385,7 @@ final class Query
 
         if (is_scalar($value)) {
             $operator ??= "=";
-            return $this->whereRaw("{$column} {$operator} ?", [$value]);
+            return $this->whereRaw(sprintf("%s %s ?", $column, $operator), [$value]);
         }
 
         $operator ??= "IN";
@@ -1538,8 +1395,8 @@ final class Query
         }
 
         if ($value instanceof Closure) {
-            $value($query = new static());
-            return $this->whereRaw("{$column} {$operator} ({$query->selectSql()})", $query->getParams());
+            $value($query = new self());
+            return $this->whereRaw(sprintf("%s %s (%s)", $column, $operator, $query->selectSql()), $query->getParams());
         }
 
         if (!is_array($value)) {
@@ -1548,7 +1405,7 @@ final class Query
 
         if (mb_stripos($operator, "between") === false) {
             $placeholders = implode(", ", array_fill(0, count($value), "?"));
-            return $this->whereRaw("{$column} {$operator} ({$placeholders})", $value);
+            return $this->whereRaw(sprintf("%s %s (%s)", $column, $operator, $placeholders), $value);
         }
 
         if (count($value) !== 2) {
@@ -1562,19 +1419,17 @@ final class Query
             throw new FrameworkException("Invalid where condition.");
         }
 
-        return $this->whereRaw("{$column} {$operator} ? AND ?", $value);
+        return $this->whereRaw(sprintf("%s %s ? AND ?", $column, $operator), $value);
     }
 
     /**
      * Add raw where condition.
      *
-     * @param string $statement
-     * @param array $data
-     * @return static
+     * @param array<string,mixed>|list<mixed> $data
      */
-    public function whereRaw(string $statement, array $data = []): static
+    public function whereRaw(string $statement, array $data = []): self
     {
-        $this->where[] = "{$this->consumeBool()} {$statement}";
+        $this->where[] = sprintf("%s %s", $this->consumeBool(), $statement);
         $this->whereParams = array_merge($this->whereParams, $data);
         return $this;
     }
@@ -1582,10 +1437,9 @@ final class Query
     /**
      * Add group by clauses.
      *
-     * @param array|string ...$groupBys
-     * @return static
+     * @param list<string>|string ...$groupBys
      */
-    public function groupBy(array|string ...$groupBys): static
+    public function groupBy(array|string ...$groupBys): self
     {
         $groupBys = array_values($groupBys);
         $this->groupBys = array_merge($this->groupBys, $groupBys);
@@ -1595,38 +1449,28 @@ final class Query
     /**
      * Add raw having clause.
      *
-     * @param string $statement
-     * @param array $data
-     * @return static
+     * @param array<string,mixed> $data
      */
-    public function havingRaw(string $statement, array $data = []): static
+    public function havingRaw(string $statement, array $data = []): self
     {
-        $this->having[] = "{$this->consumeBool()} {$statement}";
+        $this->having[] = sprintf("%s %s", $this->consumeBool(), $statement);
         $this->havingParams = array_merge($this->havingParams, $data);
         return $this;
     }
 
     /**
      * Add order by clause.
-     *
-     * @param string $column
-     * @param string $direction
-     * @return static
      */
-    public function orderBy(string $column, string $direction = "ASC"): static
+    public function orderBy(string $column, string $direction = "ASC"): self
     {
-        $this->orderBys[] = "{$column} {$direction}";
+        $this->orderBys[] = sprintf("%s %s", $column, $direction);
         return $this;
     }
 
     /**
      * Set limit and optional offset.
-     *
-     * @param int $limit
-     * @param int|null $offset
-     * @return static
      */
-    public function limit(int $limit, ?int $offset = null): static
+    public function limit(int $limit, ?int $offset = null): self
     {
         $this->limit = $limit;
         $this->offset = $offset;
@@ -1635,38 +1479,36 @@ final class Query
 
     /**
      * Generate SQL for select.
-     *
-     * @return string
      */
-    protected function selectSql(): string
+    private function selectSql(): string
     {
-        if (empty($this->table)) {
+        if ($this->table === "" || $this->table === "0") {
             throw new FrameworkException("Table name not specified for query.");
         }
 
-        $sql = "SELECT " . implode(", ", $this->columns ?: ["*"]) . " FROM {$this->table}";
+        $sql = "SELECT " . implode(", ", $this->columns !== [] ? $this->columns : ["*"]) . (" FROM " . $this->table);
 
-        if (!empty($this->where)) {
-            $sql .= " WHERE {$this->clean($this->where)}";
+        if ($this->where !== []) {
+            $sql .= " WHERE " . $this->clean($this->where);
         }
 
-        if (!empty($this->groupBys)) {
+        if ($this->groupBys !== []) {
             $sql .= " GROUP BY " . implode(", ", $this->groupBys);
 
-            if (!empty($this->having)) {
-                $sql .= " HAVING {$this->clean($this->having)}";
+            if ($this->having !== []) {
+                $sql .= " HAVING " . $this->clean($this->having);
             }
         }
 
-        if (!empty($this->orderBys)) {
+        if ($this->orderBys !== []) {
             $sql .= " ORDER BY " . implode(", ", $this->orderBys);
         }
 
         if ($this->limit !== null) {
-            $sql .= " LIMIT {$this->limit}";
+            $sql .= " LIMIT " . $this->limit;
 
             if ($this->offset !== null) {
-                $sql .= " OFFSET {$this->offset}";
+                $sql .= " OFFSET " . $this->offset;
             }
         }
 
@@ -1676,20 +1518,17 @@ final class Query
     /**
      * Remove leading boolean operator.
      *
-     * @param array $statements
-     * @return string
+     * @param list<string> $statements
      */
-    protected function clean(array $statements): string
+    private function clean(array $statements): string
     {
         return (string) preg_replace("/^\s*(AND|OR)\s*/", "", implode(" ", $statements));
     }
 
     /**
      * Get combined query parameters.
-     *
-     * @return array
      */
-    protected function getParams(): array
+    private function getParams(): array
     {
         return array_merge($this->whereParams, $this->havingParams);
     }
@@ -1697,11 +1536,11 @@ final class Query
     /**
      * Execute and return query results.
      *
-     * @psalm-return Generator<int, mixed, mixed, never>
+     * @return Generator<array<string,mixed>>
      */
     public function get(): Generator
     {
-        if ($this->pdo === null) {
+        if (!$this->pdo instanceof PDO) {
             throw new FrameworkException("No PDO to run query.");
         }
 
@@ -1716,7 +1555,7 @@ final class Query
     /**
      * Get first result or empty array.
      *
-     * @return array
+     * @return array<string,mixed>
      */
     public function first(): array
     {
@@ -1732,26 +1571,26 @@ final class Query
     /**
      * Insert a new row and return ID.
      *
-     * @param array $data
-     * @return null|string
+     * @param array<string,mixed> $data
      */
     public function insert(array $data): string|null
     {
+        /** @psalm-suppress TypeDoesNotContainType */
         if (array_is_list($data)) {
             throw new FrameworkException("Data must be associative array.");
         }
 
-        if (empty($this->table)) {
+        if ($this->table === "" || $this->table === "0") {
             throw new FrameworkException("Table name not specified for insert.");
         }
 
-        if ($this->pdo === null) {
+        if (!$this->pdo instanceof PDO) {
             throw new FrameworkException("No PDO to run insert.");
         }
 
         $columnList = implode(", ", array_keys($data));
         $placeholders = implode(", ", array_fill(0, count($data), "?"));
-        $sql = "INSERT INTO {$this->table} ({$columnList}) VALUES ({$placeholders})";
+        $sql = sprintf("INSERT INTO %s (%s) VALUES (%s)", $this->table, $columnList, $placeholders);
 
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute(array_values($data));
@@ -1762,29 +1601,29 @@ final class Query
     /**
      * Update matching rows.
      *
-     * @param array $data
-     * @return bool
+     * @param array<string,mixed> $data
      */
     public function update(array $data): bool
     {
+        /** @psalm-suppress TypeDoesNotContainType */
         if (array_is_list($data)) {
             throw new FrameworkException("Data must be associative array.");
         }
 
-        if (empty($this->table)) {
+        if ($this->table === "" || $this->table === "0") {
             throw new FrameworkException("Table name not specified for update.");
         }
 
-        if (empty($this->where)) {
+        if ($this->where === []) {
             throw new FrameworkException("Where clause missing for update.");
         }
 
-        if ($this->pdo === null) {
+        if (!$this->pdo instanceof PDO) {
             throw new FrameworkException("No PDO to run update.");
         }
 
-        $columnList = implode(", ", array_map(fn($column): string => "{$column} = ?", array_keys($data)));
-        $sql = "UPDATE {$this->table} SET {$columnList} WHERE {$this->clean($this->where)}";
+        $columnList = implode(", ", array_map(fn($column): string => $column . " = ?", array_keys($data)));
+        $sql = sprintf("UPDATE %s SET %s WHERE %s", $this->table, $columnList, $this->clean($this->where));
 
         $stmt = $this->pdo->prepare($sql);
         return $stmt->execute([...array_values($data), ...$this->whereParams]);
@@ -1792,24 +1631,22 @@ final class Query
 
     /**
      * Delete matching rows.
-     *
-     * @return bool
      */
     public function delete(): bool
     {
-        if (empty($this->table)) {
+        if ($this->table === "" || $this->table === "0") {
             throw new FrameworkException("Table name not specified for delete.");
         }
 
-        if (empty($this->where)) {
+        if ($this->where === []) {
             throw new FrameworkException("Where clause missing for delete.");
         }
 
-        if ($this->pdo === null) {
+        if (!$this->pdo instanceof PDO) {
             throw new FrameworkException("No PDO to run delete.");
         }
 
-        $sql = "DELETE FROM {$this->table} WHERE {$this->clean($this->where)}";
+        $sql = sprintf("DELETE FROM %s WHERE %s", $this->table, $this->clean($this->where));
         $stmt = $this->pdo->prepare($sql);
 
         return $stmt->execute($this->whereParams);
@@ -1823,9 +1660,6 @@ final class Validate
 {
     /**
      * Letters only.
-     *
-     * @param string $message
-     * @return Closure
      */
     public static function alpha(string $message = ""): Closure
     {
@@ -1834,7 +1668,7 @@ final class Validate
                 return null;
             }
 
-            if (!preg_match('/^[a-zA-Z]+$/', $input)) {
+            if (in_array(preg_match('/^[a-zA-Z]+$/', $input), [0, false], true)) {
                 throw new ValidationException($message);
             }
 
@@ -1844,9 +1678,6 @@ final class Validate
 
     /**
      * Letters, numbers, dashes, underscores.
-     *
-     * @param string $message
-     * @return Closure
      */
     public static function alphaDash(string $message = ""): Closure
     {
@@ -1855,7 +1686,7 @@ final class Validate
                 return null;
             }
 
-            if (!preg_match('/^[\w-]+$/', $input)) {
+            if (in_array(preg_match('/^[\w-]+$/', $input), [0, false], true)) {
                 throw new ValidationException($message);
             }
 
@@ -1865,9 +1696,6 @@ final class Validate
 
     /**
      * Letters and numbers only.
-     *
-     * @param string $message
-     * @return Closure
      */
     public static function alphaNum(string $message = ""): Closure
     {
@@ -1876,7 +1704,7 @@ final class Validate
                 return null;
             }
 
-            if (!preg_match('/^[a-zA-Z0-9]+$/', $input)) {
+            if (in_array(preg_match('/^[a-zA-Z0-9]+$/', $input), [0, false], true)) {
                 throw new ValidationException($message);
             }
 
@@ -1886,9 +1714,6 @@ final class Validate
 
     /**
      * Valid email format.
-     *
-     * @param string $message
-     * @return Closure
      */
     public static function email(string $message = ""): Closure
     {
@@ -1908,9 +1733,7 @@ final class Validate
     /**
      * Must end with one of the given values.
      *
-     * @param array $suffixes
-     * @param string $message
-     * @return Closure
+     * @param list<string> $suffixes
      */
     public static function endsWith(array $suffixes, string $message = ""): Closure
     {
@@ -1931,9 +1754,6 @@ final class Validate
 
     /**
      * Must be lowercase.
-     *
-     * @param string $message
-     * @return Closure
      */
     public static function lower(string $message = ""): Closure
     {
@@ -1952,9 +1772,6 @@ final class Validate
 
     /**
      * Must be uppercase.
-     *
-     * @param string $message
-     * @return Closure
      */
     public static function upper(string $message = ""): Closure
     {
@@ -1973,10 +1790,6 @@ final class Validate
 
     /**
      * Minimum string length.
-     *
-     * @param int $min
-     * @param string $message
-     * @return Closure
      */
     public static function minLength(int $min, string $message = ""): Closure
     {
@@ -1995,10 +1808,6 @@ final class Validate
 
     /**
      * Maximum string length.
-     *
-     * @param int $max
-     * @param string $message
-     * @return Closure
      */
     public static function maxLength(int $max, string $message = ""): Closure
     {
@@ -2019,8 +1828,6 @@ final class Validate
      * Matches regex pattern.
      *
      * @param non-empty-string $pattern
-     * @param string $message
-     * @return Closure
      */
     public static function regex(string $pattern, string $message = ""): Closure
     {
@@ -2029,7 +1836,7 @@ final class Validate
                 return null;
             }
 
-            if (!preg_match($pattern, $input)) {
+            if (in_array(preg_match($pattern, $input), [0, false], true)) {
                 throw new ValidationException($message);
             }
 
@@ -2039,11 +1846,6 @@ final class Validate
 
     /**
      * Value must be between min and max.
-     *
-     * @param DateTimeInterface|float|int $min
-     * @param DateTimeInterface|float|int $max
-     * @param string $message
-     * @return Closure
      */
     public static function between(DateTimeInterface|float|int $min, DateTimeInterface|float|int $max, string $message = ""): Closure
     {
@@ -2067,10 +1869,6 @@ final class Validate
 
     /**
      * Must be greater than min.
-     *
-     * @param DateTimeInterface|float|int $min
-     * @param string $message
-     * @return Closure
      */
     public static function gt(DateTimeInterface|float|int $min, string $message = ""): Closure
     {
@@ -2093,10 +1891,6 @@ final class Validate
 
     /**
      * Must be greater than or equal to min.
-     *
-     * @param DateTimeInterface|float|int $min
-     * @param string $message
-     * @return Closure
      */
     public static function gte(DateTimeInterface|float|int $min, string $message = ""): Closure
     {
@@ -2119,10 +1913,6 @@ final class Validate
 
     /**
      * Must be less than max.
-     *
-     * @param DateTimeInterface|float|int $max
-     * @param string $message
-     * @return Closure
      */
     public static function lt(DateTimeInterface|float|int $max, string $message = ""): Closure
     {
@@ -2145,10 +1935,6 @@ final class Validate
 
     /**
      * Must be less than or equal to max.
-     *
-     * @param DateTimeInterface|float|int $max
-     * @param string $message
-     * @return Closure
      */
     public static function lte(DateTimeInterface|float|int $max, string $message = ""): Closure
     {
@@ -2171,9 +1957,6 @@ final class Validate
 
     /**
      * Input must be present and non-empty.
-     *
-     * @param string $message
-     * @return Closure
      */
     public static function required(string $message = ""): Closure
     {
@@ -2189,10 +1972,7 @@ final class Validate
     /**
      * Value must be in allowed set.
      *
-     * @param array $allowed
-     * @param bool $strict
-     * @param string $message
-     * @return Closure
+     * @param list<mixed> $allowed
      */
     public static function inArray(array $allowed, bool $strict = true, string $message = ""): Closure
     {
@@ -2227,7 +2007,7 @@ function app(string $id): object
  *
  * @template T
  * @param class-string<T> $id
- * @param array<string, mixed>|list<mixed> $dependencies
+ * @param array<string,mixed>|list<mixed> $dependencies
  * @return T
  */
 function make(string $id, array $dependencies = []): object
@@ -2240,8 +2020,7 @@ function make(string $id, array $dependencies = []): object
  *
  * @template T
  * @param class-string<T> $id
- * @param callable $concrete
- * @return void
+ * @param callable():T|class-string<T>|null $concrete
  */
 function bind(string $id, callable|string|null $concrete = null): void
 {
@@ -2253,8 +2032,7 @@ function bind(string $id, callable|string|null $concrete = null): void
  *
  * @template T
  * @param class-string<T> $id
- * @param callable $concrete
- * @return void
+ * @param callable():T|class-string<T>|null $concrete
  */
 function once(string $id, callable|string|null $concrete = null): void
 {
@@ -2263,9 +2041,6 @@ function once(string $id, callable|string|null $concrete = null): void
 
 /**
  * Get the absolute path from base path.
- *
- * @param string $path
- * @return string
  */
 function base_path(string $path): string
 {
@@ -2274,9 +2049,6 @@ function base_path(string $path): string
 
 /**
  * Get environment variable from .env file.
- *
- * @param string $key
- * @return mixed
  */
 function env(string $key): mixed
 {
@@ -2285,9 +2057,6 @@ function env(string $key): mixed
 
 /**
  * Get CLI argument by key.
- *
- * @param int|string $key
- * @return mixed
  */
 function arg(int|string $key): mixed
 {
@@ -2296,20 +2065,12 @@ function arg(int|string $key): mixed
 
 /**
  * Register and execute a CLI command.
- *
- * @param string $name
- * @param callable $handle
- * @return void
  */
 function command(string $name, callable $handle): void
 {
-    $argument = app(Argument::class);
-
-    if ($argument->command !== $name) {
-        return;
+    if (($argument = app(Argument::class))->command === $name) {
+        exit(is_int($result = $handle($argument)) ? $result : 0);
     }
-
-    exit(is_int($result = $handle($argument)) ? $result : 0);
 }
 
 /**
@@ -2321,14 +2082,11 @@ function command(string $name, callable $handle): void
  */
 function request(string $key = ""): mixed
 {
-    return func_num_args() ? app(Request::class)->get($key) : app(Request::class);
+    return func_num_args() !== 0 ? app(Request::class)->get($key) : app(Request::class);
 }
 
 /**
  * Get an input field from the request body or parameters.
- *
- * @param string $field
- * @return mixed
  */
 function input(string $field): mixed
 {
@@ -2339,9 +2097,9 @@ function input(string $field): mixed
  * Sanitize and validate user input.
  *
  * @template T as string
- * @param array<T, callable>|array<T, list<callable>> $rules
- * @param callable $callback
- * @return array<T, mixed>|false
+ * @param array<T,callable>|array<T,list<callable>> $rules
+ * @param callable(array<string,list<string>>):void $callback
+ * @return array<T,mixed>|false
  */
 function sanitize(array $rules, callable $callback): array|false
 {
@@ -2354,10 +2112,6 @@ function sanitize(array $rules, callable $callback): array|false
 
 /**
  * Get or set a session value.
- *
- * @param string $key
- * @param mixed $value
- * @return mixed
  */
 function session(string $key, mixed $value = null): mixed
 {
@@ -2366,10 +2120,6 @@ function session(string $key, mixed $value = null): mixed
 
 /**
  * Get or set a flash session value.
- *
- * @param string $key
- * @param mixed $value
- * @return mixed
  */
 function flash(string $key, mixed $value = null): mixed
 {
@@ -2385,13 +2135,13 @@ function flash(string $key, mixed $value = null): mixed
  */
 function csrf(string $csrf = ""): string|bool
 {
-    return func_num_args() ? app(Session::class)->verifyCsrf($csrf) : app(Session::class)->getCsrf();
+    return func_num_args() !== 0 ? app(Session::class)->verifyCsrf($csrf) : app(Session::class)->getCsrf();
 }
 
 /**
  * Encode or decode a JWT payload.
  *
- * @template T of array|string
+ * @template T of array<string,mixed>|string
  * @param T $payload
  * @return (T is string ? array : string)
  */
@@ -2402,9 +2152,6 @@ function jwt(array|string $payload): array|string
 
 /**
  * Register middleware globally or scoped within a group.
- *
- * @param callable $middleware
- * @return void
  */
 function middleware(callable $middleware): void
 {
@@ -2413,10 +2160,6 @@ function middleware(callable $middleware): void
 
 /**
  * Define a route group with shared prefix.
- *
- * @param string $prefix
- * @param callable $group
- * @return void
  */
 function group(string $prefix, callable $group): void
 {
@@ -2425,10 +2168,6 @@ function group(string $prefix, callable $group): void
 
 /**
  * Register a GET route.
- *
- * @param string $path
- * @param callable $handle
- * @return RouteInterface
  */
 function get(string $path, callable $handle): RouteInterface
 {
@@ -2437,10 +2176,6 @@ function get(string $path, callable $handle): RouteInterface
 
 /**
  * Register a POST route.
- *
- * @param string $path
- * @param callable $handle
- * @return RouteInterface
  */
 function post(string $path, callable $handle): RouteInterface
 {
@@ -2449,10 +2184,6 @@ function post(string $path, callable $handle): RouteInterface
 
 /**
  * Register a PUT route.
- *
- * @param string $path
- * @param callable $handle
- * @return RouteInterface
  */
 function put(string $path, callable $handle): RouteInterface
 {
@@ -2461,10 +2192,6 @@ function put(string $path, callable $handle): RouteInterface
 
 /**
  * Register a PATCH route.
- *
- * @param string $path
- * @param callable $handle
- * @return RouteInterface
  */
 function patch(string $path, callable $handle): RouteInterface
 {
@@ -2473,10 +2200,6 @@ function patch(string $path, callable $handle): RouteInterface
 
 /**
  * Register a DELETE route.
- *
- * @param string $path
- * @param callable $handle
- * @return RouteInterface
  */
 function delete(string $path, callable $handle): RouteInterface
 {
@@ -2486,9 +2209,7 @@ function delete(string $path, callable $handle): RouteInterface
 /**
  * Generate a named route URL.
  *
- * @param string $name
- * @param array<string, scalar> $params
- * @return string
+ * @param array<string,scalar> $params
  */
 function named_url(string $name, array $params = []): string
 {
@@ -2498,9 +2219,7 @@ function named_url(string $name, array $params = []): string
 /**
  * Render a PHP template to string.
  *
- * @param string $template
- * @param array<string, mixed> $data
- * @return string
+ * @param array<string,mixed> $data
  */
 function render(string $template, array $data = []): string
 {
@@ -2509,10 +2228,6 @@ function render(string $template, array $data = []): string
 
 /**
  * Create a redirect response.
- *
- * @param string $uri
- * @param int $status
- * @return Response
  */
 function redirect(string $uri, int $status = 302): Response
 {
@@ -2523,10 +2238,6 @@ function redirect(string $uri, int $status = 302): Response
 
 /**
  * Create an HTML response.
- *
- * @param string $html
- * @param int $status
- * @return Response
  */
 function html(string $html, int $status = 200): Response
 {
@@ -2538,10 +2249,6 @@ function html(string $html, int $status = 200): Response
 
 /**
  * Create a JSON response.
- *
- * @param mixed $data
- * @param int $status
- * @return Response
  */
 function json(mixed $data, int $status = 200): Response
 {
@@ -2553,10 +2260,6 @@ function json(mixed $data, int $status = 200): Response
 
 /**
  * Create a plain text response.
- *
- * @param string $text
- * @param int $status
- * @return Response
  */
 function text(string $text, int $status = 200): Response
 {
@@ -2569,10 +2272,7 @@ function text(string $text, int $status = 200): Response
 /**
  * Render a view and return an HTML response.
  *
- * @param string $template
- * @param array<string, mixed> $data
- * @param int $status
- * @return Response
+ * @param array<string,mixed> $data
  */
 function view(string $template, array $data = [], int $status = 200): Response
 {
@@ -2582,9 +2282,6 @@ function view(string $template, array $data = [], int $status = 200): Response
 /**
  * Conditionally throw an exception.
  *
- * @param bool $condition
- * @param Throwable|string $e
- * @return void
  * @throws Throwable
  */
 function throw_if(bool $condition, Throwable|string $e): void
@@ -2610,8 +2307,6 @@ function curl(string $method, string $url, array $headers = [], string $body = "
 
 /**
  * Get a Query builder instance.
- *
- * @return Query
  */
 function query(): Query
 {

@@ -7,30 +7,24 @@ namespace Essentio\Core;
  */
 final class Template
 {
-    protected array $segments = [];
+    private array $segments = [];
 
-    protected ?self $layout = null;
+    private ?self $layout = null;
 
-    protected array $stack = [];
+    private array $stack = [];
 
-    public function __construct(protected string $template) {}
+    public function __construct(private readonly string $template) {}
 
     /**
      * Set a parent layout template.
-     *
-     * @param string $template
-     * @return void
      */
     public function layout(string $template): void
     {
-        $this->layout = new static($template);
+        $this->layout = new self($template);
     }
 
     /**
      * Get the content of a named segment.
-     *
-     * @param string $name
-     * @return string|null
      */
     public function yield(string $name): ?string
     {
@@ -39,10 +33,6 @@ final class Template
 
     /**
      * Start or set a segment's content.
-     *
-     * @param string $name
-     * @param string|null $value
-     * @return void
      */
     public function segment(string $name, ?string $value = null): void
     {
@@ -56,12 +46,10 @@ final class Template
 
     /**
      * End the current segment buffer.
-     *
-     * @return void
      */
     public function end(): void
     {
-        if (empty($this->stack)) {
+        if ($this->stack === []) {
             throw new FrameworkException("No segment started");
         }
 
@@ -73,7 +61,6 @@ final class Template
      * Render the view and optional layout.
      *
      * @param array<string, mixed> $data
-     * @return string
      */
     public function render(array $data = []): string
     {
@@ -82,7 +69,7 @@ final class Template
         }
 
         $content =
-            (function (array $data) {
+            (function (array $data): string|false {
                 ob_start();
                 extract($data);
                 include $this->template;
@@ -90,7 +77,7 @@ final class Template
             })($data) ?:
             "";
 
-        if ($this->layout !== null) {
+        if ($this->layout instanceof \Essentio\Core\Template) {
             $this->segments["content"] = $content;
             $this->layout->segments = $this->segments;
             return $this->layout->render();

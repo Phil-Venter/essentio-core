@@ -11,9 +11,6 @@ final class Application
 {
     /**
      * Bootstrap the application for CLI mode.
-     *
-     * @param string $basePath
-     * @return void
      */
     public static function cli(string $basePath): void
     {
@@ -24,9 +21,6 @@ final class Application
 
     /**
      * Bootstrap the application for HTTP mode.
-     *
-     * @param string $basePath
-     * @return void
      */
     public static function http(string $basePath): void
     {
@@ -40,8 +34,6 @@ final class Application
 
     /**
      * Run the application and handle the request.
-     *
-     * @return void
      */
     public static function run(): void
     {

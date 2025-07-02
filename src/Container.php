@@ -7,20 +7,18 @@ namespace Essentio\Core;
  */
 final class Container
 {
-    protected static $instance;
+    private static $instance;
 
-    protected array $bindings = [];
+    private array $bindings = [];
 
-    protected array $cache = [];
+    private array $cache = [];
 
     /**
      * Get the container singleton instance.
-     *
-     * @return static
      */
     public static function instance(): static
     {
-        return static::$instance ??= new static();
+        return static::$instance ??= new self();
     }
 
     /**
@@ -34,7 +32,7 @@ final class Container
     {
         /** @var string $concrete */
         if (is_string($concrete ??= $id) && !class_exists($concrete, true)) {
-            throw new FrameworkException("Cannot bind [{$id}] to [{$concrete}].");
+            throw new FrameworkException(sprintf('Cannot bind [%s] to [%s].', $id, $concrete));
         }
 
         $this->bindings[$id] = $concrete;
@@ -68,7 +66,7 @@ final class Container
                 return new $id(...$dependencies);
             }
 
-            throw new FrameworkException("Service [{$id}] is not bound and cannot be instantiated.");
+            throw new FrameworkException(sprintf('Service [%s] is not bound and cannot be instantiated.', $id));
         }
 
         $once = array_key_exists($id, $this->cache);

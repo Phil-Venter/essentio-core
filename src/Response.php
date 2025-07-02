@@ -17,9 +17,6 @@ final class Response
 
     /**
      * Set the HTTP status code.
-     *
-     * @param int $status
-     * @return static
      */
     public function setStatus(int $status): static
     {
@@ -30,8 +27,7 @@ final class Response
     /**
      * Add headers to the response.
      *
-     * @param array<string, string|list<string>> $headers
-     * @return static
+     * @param array<string,string|list<string>> $headers
      */
     public function addHeaders(array $headers): static
     {
@@ -42,8 +38,7 @@ final class Response
     /**
      * Replace all response headers.
      *
-     * @param array<string, string|list<string>> $headers
-     * @return static
+     * @param array<string,string|list<string>> $headers
      */
     public function setHeaders(array $headers): static
     {
@@ -53,9 +48,6 @@ final class Response
 
     /**
      * Set the response body.
-     *
-     * @param bool|float|int|string|Stringable|null $body
-     * @return static
      */
     public function setBody(bool|float|int|string|Stringable|null $body): static
     {
@@ -65,8 +57,6 @@ final class Response
 
     /**
      * Send the HTTP response to the client.
-     *
-     * @return void
      */
     public function send(): void
     {
@@ -79,10 +69,10 @@ final class Response
         foreach ($this->headers as $key => $value) {
             if (is_array($value)) {
                 foreach ($value as $i => $v) {
-                    header("{$key}: {$v}", $i === 0);
+                    header(sprintf("%s: %s", $key, $v), $i === 0);
                 }
             } else {
-                header("{$key}: {$value}", true);
+                header(sprintf("%s: %s", $key, $value), true);
             }
         }
 

@@ -4,6 +4,7 @@ namespace Essentio\Core\Extra;
 
 use Closure;
 use DateTimeInterface;
+
 use Essentio\Core\ValidationException;
 
 /**
@@ -13,9 +14,6 @@ final class Validate
 {
     /**
      * Letters only.
-     *
-     * @param string $message
-     * @return Closure
      */
     public static function alpha(string $message = ""): Closure
     {
@@ -24,7 +22,7 @@ final class Validate
                 return null;
             }
 
-            if (!preg_match('/^[a-zA-Z]+$/', $input)) {
+            if (in_array(preg_match('/^[a-zA-Z]+$/', $input), [0, false], true)) {
                 throw new ValidationException($message);
             }
 
@@ -34,9 +32,6 @@ final class Validate
 
     /**
      * Letters, numbers, dashes, underscores.
-     *
-     * @param string $message
-     * @return Closure
      */
     public static function alphaDash(string $message = ""): Closure
     {
@@ -45,7 +40,7 @@ final class Validate
                 return null;
             }
 
-            if (!preg_match('/^[\w-]+$/', $input)) {
+            if (in_array(preg_match('/^[\w-]+$/', $input), [0, false], true)) {
                 throw new ValidationException($message);
             }
 
@@ -55,9 +50,6 @@ final class Validate
 
     /**
      * Letters and numbers only.
-     *
-     * @param string $message
-     * @return Closure
      */
     public static function alphaNum(string $message = ""): Closure
     {
@@ -66,7 +58,7 @@ final class Validate
                 return null;
             }
 
-            if (!preg_match('/^[a-zA-Z0-9]+$/', $input)) {
+            if (in_array(preg_match('/^[a-zA-Z0-9]+$/', $input), [0, false], true)) {
                 throw new ValidationException($message);
             }
 
@@ -76,9 +68,6 @@ final class Validate
 
     /**
      * Valid email format.
-     *
-     * @param string $message
-     * @return Closure
      */
     public static function email(string $message = ""): Closure
     {
@@ -98,9 +87,7 @@ final class Validate
     /**
      * Must end with one of the given values.
      *
-     * @param array $suffixes
-     * @param string $message
-     * @return Closure
+     * @param list<string> $suffixes
      */
     public static function endsWith(array $suffixes, string $message = ""): Closure
     {
@@ -121,9 +108,6 @@ final class Validate
 
     /**
      * Must be lowercase.
-     *
-     * @param string $message
-     * @return Closure
      */
     public static function lower(string $message = ""): Closure
     {
@@ -142,9 +126,6 @@ final class Validate
 
     /**
      * Must be uppercase.
-     *
-     * @param string $message
-     * @return Closure
      */
     public static function upper(string $message = ""): Closure
     {
@@ -163,10 +144,6 @@ final class Validate
 
     /**
      * Minimum string length.
-     *
-     * @param int $min
-     * @param string $message
-     * @return Closure
      */
     public static function minLength(int $min, string $message = ""): Closure
     {
@@ -185,10 +162,6 @@ final class Validate
 
     /**
      * Maximum string length.
-     *
-     * @param int $max
-     * @param string $message
-     * @return Closure
      */
     public static function maxLength(int $max, string $message = ""): Closure
     {
@@ -209,8 +182,6 @@ final class Validate
      * Matches regex pattern.
      *
      * @param non-empty-string $pattern
-     * @param string $message
-     * @return Closure
      */
     public static function regex(string $pattern, string $message = ""): Closure
     {
@@ -219,7 +190,7 @@ final class Validate
                 return null;
             }
 
-            if (!preg_match($pattern, $input)) {
+            if (in_array(preg_match($pattern, $input), [0, false], true)) {
                 throw new ValidationException($message);
             }
 
@@ -229,11 +200,6 @@ final class Validate
 
     /**
      * Value must be between min and max.
-     *
-     * @param DateTimeInterface|float|int $min
-     * @param DateTimeInterface|float|int $max
-     * @param string $message
-     * @return Closure
      */
     public static function between(DateTimeInterface|float|int $min, DateTimeInterface|float|int $max, string $message = ""): Closure
     {
@@ -257,10 +223,6 @@ final class Validate
 
     /**
      * Must be greater than min.
-     *
-     * @param DateTimeInterface|float|int $min
-     * @param string $message
-     * @return Closure
      */
     public static function gt(DateTimeInterface|float|int $min, string $message = ""): Closure
     {
@@ -283,10 +245,6 @@ final class Validate
 
     /**
      * Must be greater than or equal to min.
-     *
-     * @param DateTimeInterface|float|int $min
-     * @param string $message
-     * @return Closure
      */
     public static function gte(DateTimeInterface|float|int $min, string $message = ""): Closure
     {
@@ -309,10 +267,6 @@ final class Validate
 
     /**
      * Must be less than max.
-     *
-     * @param DateTimeInterface|float|int $max
-     * @param string $message
-     * @return Closure
      */
     public static function lt(DateTimeInterface|float|int $max, string $message = ""): Closure
     {
@@ -335,10 +289,6 @@ final class Validate
 
     /**
      * Must be less than or equal to max.
-     *
-     * @param DateTimeInterface|float|int $max
-     * @param string $message
-     * @return Closure
      */
     public static function lte(DateTimeInterface|float|int $max, string $message = ""): Closure
     {
@@ -361,9 +311,6 @@ final class Validate
 
     /**
      * Input must be present and non-empty.
-     *
-     * @param string $message
-     * @return Closure
      */
     public static function required(string $message = ""): Closure
     {
@@ -379,10 +326,7 @@ final class Validate
     /**
      * Value must be in allowed set.
      *
-     * @param array $allowed
-     * @param bool $strict
-     * @param string $message
-     * @return Closure
+     * @param list<mixed> $allowed
      */
     public static function inArray(array $allowed, bool $strict = true, string $message = ""): Closure
     {

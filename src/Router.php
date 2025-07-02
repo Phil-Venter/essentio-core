@@ -14,19 +14,18 @@ final class Router
 
     protected const PARAM = "__parameter__";
 
-    protected static array $middleware = [];
+    private static array $middleware = [];
 
-    protected static string $prefix = "";
+    private static string $prefix = "";
 
-    protected static array $routes = [];
+    private static array $routes = [];
 
-    protected static array $lookup = [];
+    private static array $lookup = [];
 
     /**
      * Register middleware for current route scope.
      *
      * @param callable(Request, callable(Request): Response): Response $middleware
-     * @return void
      */
     public static function middleware(callable $middleware): void
     {
@@ -36,9 +35,7 @@ final class Router
     /**
      * Group routes under a common prefix and middleware.
      *
-     * @param string $prefix
      * @param callable(): void $group
-     * @return void
      */
     public static function group(string $prefix, callable $group): void
     {
@@ -51,10 +48,7 @@ final class Router
     /**
      * Register a route handler for a method and path.
      *
-     * @param string $method
-     * @param string $path
      * @param callable(Request): mixed $handler
-     * @return RouteInterface
      */
     public static function route(string $method, string $path, callable $handler): RouteInterface
     {
@@ -66,7 +60,7 @@ final class Router
         foreach (explode("/", $path) as $segment) {
             if (str_starts_with($segment, ":")) {
                 /** @psalm-suppress UnsupportedPropertyReferenceUsage */
-                $node = &$node[static::PARAM];
+                $node = &$node[self::PARAM];
                 $params[] = substr($segment, 1);
             } else {
                 $node = &$node[$segment];
@@ -75,7 +69,7 @@ final class Router
 
         $middleware = static::$middleware;
 
-        return $node[static::LEAF][$method] = new class ($path, $params, $middleware, $handler) implements RouteInterface {
+        return $node[self::LEAF][$method] = new class ($path, $params, $middleware, $handler) implements RouteInterface {
             public function __construct(public string $path, public array $params, public array $middleware, public $handler) {}
 
             #[Override]
@@ -96,10 +90,6 @@ final class Router
 
     /**
      * Assign a name to a route path.
-     *
-     * @param string $name
-     * @param string $path
-     * @return void
      */
     public static function setName(string $name, string $path): void
     {
@@ -109,14 +99,12 @@ final class Router
     /**
      * Generate a URL for a named route with parameters.
      *
-     * @param string $name
      * @param array<string, scalar> $params
-     * @return string
      */
     public static function makeUrlByName(string $name, array $params): string
     {
         if (!isset(static::$lookup[$name])) {
-            throw new FrameworkException("Route named [{$name}] not found.");
+            throw new FrameworkException(sprintf('Route named [%s] not found.', $name));
         }
 
         $url = static::$lookup[$name];
@@ -130,19 +118,15 @@ final class Router
         }
 
         if (str_contains($url, ":")) {
-            throw new FrameworkException("Missing parameter for route [{$name}].");
+            throw new FrameworkException(sprintf('Missing parameter for route [%s].', $name));
         }
 
-        $query = empty($params) ? "" : "?" . http_build_query($params);
-        return "/{$url}{$query}";
+        $query = $params === [] ? "" : "?" . http_build_query($params);
+        return sprintf('/%s%s', $url, $query);
     }
 
     /**
      * Match a request and execute the route handler.
-     *
-     * @param Request $request
-     * @param Response $response
-     * @return Response
      */
     public static function dispatch(Request $request, Response $response): Response
     {
@@ -158,29 +142,29 @@ final class Router
                 continue;
             }
 
-            if (isset($node[static::PARAM])) {
+            if (isset($node[self::PARAM])) {
                 $paramValues[] = $segment;
-                $node = $node[static::PARAM];
+                $node = $node[self::PARAM];
                 continue;
             }
 
             throw HttpException::create(404);
         }
 
-        if (!isset($node[static::LEAF])) {
+        if (!isset($node[self::LEAF])) {
             throw HttpException::create(404);
         }
 
-        if (!isset($node[static::LEAF][$request->method])) {
+        if (!isset($node[self::LEAF][$request->method])) {
             throw HttpException::create(405);
         }
 
-        $route = $node[static::LEAF][$request->method];
+        $route = $node[self::LEAF][$request->method];
         $request->parameters = array_combine($route->params, $paramValues);
         $handler = $route->handler;
 
         foreach (array_reverse($route->middleware) as $mw) {
-            $handler = fn(Request $req) => $mw($req, $handler);
+            $handler = fn(Request $request) => $mw($request, $handler);
         }
 
         $result = $handler($request);
@@ -189,7 +173,7 @@ final class Router
             return $result;
         }
 
-        if (($result instanceof Stringable || is_scalar($result)) && !empty(trim((string) $result))) {
+        if (($result instanceof Stringable || is_scalar($result)) && !in_array(trim((string) $result), ['', '0'], true)) {
             return $response->setBody($result);
         }
 
