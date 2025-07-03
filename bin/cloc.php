@@ -2,17 +2,26 @@
 
 function replaceClocInReadme(string $readmePath, string $key, string $clocTable): bool
 {
-    $readme = file_get_contents($readmePath);
+    if (!file_exists($readmePath)) {
+        fwrite(STDERR, "Missing README file: $readmePath\n");
+        return false;
+    }
 
-    if ($readme === false) {
+    if (($readme = file_get_contents($readmePath)) === false) {
+        fwrite(STDERR, "Failed to read README file: $readmePath\n");
         return false;
     }
 
     $pattern = "/(<!--\s*$key\s*-->\s*)```.*?```(\s*<!--\s*\.\/$key\s*-->)/s";
-    $replacement = '$1```' . "\n" . $clocTable . "\n" . "```" . '$2';
-    $updated = preg_replace($pattern, $replacement, $readme);
+    $replacement = '$1```' . PHP_EOL . $clocTable . PHP_EOL . "```" . '$2';
 
-    if ($updated === null) {
+    if (!preg_match($pattern, $readme)) {
+        fwrite(STDERR, "Could not locate block for key: $key\n");
+        return false;
+    }
+
+    if (($updated = preg_replace($pattern, $replacement, $readme)) === null) {
+        fwrite(STDERR, "Regex replacement failed for key: $key\n");
         return false;
     }
 
@@ -21,6 +30,10 @@ function replaceClocInReadme(string $readmePath, string $key, string $clocTable)
 
 function generateClocTable(string $file): string
 {
+    if (!shell_exec("which cloc")) {
+        return "cloc is not installed.\n";
+    }
+
     $file = escapeshellcmd($file);
     $output = shell_exec("cloc --fmt=2 --hide-rate --quiet '$file' 2>/dev/null");
 
@@ -37,6 +50,13 @@ function generateClocTable(string $file): string
     return "No table found.\n";
 }
 
-var_dump(replaceClocInReadme(__DIR__ . "/../README.md", "cloc-base", generateClocTable(__DIR__ . "/../dist/base.php")));
-var_dump(replaceClocInReadme(__DIR__ . "/../README.md", "cloc-full", generateClocTable(__DIR__ . "/../dist/full.php")));
-var_dump(replaceClocInReadme(__DIR__ . "/../README.md", "cloc-src", generateClocTable(__DIR__ . "/../src")));
+function report(string $label, bool $result): void
+{
+    printf("[%s] %s\n", $result ? "OK" : "FAIL", $label);
+}
+
+$readme = __DIR__ . "/../README.md";
+
+report("cloc-base", replaceClocInReadme($readme, "cloc-base", generateClocTable(__DIR__ . "/../dist/base.php")));
+report("cloc-full", replaceClocInReadme($readme, "cloc-full", generateClocTable(__DIR__ . "/../dist/full.php")));
+report("cloc-src", replaceClocInReadme($readme, "cloc-src", generateClocTable(__DIR__ . "/../src")));

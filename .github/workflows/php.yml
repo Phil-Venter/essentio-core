@@ -7,7 +7,7 @@ on:
         branches: ["main"]
 
 permissions:
-    contents: read
+    contents: write
 
 jobs:
     test:
@@ -23,6 +23,8 @@ jobs:
               uses: shivammathur/setup-php@v2
               with:
                   php-version: ${{ matrix.php }}
+                  extensions: pdo, pdo_sqlite
+                  coverage: none
 
             - name: Validate composer.json and composer.lock
               run: composer validate --strict
@@ -42,3 +44,35 @@ jobs:
 
             - name: Run test suite
               run: php ./vendor/bin/pest
+
+    build-and-commit:
+        runs-on: ubuntu-latest
+        needs: test
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Setup PHP
+              uses: shivammathur/setup-php@v2
+              with:
+                  php-version: "8.2"
+                  coverage: none
+
+            - name: Install cloc
+              run: sudo apt-get update && sudo apt-get install -y cloc
+
+            - name: Build dist
+              run: |
+                  mkdir -p dist
+                  composer build:base 'dist/base.php'
+                  composer build:full 'dist/full.php'
+                  composer cloc:update
+
+            - name: Commit and push changes
+              run: |
+                  git config user.name "github-actions[bot]"
+                  git config user.email "github-actions[bot]@users.noreply.github.com"
+                  git add dist/* README.md
+                  git commit -m "Build dist and update values"
+                  git push
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

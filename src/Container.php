@@ -32,7 +32,7 @@ final class Container
     {
         /** @var string $concrete */
         if (is_string($concrete ??= $id) && !class_exists($concrete, true)) {
-            throw new FrameworkException(sprintf('Cannot bind [%s] to [%s].', $id, $concrete));
+            throw new FrameworkException(sprintf("Cannot bind [%s] to [%s].", $id, $concrete));
         }
 
         $this->bindings[$id] = $concrete;
@@ -56,7 +56,7 @@ final class Container
      *
      * @template T
      * @param class-string<T> $id
-     * @param array<string, mixed>|list<mixed> $dependencies
+     * @param array<string,mixed>|list<mixed> $dependencies
      * @return T
      */
     public function get(string $id, array $dependencies = []): object
@@ -66,7 +66,7 @@ final class Container
                 return new $id(...$dependencies);
             }
 
-            throw new FrameworkException(sprintf('Service [%s] is not bound and cannot be instantiated.', $id));
+            throw new FrameworkException(sprintf("Service [%s] is not bound and cannot be instantiated.", $id));
         }
 
         $once = array_key_exists($id, $this->cache);
