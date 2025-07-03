@@ -20,9 +20,11 @@
         "rector/rector": "^2.0",
         "vimeo/psalm": "^6.12"
     },
-    "minimum-stability": "stable",
+    "suggest": {
+        "ext-pdo": "Required for database access using PDO (e.g. MySQL, SQLite, PostgreSQL)"
+    },
     "scripts": {
-        "runner": "composer format && composer analyze && composer test && composer build:base 'dist/base.php' && composer build:full 'dist/full.php' && composer cloc:update",
+        "runner": "composer format && composer analyze && composer test && composer build:base 'dist/base.php' && composer build:full 'dist/full.php'",
         "format": "./vendor/bin/rector",
         "analyze": "./vendor/bin/psalm",
         "test": "./vendor/bin/pest",
