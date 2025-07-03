@@ -250,24 +250,33 @@ Measured using [cloc](https://github.com/AlDanial/cloc):
 **Base:**
 <!-- cloc-base -->
 ```
-Failed to execute cloc or no output returned.
-
+    -----------------------------------------------------
+    Language    files    blank  comment     code    Total
+    -----------------------------------------------------
+    PHP             1      202      381      774     1357
+    -----------------------------------------------------
 ```
 <!-- ./cloc-base -->
 
 **Full (with Extras):**
 <!-- cloc-full -->
 ```
-Failed to execute cloc or no output returned.
-
+    -----------------------------------------------------
+    Language    files    blank  comment     code    Total
+    -----------------------------------------------------
+    PHP             1      370      573     1371     2314
+    -----------------------------------------------------
 ```
 <!-- ./cloc-full -->
 
 **Pre build (src):**
 <!-- cloc-src -->
 ```
-Failed to execute cloc or no output returned.
-
+    -----------------------------------------------------
+    Language    files    blank  comment     code    Total
+    -----------------------------------------------------
+    PHP            22      410      598     1472     2480
+    -----------------------------------------------------
 ```
 <!-- ./cloc-src -->
 

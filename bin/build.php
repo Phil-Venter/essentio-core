@@ -19,6 +19,10 @@ if ($outFile === "--extra") {
     $extras = true;
 }
 
+if (!is_dir(dirname($outFile))) {
+    mkdir(dirname($outFile), 0777, true);
+}
+
 $files = glob(__DIR__ . "/../src/*.php");
 $extras and ($files = array_merge($files, glob(__DIR__ . "/../src/Extra/*.php")));
 $files = array_filter($files, fn($file) => basename($file) !== "functions.php");
