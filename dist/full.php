@@ -1,8 +1,5 @@
 <?php
 
-/**
- * @api
- */
 final class Application
 {
     /**
@@ -51,9 +48,6 @@ final class Application
     }
 }
 
-/**
- * @api
- */
 final class Argument
 {
     public function __construct(public readonly string $command = "", private array $arguments = []) {}
@@ -130,9 +124,6 @@ final class Argument
     }
 }
 
-/**
- * @api
- */
 final class Container
 {
     private static $instance;
@@ -218,9 +209,6 @@ final class Container
     }
 }
 
-/**
- * @api
- */
 final class Environment
 {
     public function __construct(private array $data = []) {}
@@ -272,9 +260,6 @@ final class Environment
 
 class FrameworkException extends Exception {}
 
-/**
- * @api
- */
 final readonly class Helper
 {
     public function __construct(private string $basePath) {}
@@ -320,9 +305,6 @@ final readonly class Helper
     }
 }
 
-/**
- * @api
- */
 final class HttpException extends FrameworkException
 {
     public const HTTP_STATUS = [
@@ -359,9 +341,6 @@ final class HttpException extends FrameworkException
     }
 }
 
-/**
- * @api
- */
 final readonly class Jwt
 {
     public function __construct(private string $secret, private ?string $issuer = null) {}
@@ -467,9 +446,6 @@ final readonly class Jwt
     }
 }
 
-/**
- * @api
- */
 final class Request
 {
     public array $errors = [];
@@ -620,9 +596,6 @@ final class Request
     }
 }
 
-/**
- * @api
- */
 final class Response
 {
     public int $status = 200;
@@ -697,9 +670,6 @@ final class Response
     }
 }
 
-/**
- * @api
- */
 interface RouteInterface
 {
     public function name(string $name): static;
@@ -710,9 +680,6 @@ interface RouteInterface
     public function middleware(callable $middleware): static;
 }
 
-/**
- * @api
- */
 final class Router
 {
     protected const LEAF = "__leafnode__";
@@ -886,9 +853,6 @@ final class Router
     }
 }
 
-/**
- * @api
- */
 final class Session
 {
     protected const FLASH_OLD = "__flash_old__";
@@ -977,9 +941,6 @@ final class Session
     }
 }
 
-/**
- * @api
- */
 final class Template
 {
     private array $segments = [];
@@ -1064,9 +1025,6 @@ final class Template
 
 class ValidationException extends FrameworkException {}
 
-/**
- * @api
- */
 final class Cast
 {
     /**
@@ -1223,9 +1181,6 @@ final class Cast
     }
 }
 
-/**
- * @api
- */
 final class HttpClient
 {
     /**
@@ -1293,9 +1248,6 @@ final class HttpClient
     }
 }
 
-/**
- * @api
- */
 final class Query
 {
     private string $bool = "AND";
@@ -1662,9 +1614,6 @@ final class Query
     }
 }
 
-/**
- * @api
- */
 final class Validate
 {
     /**
