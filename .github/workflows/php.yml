@@ -69,12 +69,13 @@ jobs:
               run: |
                   composer build:base 'dist/base.php'
                   composer build:full 'dist/full.php'
+                  composer cloc:update
 
             - name: Commit and push changes
               run: |
                   git config user.name "github-actions[bot]"
                   git config user.email "github-actions[bot]@users.noreply.github.com"
-                  git add -f dist/*
+                  git add -f README.md dist/*
                   git commit -m "[action] Build dist" || exit 0
                   git push
               env:

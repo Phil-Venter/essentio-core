@@ -5,7 +5,7 @@ function parseFile(string $filePath): string
     $lines = file($filePath, FILE_IGNORE_NEW_LINES);
     $filtered = array_filter($lines, fn($line) => !preg_match("/^\s*(namespace|use)\b/", $line));
     array_shift($filtered);
-    return implode(PHP_EOL, $filtered);
+    return preg_replace('/\/\*\*\n\s\*\s@api\n\s\*\//', "", implode(PHP_EOL, $filtered));
 }
 
 $argv ??= $_SERVER["argv"] ?? [];
