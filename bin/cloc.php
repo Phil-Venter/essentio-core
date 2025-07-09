@@ -84,7 +84,7 @@ function formatClocTable(array $results): string
 {
     $out = [];
     $out[] = str_repeat("-", 70);
-    $out[] = sprintf("%-20s%10s%10s%10s%10s%10s", "language", "files", "blank", "comment", "code", "Total");
+    $out[] = sprintf("%-20s%10s%10s%10s%10s%10s", "language", "files", "blank", "comment", "code", "total");
     $out[] = str_repeat("-", 70);
 
     foreach ($results as $lang => $stat) {

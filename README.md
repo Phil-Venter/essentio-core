@@ -245,8 +245,6 @@ If it happens, it’s because you wrote it.
 
 ## 🧮 Code Size
 
-Measured using [cloc](https://github.com/AlDanial/cloc):
-
 **Base:**
 <!-- cloc-base -->
 ```
