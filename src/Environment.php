@@ -5,7 +5,7 @@ namespace Essentio\Core;
 /**
  * @api
  */
-final class Environment
+class Environment
 {
     public function __construct(private array $data = []) {}
 
@@ -15,17 +15,17 @@ final class Environment
     public static function create(Helper $helper, ?string $file = null): static
     {
         if (!file_exists($file = $helper->fromBase($file ?? ".env"))) {
-            return new self();
+            return new static();
         }
 
         $data = [];
 
         foreach (file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] as $line) {
-            if ($line === '') {
+            if ($line === "") {
                 continue;
             }
 
-            if ($line === '0') {
+            if ($line === "0") {
                 continue;
             }
 
@@ -42,7 +42,7 @@ final class Environment
             $data[trim($key)] = $helper->autoCast(trim($value));
         }
 
-        return new self($data);
+        return new static($data);
     }
 
     /**

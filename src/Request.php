@@ -5,7 +5,7 @@ namespace Essentio\Core;
 /**
  * @api
  */
-final class Request
+class Request
 {
     public array $errors = [];
 
@@ -104,7 +104,7 @@ final class Request
             default => $post,
         };
 
-        return new self($method, $port, $path, $query, $contentType, $headers, $cookies, $flatFiles, $parsedBody, []);
+        return new static($method, $port, $path, $query, $contentType, $headers, $cookies, $flatFiles, $parsedBody, []);
     }
 
     /**

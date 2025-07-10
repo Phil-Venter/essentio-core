@@ -7,7 +7,7 @@ use Throwable;
 /**
  * @api
  */
-final class Application
+class Application
 {
     /**
      * Bootstrap the application for CLI mode.

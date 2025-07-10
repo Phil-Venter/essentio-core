@@ -5,7 +5,7 @@ namespace Essentio\Core;
 /**
  * @api
  */
-final class Container
+class Container
 {
     private static $instance;
 
@@ -18,7 +18,7 @@ final class Container
      */
     public static function instance(): static
     {
-        return static::$instance ??= new self();
+        return static::$instance ??= new static();
     }
 
     /**

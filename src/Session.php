@@ -7,7 +7,7 @@ use SessionHandler;
 /**
  * @api
  */
-final class Session
+class Session
 {
     protected const FLASH_OLD = "__flash_old__";
 
@@ -37,9 +37,9 @@ final class Session
             session_start();
         }
 
-        $_SESSION[self::FLASH_OLD] = $_SESSION[self::FLASH_NEW] ?? [];
-        $_SESSION[self::FLASH_NEW] = [];
-        return new self();
+        $_SESSION[static::FLASH_OLD] = $_SESSION[static::FLASH_NEW] ?? [];
+        $_SESSION[static::FLASH_NEW] = [];
+        return new static();
     }
 
     /**
@@ -63,7 +63,7 @@ final class Session
      */
     public function setFlash(string $key, mixed $value): mixed
     {
-        return $_SESSION[self::FLASH_NEW][$key] = $value;
+        return $_SESSION[static::FLASH_NEW][$key] = $value;
     }
 
     /**
@@ -71,7 +71,7 @@ final class Session
      */
     public function getFlash(string $key): mixed
     {
-        return $_SESSION[self::FLASH_OLD][$key] ?? null;
+        return $_SESSION[static::FLASH_OLD][$key] ?? null;
     }
 
     /**
@@ -79,7 +79,7 @@ final class Session
      */
     public function getCsrf(): string
     {
-        return $_SESSION[self::CSRF_KEY] ??= bin2hex(random_bytes(32));
+        return $_SESSION[static::CSRF_KEY] ??= bin2hex(random_bytes(32));
     }
 
     /**
@@ -87,8 +87,8 @@ final class Session
      */
     public function verifyCsrf(string $csrf): bool
     {
-        if ($valid = hash_equals($_SESSION[self::CSRF_KEY] ?? "", $csrf)) {
-            $_SESSION[self::CSRF_KEY] = bin2hex(random_bytes(32));
+        if ($valid = hash_equals($_SESSION[static::CSRF_KEY] ?? "", $csrf)) {
+            $_SESSION[static::CSRF_KEY] = bin2hex(random_bytes(32));
         }
 
         return $valid;

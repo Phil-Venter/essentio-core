@@ -8,7 +8,7 @@ use Essentio\Core\Response;
 /**
  * @api
  */
-final class HttpClient
+class HttpClient
 {
     /**
      * Send an HTTP request and return a Response.

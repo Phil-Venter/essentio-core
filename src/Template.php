@@ -5,7 +5,7 @@ namespace Essentio\Core;
 /**
  * @api
  */
-final class Template
+class Template
 {
     private array $segments = [];
 
@@ -20,7 +20,7 @@ final class Template
      */
     public function layout(string $template): void
     {
-        $this->layout = new self($template);
+        $this->layout = new static($template);
     }
 
     /**

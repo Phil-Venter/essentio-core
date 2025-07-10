@@ -10,7 +10,7 @@ use Essentio\Core\ValidationException;
 /**
  * @api
  */
-final class Validate
+class Validate
 {
     /**
      * Letters only.

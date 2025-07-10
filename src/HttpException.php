@@ -7,7 +7,7 @@ use Throwable;
 /**
  * @api
  */
-final class HttpException extends FrameworkException
+class HttpException extends FrameworkException
 {
     public const HTTP_STATUS = [
         // Success
@@ -39,6 +39,6 @@ final class HttpException extends FrameworkException
      */
     public static function create(int $status, ?string $message = null, ?Throwable $throwable = null): static
     {
-        return new self($message ?? (self::HTTP_STATUS[$status] ?? "Unknown Error"), $status, $throwable);
+        return new static($message ?? (static::HTTP_STATUS[$status] ?? "Unknown Error"), $status, $throwable);
     }
 }

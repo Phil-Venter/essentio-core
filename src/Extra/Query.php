@@ -13,7 +13,7 @@ use Essentio\Core\FrameworkException;
 /**
  * @api
  */
-final class Query
+class Query
 {
     private string $bool = "AND";
 
@@ -44,7 +44,7 @@ final class Query
     /**
      * Use OR for the next condition.
      */
-    public function or(): self
+    public function or(): static
     {
         $this->bool = "OR";
         return $this;
@@ -65,7 +65,7 @@ final class Query
      *
      * @param list<string>|string ...$columns
      */
-    public function select(array|string ...$columns): self
+    public function select(array|string ...$columns): static
     {
         $columns = array_values($columns);
         $this->columns = array_merge($this->columns, $columns);
@@ -75,7 +75,7 @@ final class Query
     /**
      * Set the table for the query.
      */
-    public function table(string $table): self
+    public function table(string $table): static
     {
         $this->table = $table;
         return $this;
@@ -84,10 +84,10 @@ final class Query
     /**
      * Add a where clause.
      */
-    public function where(string|Closure $column, ?string $operator = null, mixed $value = null): self
+    public function where(string|Closure $column, ?string $operator = null, mixed $value = null): static
     {
         if ($column instanceof Closure) {
-            $column($query = new self());
+            $column($query = new static());
             return $this->whereRaw(sprintf("(%s)", $this->clean($query->where)), $query->whereParams);
         }
 
@@ -121,7 +121,7 @@ final class Query
         }
 
         if ($value instanceof Closure) {
-            $value($query = new self());
+            $value($query = new static());
             return $this->whereRaw(sprintf("%s %s (%s)", $column, $operator, $query->selectSql()), $query->getParams());
         }
 
@@ -153,7 +153,7 @@ final class Query
      *
      * @param array<string,mixed>|list<mixed> $data
      */
-    public function whereRaw(string $statement, array $data = []): self
+    public function whereRaw(string $statement, array $data = []): static
     {
         $this->where[] = sprintf("%s %s", $this->consumeBool(), $statement);
         $this->whereParams = array_merge($this->whereParams, $data);
@@ -165,7 +165,7 @@ final class Query
      *
      * @param list<string>|string ...$groupBys
      */
-    public function groupBy(array|string ...$groupBys): self
+    public function groupBy(array|string ...$groupBys): static
     {
         $groupBys = array_values($groupBys);
         $this->groupBys = array_merge($this->groupBys, $groupBys);
@@ -177,7 +177,7 @@ final class Query
      *
      * @param array<string,mixed> $data
      */
-    public function havingRaw(string $statement, array $data = []): self
+    public function havingRaw(string $statement, array $data = []): static
     {
         $this->having[] = sprintf("%s %s", $this->consumeBool(), $statement);
         $this->havingParams = array_merge($this->havingParams, $data);
@@ -187,7 +187,7 @@ final class Query
     /**
      * Add order by clause.
      */
-    public function orderBy(string $column, string $direction = "ASC"): self
+    public function orderBy(string $column, string $direction = "ASC"): static
     {
         $this->orderBys[] = sprintf("%s %s", $column, $direction);
         return $this;
@@ -196,7 +196,7 @@ final class Query
     /**
      * Set limit and optional offset.
      */
-    public function limit(int $limit, ?int $offset = null): self
+    public function limit(int $limit, ?int $offset = null): static
     {
         $this->limit = $limit;
         $this->offset = $offset;

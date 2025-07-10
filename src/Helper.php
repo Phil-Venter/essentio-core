@@ -5,7 +5,7 @@ namespace Essentio\Core;
 /**
  * @api
  */
-final readonly class Helper
+readonly class Helper
 {
     public function __construct(private string $basePath) {}
 
@@ -14,7 +14,7 @@ final readonly class Helper
      */
     public static function create(string $basePath): static
     {
-        return new self(rtrim($basePath, "/"));
+        return new static(rtrim($basePath, "/"));
     }
 
     /**

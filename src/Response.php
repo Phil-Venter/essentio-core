@@ -7,7 +7,7 @@ use Stringable;
 /**
  * @api
  */
-final class Response
+class Response
 {
     public int $status = 200;
 

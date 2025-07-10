@@ -12,7 +12,7 @@ use Essentio\Core\ValidationException;
 /**
  * @api
  */
-final class Cast
+class Cast
 {
     /**
      * Cast input to bool or throw.
@@ -20,7 +20,7 @@ final class Cast
     public static function bool(string $message = ""): Closure
     {
         return function (string $input) use ($message): ?bool {
-            if (($input = self::nullOnEmpty($input)) === null) {
+            if (($input = static::nullOnEmpty($input)) === null) {
                 return null;
             }
 
@@ -38,7 +38,7 @@ final class Cast
     public static function date(string $message = ""): Closure
     {
         return function (string $input) use ($message): DateTimeImmutable|null {
-            if (($input = self::nullOnEmpty($input)) === null) {
+            if (($input = static::nullOnEmpty($input)) === null) {
                 return null;
             }
 
@@ -58,7 +58,7 @@ final class Cast
     public static function enum(string $enumClass, string $message = ""): Closure
     {
         if (!enum_exists($enumClass)) {
-            throw new ValidationException('Invalid enum class: ' . $enumClass);
+            throw new ValidationException("Invalid enum class: " . $enumClass);
         }
 
         if (!is_subclass_of($enumClass, BackedEnum::class)) {
@@ -66,7 +66,7 @@ final class Cast
         }
 
         return function (string $input) use ($enumClass, $message): ?BackedEnum {
-            if (($input = self::nullOnEmpty($input)) === null) {
+            if (($input = static::nullOnEmpty($input)) === null) {
                 return null;
             }
 
@@ -84,11 +84,11 @@ final class Cast
     public static function float(string $message = ""): Closure
     {
         return function (string $input) use ($message): ?float {
-            if (($input = self::nullOnEmpty($input)) === null) {
+            if (($input = static::nullOnEmpty($input)) === null) {
                 return null;
             }
 
-            $value = self::normalizeNumber($input, $message);
+            $value = static::normalizeNumber($input, $message);
 
             if (($floatVal = filter_var($value, FILTER_VALIDATE_FLOAT)) === false) {
                 throw new ValidationException($message);
@@ -104,11 +104,11 @@ final class Cast
     public static function int(string $message = ""): Closure
     {
         return function (string $input) use ($message): ?int {
-            if (($input = self::nullOnEmpty($input)) === null) {
+            if (($input = static::nullOnEmpty($input)) === null) {
                 return null;
             }
 
-            $value = self::normalizeNumber($input, $message);
+            $value = static::normalizeNumber($input, $message);
 
             if (($intVal = filter_var($value, FILTER_VALIDATE_INT)) === false) {
                 throw new ValidationException($message);
@@ -124,11 +124,11 @@ final class Cast
     public static function number(string $message = ""): Closure
     {
         return function (string $input) use ($message): int|float|null {
-            if (($input = self::nullOnEmpty($input)) === null) {
+            if (($input = static::nullOnEmpty($input)) === null) {
                 return null;
             }
 
-            $value = self::normalizeNumber($input, $message);
+            $value = static::normalizeNumber($input, $message);
 
             if (($intVal = filter_var($value, FILTER_VALIDATE_INT)) !== false) {
                 return $intVal;

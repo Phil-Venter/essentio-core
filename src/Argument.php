@@ -5,7 +5,7 @@ namespace Essentio\Core;
 /**
  * @api
  */
-final class Argument
+class Argument
 {
     public function __construct(public readonly string $command = "", private array $arguments = []) {}
 
@@ -19,7 +19,7 @@ final class Argument
         $argv ??= $_SERVER["argv"] ?? [];
 
         if (count($argv) <= 1) {
-            return new self();
+            return new static();
         }
 
         array_shift($argv);
@@ -54,7 +54,7 @@ final class Argument
                 $key = $arg[1];
                 $value = substr((string) $arg, 2);
 
-                if ($value === '' || $value === '0') {
+                if ($value === "" || $value === "0") {
                     $value = isset($argv[0]) && $argv[0][0] !== "-" ? array_shift($argv) : true;
                 }
 
@@ -69,7 +69,7 @@ final class Argument
             }
         }
 
-        return new self($command, $arguments);
+        return new static($command, $arguments);
     }
 
     /**
