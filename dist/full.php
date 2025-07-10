@@ -1,5 +1,45 @@
 <?php
 
+class FrameworkException extends Exception {}
+
+class HttpException extends FrameworkException
+{
+    public const HTTP_STATUS = [
+        // Success
+        200 => "OK",
+        201 => "Created",
+        202 => "Accepted",
+        204 => "No Content",
+
+        // Redirection
+        301 => "Moved Permanently",
+        302 => "Found",
+        303 => "See Other",
+        307 => "Temporary Redirect",
+        308 => "Permanent Redirect",
+
+        // Client Errors
+        400 => "Bad Request",
+        401 => "Unauthorized",
+        403 => "Forbidden",
+        404 => "Not Found",
+        405 => "Method Not Allowed",
+
+        // Server Errors
+        500 => "Internal Server Error",
+    ];
+
+    /**
+     * Create a new HTTP exception with status and optional message.
+     */
+    public static function create(int $status, ?string $message = null, ?Throwable $throwable = null): static
+    {
+        return new static($message ?? (static::HTTP_STATUS[$status] ?? "Unknown Error"), $status, $throwable);
+    }
+}
+
+class ValidationException extends FrameworkException {}
+
 class Application
 {
     /**
@@ -262,8 +302,6 @@ class Environment
     }
 }
 
-class FrameworkException extends Exception {}
-
 readonly class Helper
 {
     public function __construct(protected string $basePath) {}
@@ -306,42 +344,6 @@ readonly class Helper
             is_numeric($value) => preg_match("/[e\.]/", $value) ? (float) $value : (int) $value,
             default => $value,
         };
-    }
-}
-
-class HttpException extends FrameworkException
-{
-    public const HTTP_STATUS = [
-        // Success
-        200 => "OK",
-        201 => "Created",
-        202 => "Accepted",
-        204 => "No Content",
-
-        // Redirection
-        301 => "Moved Permanently",
-        302 => "Found",
-        303 => "See Other",
-        307 => "Temporary Redirect",
-        308 => "Permanent Redirect",
-
-        // Client Errors
-        400 => "Bad Request",
-        401 => "Unauthorized",
-        403 => "Forbidden",
-        404 => "Not Found",
-        405 => "Method Not Allowed",
-
-        // Server Errors
-        500 => "Internal Server Error",
-    ];
-
-    /**
-     * Create a new HTTP exception with status and optional message.
-     */
-    public static function create(int $status, ?string $message = null, ?Throwable $throwable = null): static
-    {
-        return new static($message ?? (static::HTTP_STATUS[$status] ?? "Unknown Error"), $status, $throwable);
     }
 }
 
@@ -1043,8 +1045,6 @@ class Template
         return $content;
     }
 }
-
-class ValidationException extends FrameworkException {}
 
 class Cast
 {
