@@ -7,7 +7,7 @@ namespace Essentio\Core;
  */
 class Environment
 {
-    public function __construct(private array $data = []) {}
+    public function __construct(protected array $data = []) {}
 
     /**
      * Load and parse environment variables from a .env file.

@@ -2,7 +2,6 @@
 
 namespace Essentio\Core;
 
-use Override;
 use Stringable;
 
 /**
@@ -14,22 +13,22 @@ class Router
 
     protected const PARAM = "__parameter__";
 
-    private static array $middleware = [];
+    protected array $middleware = [];
 
-    private static string $prefix = "";
+    protected string $prefix = "";
 
-    private static array $routes = [];
+    protected array $routes = [];
 
-    private static array $lookup = [];
+    protected array $lookup = [];
 
     /**
      * Register middleware for current route scope.
      *
      * @param callable(Request, callable(Request): Response): Response $middleware
      */
-    public static function middleware(callable $middleware): void
+    public function middleware(callable $middleware): void
     {
-        static::$middleware[] = $middleware;
+        $this->middleware[] = $middleware;
     }
 
     /**
@@ -37,12 +36,12 @@ class Router
      *
      * @param callable(): void $group
      */
-    public static function group(string $prefix, callable $group): void
+    public function group(string $prefix, callable $group): void
     {
-        [$oldPrefix, $oldMiddleware] = [static::$prefix, static::$middleware];
-        static::$prefix .= $prefix;
+        [$oldPrefix, $oldMiddleware] = [$this->prefix, $this->middleware];
+        $this->prefix .= $prefix;
         $group();
-        [static::$prefix, static::$middleware] = [$oldPrefix, $oldMiddleware];
+        [$this->prefix, $this->middleware] = [$oldPrefix, $oldMiddleware];
     }
 
     /**
@@ -50,11 +49,11 @@ class Router
      *
      * @param callable(Request): mixed $handler
      */
-    public static function route(string $method, string $path, callable $handler): RouteInterface
+    public function route(string $method, string $path, callable $handler): RouterRoute
     {
-        $path = trim((string) preg_replace("#/+#", "/", static::$prefix . $path), "/");
+        $path = trim((string) preg_replace("#/+#", "/", $this->prefix . $path), "/");
         /** @psalm-suppress UnsupportedPropertyReferenceUsage */
-        $node = &static::$routes;
+        $node = &$this->routes;
         $params = [];
 
         foreach (explode("/", $path) as $segment) {
@@ -67,33 +66,17 @@ class Router
             }
         }
 
-        $middleware = static::$middleware;
+        $middleware = $this->middleware;
 
-        return $node[static::LEAF][$method] = new class ($path, $params, $middleware, $handler) implements RouteInterface {
-            public function __construct(public string $path, public array $params, public array $middleware, public $handler) {}
-
-            #[Override]
-            public function name(string $name): static
-            {
-                Router::setName($name, $this->path);
-                return $this;
-            }
-
-            #[Override]
-            public function middleware(callable $middleware): static
-            {
-                $this->middleware[] = $middleware;
-                return $this;
-            }
-        };
+        return $node[static::LEAF][$method] = new RouterRoute($path, $params, $middleware, $handler, $this->setName(...));
     }
 
     /**
      * Assign a name to a route path.
      */
-    public static function setName(string $name, string $path): void
+    protected function setName(string $name, string $path): void
     {
-        static::$lookup[$name] = $path;
+        $this->lookup[$name] = $path;
     }
 
     /**
@@ -101,13 +84,13 @@ class Router
      *
      * @param array<string, scalar> $params
      */
-    public static function makeUrlByName(string $name, array $params): string
+    public function makeUrlByName(string $name, array $params): string
     {
-        if (!isset(static::$lookup[$name])) {
+        if (!isset($this->lookup[$name])) {
             throw new FrameworkException(sprintf("Route named [%s] not found.", $name));
         }
 
-        $url = static::$lookup[$name];
+        $url = $this->lookup[$name];
 
         foreach ($params as $key => $value) {
             $search = ":" . $key;
@@ -128,11 +111,11 @@ class Router
     /**
      * Match a request and execute the route handler.
      */
-    public static function dispatch(Request $request, Response $response): Response
+    public function dispatch(Request $request, Response $response): Response
     {
         $segments = explode("/", $request->path);
         $paramValues = [];
-        $node = static::$routes;
+        $node = $this->routes;
 
         while ($segments) {
             $segment = array_shift($segments);

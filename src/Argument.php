@@ -7,7 +7,10 @@ namespace Essentio\Core;
  */
 class Argument
 {
-    public function __construct(public readonly string $command = "", private array $arguments = []) {}
+    /**
+     * @param array<int|string,mixed> $arguments
+     */
+    public function __construct(public readonly string $command = "", protected array $arguments = []) {}
 
     /**
      * Parse CLI arguments into command and options.

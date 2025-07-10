@@ -7,7 +7,7 @@ namespace Essentio\Core;
  */
 readonly class Helper
 {
-    public function __construct(private string $basePath) {}
+    public function __construct(protected string $basePath) {}
 
     /**
      * Create a new Helper with the given base path.

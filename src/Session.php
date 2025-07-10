@@ -9,11 +9,11 @@ use SessionHandler;
  */
 class Session
 {
-    protected const FLASH_OLD = "__flash_old__";
+    protected const FLASH_OLD = "__flashold__";
 
-    protected const FLASH_NEW = "__flash_new__";
+    protected const FLASH_NEW = "__flashnew__";
 
-    protected const CSRF_KEY = "__csrf_key__";
+    protected const CSRF_KEY = "__csrfkey__";
 
     /**
      * Start the session and prepare flash data for the request.

@@ -24,10 +24,10 @@
         "ext-pdo": "Required for database access using PDO (e.g. MySQL, SQLite, PostgreSQL)"
     },
     "scripts": {
-        "runner": "composer format && composer analyze && composer test && composer build:base 'dist/base.php' && composer build:full 'dist/full.php'",
-        "format": "./vendor/bin/rector",
-        "analyze": "./vendor/bin/psalm",
-        "test": "./vendor/bin/pest",
+        "runner": "composer format; composer analyze; composer test; composer build:base 'dist/base.php'; composer build:full 'dist/full.php'",
+        "format": "php ./vendor/bin/rector",
+        "analyze": "php ./vendor/bin/psalm",
+        "test": "php ./vendor/bin/pest",
         "build:base": "php ./bin/build.php",
         "build:full": "php ./bin/build.php --extra",
         "cloc:update": "php ./bin/cloc.php"

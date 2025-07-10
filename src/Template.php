@@ -7,13 +7,13 @@ namespace Essentio\Core;
  */
 class Template
 {
-    private array $segments = [];
+    protected array $segments = [];
 
-    private ?self $layout = null;
+    protected ?self $layout = null;
 
-    private array $stack = [];
+    protected array $stack = [];
 
-    public function __construct(private readonly string $template) {}
+    public function __construct(protected readonly string $template) {}
 
     /**
      * Set a parent layout template.

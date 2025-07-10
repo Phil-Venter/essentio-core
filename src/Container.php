@@ -7,11 +7,11 @@ namespace Essentio\Core;
  */
 class Container
 {
-    private static $instance;
+    protected static $instance;
 
-    private array $bindings = [];
+    protected array $bindings = [];
 
-    private array $cache = [];
+    protected array $cache = [];
 
     /**
      * Get the container singleton instance.

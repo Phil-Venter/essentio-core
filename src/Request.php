@@ -13,12 +13,12 @@ class Request
         public readonly string $method,
         public readonly int $port,
         public readonly string $path,
-        private array $query,
+        protected array $query,
         public readonly string $contentType,
         public readonly array $headers,
         public readonly array $cookies,
         public readonly array $files,
-        private array $body,
+        protected array $body,
         public array $parameters
     ) {}
 

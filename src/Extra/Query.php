@@ -15,31 +15,40 @@ use Essentio\Core\FrameworkException;
  */
 class Query
 {
-    private string $bool = "AND";
+    protected string $bool = "AND";
 
-    private array $columns = [];
+    protected array $columns = [];
 
-    private string $table = "";
+    protected string $table = "";
 
     /** @var list<string> $where */
-    private array $where = [];
+    protected array $where = [];
 
-    private array $whereParams = [];
+    protected array $whereParams = [];
 
-    private array $groupBys = [];
+    protected array $groupBys = [];
 
     /** @var list<string> $having */
-    private array $having = [];
+    protected array $having = [];
 
-    private array $havingParams = [];
+    protected array $havingParams = [];
 
-    private array $orderBys = [];
+    protected array $orderBys = [];
 
-    private ?int $limit = null;
+    protected ?int $limit = null;
 
-    private ?int $offset = null;
+    protected ?int $offset = null;
 
-    public function __construct(private readonly ?PDO $pdo = null) {}
+    public function __construct(protected readonly ?PDO $pdo = null) {}
+
+    /**
+     * Use AND for the next condition.
+     */
+    public function and(): static
+    {
+        $this->bool = "AND";
+        return $this;
+    }
 
     /**
      * Use OR for the next condition.
@@ -53,7 +62,7 @@ class Query
     /**
      * Consume current boolean operator.
      */
-    private function consumeBool(): string
+    protected function consumeBool(): string
     {
         $bool = $this->bool;
         $this->bool = "AND";
@@ -206,7 +215,7 @@ class Query
     /**
      * Generate SQL for select.
      */
-    private function selectSql(): string
+    protected function selectSql(): string
     {
         if ($this->table === "" || $this->table === "0") {
             throw new FrameworkException("Table name not specified for query.");
@@ -246,7 +255,7 @@ class Query
      *
      * @param list<string> $statements
      */
-    private function clean(array $statements): string
+    protected function clean(array $statements): string
     {
         return (string) preg_replace("/^\s*(AND|OR)\s*/", "", implode(" ", $statements));
     }
@@ -254,7 +263,7 @@ class Query
     /**
      * Get combined query parameters.
      */
-    private function getParams(): array
+    protected function getParams(): array
     {
         return array_merge($this->whereParams, $this->havingParams);
     }

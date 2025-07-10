@@ -153,7 +153,7 @@ class Cast
     /**
      * Return null if input is empty.
      */
-    private static function nullOnEmpty(string $input): mixed
+    protected static function nullOnEmpty(string $input): mixed
     {
         return trim($input) === "" ? null : $input;
     }
@@ -161,7 +161,7 @@ class Cast
     /**
      * Extract number from input string.
      */
-    private static function normalizeNumber(string $input, string $message): string
+    protected static function normalizeNumber(string $input, string $message): string
     {
         preg_match_all("/-?\d+(\.\d+)?/", $input, $matches);
         return empty($matches[0]) ? throw new ValidationException($message) : $matches[0][0];

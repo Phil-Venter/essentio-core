@@ -7,8 +7,8 @@ use Essentio\Core\Helper;
 use Essentio\Core\Jwt;
 use Essentio\Core\Request;
 use Essentio\Core\Response;
-use Essentio\Core\RouteInterface;
 use Essentio\Core\Router;
+use Essentio\Core\RouterRoute;
 use Essentio\Core\Session;
 use Essentio\Core\Template;
 
@@ -177,7 +177,7 @@ function jwt(array|string $payload): array|string
  */
 function middleware(callable $middleware): void
 {
-    Router::middleware($middleware);
+    app(Router::class)->middleware($middleware);
 }
 
 /**
@@ -185,47 +185,47 @@ function middleware(callable $middleware): void
  */
 function group(string $prefix, callable $group): void
 {
-    Router::group($prefix, $group);
+    app(Router::class)->group($prefix, $group);
 }
 
 /**
  * Register a GET route.
  */
-function get(string $path, callable $handle): RouteInterface
+function get(string $path, callable $handle): RouterRoute
 {
-    return Router::route("GET", $path, $handle);
+    return app(Router::class)->route("GET", $path, $handle);
 }
 
 /**
  * Register a POST route.
  */
-function post(string $path, callable $handle): RouteInterface
+function post(string $path, callable $handle): RouterRoute
 {
-    return Router::route("POST", $path, $handle);
+    return app(Router::class)->route("POST", $path, $handle);
 }
 
 /**
  * Register a PUT route.
  */
-function put(string $path, callable $handle): RouteInterface
+function put(string $path, callable $handle): RouterRoute
 {
-    return Router::route("PUT", $path, $handle);
+    return app(Router::class)->route("PUT", $path, $handle);
 }
 
 /**
  * Register a PATCH route.
  */
-function patch(string $path, callable $handle): RouteInterface
+function patch(string $path, callable $handle): RouterRoute
 {
-    return Router::route("PATCH", $path, $handle);
+    return app(Router::class)->route("PATCH", $path, $handle);
 }
 
 /**
  * Register a DELETE route.
  */
-function delete(string $path, callable $handle): RouteInterface
+function delete(string $path, callable $handle): RouterRoute
 {
-    return Router::route("DELETE", $path, $handle);
+    return app(Router::class)->route("DELETE", $path, $handle);
 }
 
 /**
@@ -235,7 +235,7 @@ function delete(string $path, callable $handle): RouteInterface
  */
 function named_url(string $name, array $params = []): string
 {
-    return Router::makeUrlByName($name, $params);
+    return app(Router::class)->makeUrlByName($name, $params);
 }
 
 /**

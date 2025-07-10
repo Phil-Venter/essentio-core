@@ -29,6 +29,7 @@ class Application
         Container::instance()->once(Jwt::class, fn(): Jwt => Jwt::create(Container::instance()->get(Environment::class)));
         Container::instance()->once(Request::class, fn(): Request => Request::create());
         Container::instance()->once(Response::class);
+        Container::instance()->once(Router::class);
         Container::instance()->once(Session::class, fn(): Session => Session::create());
     }
 
