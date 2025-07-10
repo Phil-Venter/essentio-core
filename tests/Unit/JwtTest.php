@@ -76,3 +76,9 @@ it("accepts token with valid exp, iat, and nbf", function () {
 
     expect($payload["role"])->toBe("admin");
 });
+
+it("rejects malformed token", function () {
+    expect(fn() => $this->jwt->decode("invalid.token"))
+        ->toThrow(FrameworkException::class)
+        ->and(fn($e) => expect($e->getMessage())->toBe("Invalid token format"));
+});

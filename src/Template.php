@@ -77,7 +77,7 @@ final class Template
             })($data) ?:
             "";
 
-        if ($this->layout instanceof \Essentio\Core\Template) {
+        if ($this->layout instanceof static) {
             $this->segments["content"] = $content;
             $this->layout->segments = $this->segments;
             return $this->layout->render();

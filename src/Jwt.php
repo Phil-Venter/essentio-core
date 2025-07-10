@@ -43,7 +43,12 @@ final readonly class Jwt
      */
     public function decode(string $token): array
     {
-        [$header64, $payload64, $signature64] = explode(".", $token);
+        $parts = explode(".", $token);
+        if (count($parts) !== 3) {
+            throw new FrameworkException("Invalid token format");
+        }
+
+        [$header64, $payload64, $signature64] = $parts;
         $signature = $this->decodeBase64($signature64);
 
         $header = json_decode($this->decodeBase64($header64), true);
