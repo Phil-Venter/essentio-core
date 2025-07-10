@@ -28,9 +28,23 @@ $extras and ($files = array_merge($files, glob(__DIR__ . "/../src/Extra/*.php"))
 $files = array_filter($files, fn($file) => basename($file) !== "functions.php");
 
 $output = ["<?php"];
+
 foreach ($files as $filePath) {
+    if (!str_contains(strtolower($filePath), "exception")) {
+        continue;
+    }
+
     $output[] = parseFile($filePath);
 }
+
+foreach ($files as $filePath) {
+    if (str_contains(strtolower($filePath), "exception")) {
+        continue;
+    }
+
+    $output[] = parseFile($filePath);
+}
+
 $output[] = parseFile(__DIR__ . "/../src/functions.php");
 $extras and ($output[] = parseFile(__DIR__ . "/../src/Extra/functions.php"));
 
