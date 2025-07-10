@@ -1,6 +1,6 @@
 <?php
 
-final class Application
+class Application
 {
     /**
      * Bootstrap the application for CLI mode.
@@ -48,7 +48,7 @@ final class Application
     }
 }
 
-final class Argument
+class Argument
 {
     public function __construct(public readonly string $command = "", private array $arguments = []) {}
 
@@ -62,7 +62,7 @@ final class Argument
         $argv ??= $_SERVER["argv"] ?? [];
 
         if (count($argv) <= 1) {
-            return new self();
+            return new static();
         }
 
         array_shift($argv);
@@ -97,7 +97,7 @@ final class Argument
                 $key = $arg[1];
                 $value = substr((string) $arg, 2);
 
-                if ($value === '' || $value === '0') {
+                if ($value === "" || $value === "0") {
                     $value = isset($argv[0]) && $argv[0][0] !== "-" ? array_shift($argv) : true;
                 }
 
@@ -112,7 +112,7 @@ final class Argument
             }
         }
 
-        return new self($command, $arguments);
+        return new static($command, $arguments);
     }
 
     /**
@@ -124,7 +124,7 @@ final class Argument
     }
 }
 
-final class Container
+class Container
 {
     private static $instance;
 
@@ -137,7 +137,7 @@ final class Container
      */
     public static function instance(): static
     {
-        return static::$instance ??= new self();
+        return static::$instance ??= new static();
     }
 
     /**
@@ -209,7 +209,7 @@ final class Container
     }
 }
 
-final class Environment
+class Environment
 {
     public function __construct(private array $data = []) {}
 
@@ -219,17 +219,17 @@ final class Environment
     public static function create(Helper $helper, ?string $file = null): static
     {
         if (!file_exists($file = $helper->fromBase($file ?? ".env"))) {
-            return new self();
+            return new static();
         }
 
         $data = [];
 
         foreach (file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] as $line) {
-            if ($line === '') {
+            if ($line === "") {
                 continue;
             }
 
-            if ($line === '0') {
+            if ($line === "0") {
                 continue;
             }
 
@@ -246,7 +246,7 @@ final class Environment
             $data[trim($key)] = $helper->autoCast(trim($value));
         }
 
-        return new self($data);
+        return new static($data);
     }
 
     /**
@@ -260,7 +260,7 @@ final class Environment
 
 class FrameworkException extends Exception {}
 
-final readonly class Helper
+readonly class Helper
 {
     public function __construct(private string $basePath) {}
 
@@ -269,7 +269,7 @@ final readonly class Helper
      */
     public static function create(string $basePath): static
     {
-        return new self(rtrim($basePath, "/"));
+        return new static(rtrim($basePath, "/"));
     }
 
     /**
@@ -305,7 +305,7 @@ final readonly class Helper
     }
 }
 
-final class HttpException extends FrameworkException
+class HttpException extends FrameworkException
 {
     public const HTTP_STATUS = [
         // Success
@@ -337,7 +337,7 @@ final class HttpException extends FrameworkException
      */
     public static function create(int $status, ?string $message = null, ?Throwable $throwable = null): static
     {
-        return new self($message ?? (self::HTTP_STATUS[$status] ?? "Unknown Error"), $status, $throwable);
+        return new static($message ?? (static::HTTP_STATUS[$status] ?? "Unknown Error"), $status, $throwable);
     }
 }
 
@@ -379,7 +379,12 @@ final readonly class Jwt
      */
     public function decode(string $token): array
     {
-        [$header64, $payload64, $signature64] = explode(".", $token);
+        $parts = explode(".", $token);
+        if (count($parts) !== 3) {
+            throw new FrameworkException("Invalid token format");
+        }
+
+        [$header64, $payload64, $signature64] = $parts;
         $signature = $this->decodeBase64($signature64);
 
         $header = json_decode($this->decodeBase64($header64), true);
@@ -446,7 +451,7 @@ final readonly class Jwt
     }
 }
 
-final class Request
+class Request
 {
     public array $errors = [];
 
@@ -545,7 +550,7 @@ final class Request
             default => $post,
         };
 
-        return new self($method, $port, $path, $query, $contentType, $headers, $cookies, $flatFiles, $parsedBody, []);
+        return new static($method, $port, $path, $query, $contentType, $headers, $cookies, $flatFiles, $parsedBody, []);
     }
 
     /**
@@ -596,7 +601,7 @@ final class Request
     }
 }
 
-final class Response
+class Response
 {
     public int $status = 200;
 
@@ -680,7 +685,7 @@ interface RouteInterface
     public function middleware(callable $middleware): static;
 }
 
-final class Router
+class Router
 {
     protected const LEAF = "__leafnode__";
 
@@ -732,7 +737,7 @@ final class Router
         foreach (explode("/", $path) as $segment) {
             if (str_starts_with($segment, ":")) {
                 /** @psalm-suppress UnsupportedPropertyReferenceUsage */
-                $node = &$node[self::PARAM];
+                $node = &$node[static::PARAM];
                 $params[] = substr($segment, 1);
             } else {
                 $node = &$node[$segment];
@@ -741,7 +746,7 @@ final class Router
 
         $middleware = static::$middleware;
 
-        return $node[self::LEAF][$method] = new class ($path, $params, $middleware, $handler) implements RouteInterface {
+        return $node[static::LEAF][$method] = new class ($path, $params, $middleware, $handler) implements RouteInterface {
             public function __construct(public string $path, public array $params, public array $middleware, public $handler) {}
 
             #[Override]
@@ -776,7 +781,7 @@ final class Router
     public static function makeUrlByName(string $name, array $params): string
     {
         if (!isset(static::$lookup[$name])) {
-            throw new FrameworkException(sprintf('Route named [%s] not found.', $name));
+            throw new FrameworkException(sprintf("Route named [%s] not found.", $name));
         }
 
         $url = static::$lookup[$name];
@@ -790,11 +795,11 @@ final class Router
         }
 
         if (str_contains($url, ":")) {
-            throw new FrameworkException(sprintf('Missing parameter for route [%s].', $name));
+            throw new FrameworkException(sprintf("Missing parameter for route [%s].", $name));
         }
 
         $query = $params === [] ? "" : "?" . http_build_query($params);
-        return sprintf('/%s%s', $url, $query);
+        return sprintf("/%s%s", $url, $query);
     }
 
     /**
@@ -814,24 +819,24 @@ final class Router
                 continue;
             }
 
-            if (isset($node[self::PARAM])) {
+            if (isset($node[static::PARAM])) {
                 $paramValues[] = $segment;
-                $node = $node[self::PARAM];
+                $node = $node[static::PARAM];
                 continue;
             }
 
             throw HttpException::create(404);
         }
 
-        if (!isset($node[self::LEAF])) {
+        if (!isset($node[static::LEAF])) {
             throw HttpException::create(404);
         }
 
-        if (!isset($node[self::LEAF][$request->method])) {
+        if (!isset($node[static::LEAF][$request->method])) {
             throw HttpException::create(405);
         }
 
-        $route = $node[self::LEAF][$request->method];
+        $route = $node[static::LEAF][$request->method];
         $request->parameters = array_combine($route->params, $paramValues);
         $handler = $route->handler;
 
@@ -845,7 +850,7 @@ final class Router
             return $result;
         }
 
-        if (($result instanceof Stringable || is_scalar($result)) && !in_array(trim((string) $result), ['', '0'], true)) {
+        if (($result instanceof Stringable || is_scalar($result)) && !in_array(trim((string) $result), ["", "0"], true)) {
             return $response->setBody($result);
         }
 
@@ -853,7 +858,7 @@ final class Router
     }
 }
 
-final class Session
+class Session
 {
     protected const FLASH_OLD = "__flash_old__";
 
@@ -883,9 +888,9 @@ final class Session
             session_start();
         }
 
-        $_SESSION[self::FLASH_OLD] = $_SESSION[self::FLASH_NEW] ?? [];
-        $_SESSION[self::FLASH_NEW] = [];
-        return new self();
+        $_SESSION[static::FLASH_OLD] = $_SESSION[static::FLASH_NEW] ?? [];
+        $_SESSION[static::FLASH_NEW] = [];
+        return new static();
     }
 
     /**
@@ -909,7 +914,7 @@ final class Session
      */
     public function setFlash(string $key, mixed $value): mixed
     {
-        return $_SESSION[self::FLASH_NEW][$key] = $value;
+        return $_SESSION[static::FLASH_NEW][$key] = $value;
     }
 
     /**
@@ -917,7 +922,7 @@ final class Session
      */
     public function getFlash(string $key): mixed
     {
-        return $_SESSION[self::FLASH_OLD][$key] ?? null;
+        return $_SESSION[static::FLASH_OLD][$key] ?? null;
     }
 
     /**
@@ -925,7 +930,7 @@ final class Session
      */
     public function getCsrf(): string
     {
-        return $_SESSION[self::CSRF_KEY] ??= bin2hex(random_bytes(32));
+        return $_SESSION[static::CSRF_KEY] ??= bin2hex(random_bytes(32));
     }
 
     /**
@@ -933,15 +938,15 @@ final class Session
      */
     public function verifyCsrf(string $csrf): bool
     {
-        if ($valid = hash_equals($_SESSION[self::CSRF_KEY] ?? "", $csrf)) {
-            $_SESSION[self::CSRF_KEY] = bin2hex(random_bytes(32));
+        if ($valid = hash_equals($_SESSION[static::CSRF_KEY] ?? "", $csrf)) {
+            $_SESSION[static::CSRF_KEY] = bin2hex(random_bytes(32));
         }
 
         return $valid;
     }
 }
 
-final class Template
+class Template
 {
     private array $segments = [];
 
@@ -956,7 +961,7 @@ final class Template
      */
     public function layout(string $template): void
     {
-        $this->layout = new self($template);
+        $this->layout = new static($template);
     }
 
     /**
@@ -1013,7 +1018,7 @@ final class Template
             })($data) ?:
             "";
 
-        if ($this->layout instanceof \Essentio\Core\Template) {
+        if ($this->layout instanceof static) {
             $this->segments["content"] = $content;
             $this->layout->segments = $this->segments;
             return $this->layout->render();
