@@ -15,11 +15,16 @@ class RouterRoute
     protected $setName;
 
     /**
-     * @param array<string,mixed> $params
+     * @param list<string> $params
      * @param list<callable> $middleware
      */
-    public function __construct(public readonly string $path, public readonly array $params, public protected(set) array $middleware, callable $handler, callable $setName)
-    {
+    public function __construct(
+        public readonly string $path,
+        public readonly array $params,
+        public array $middleware,
+        callable $handler,
+        callable $setName
+    ) {
         $this->handler = $handler;
         $this->setName = $setName;
     }

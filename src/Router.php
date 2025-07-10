@@ -13,6 +13,7 @@ class Router
 
     protected const PARAM = "__parameter__";
 
+    /** @var list<callable> */
     protected array $middleware = [];
 
     protected string $prefix = "";
