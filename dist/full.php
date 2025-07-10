@@ -22,6 +22,7 @@ class Application
         Container::instance()->once(Jwt::class, fn(): Jwt => Jwt::create(Container::instance()->get(Environment::class)));
         Container::instance()->once(Request::class, fn(): Request => Request::create());
         Container::instance()->once(Response::class);
+        Container::instance()->once(Router::class);
         Container::instance()->once(Session::class, fn(): Session => Session::create());
     }
 
@@ -50,7 +51,10 @@ class Application
 
 class Argument
 {
-    public function __construct(public readonly string $command = "", private array $arguments = []) {}
+    /**
+     * @param array<int|string,mixed> $arguments
+     */
+    public function __construct(public readonly string $command = "", protected array $arguments = []) {}
 
     /**
      * Parse CLI arguments into command and options.
@@ -126,11 +130,11 @@ class Argument
 
 class Container
 {
-    private static $instance;
+    protected static $instance;
 
-    private array $bindings = [];
+    protected array $bindings = [];
 
-    private array $cache = [];
+    protected array $cache = [];
 
     /**
      * Get the container singleton instance.
@@ -211,7 +215,7 @@ class Container
 
 class Environment
 {
-    public function __construct(private array $data = []) {}
+    public function __construct(protected array $data = []) {}
 
     /**
      * Load and parse environment variables from a .env file.
@@ -262,7 +266,7 @@ class FrameworkException extends Exception {}
 
 readonly class Helper
 {
-    public function __construct(private string $basePath) {}
+    public function __construct(protected string $basePath) {}
 
     /**
      * Create a new Helper with the given base path.
@@ -459,12 +463,12 @@ class Request
         public readonly string $method,
         public readonly int $port,
         public readonly string $path,
-        private array $query,
+        protected array $query,
         public readonly string $contentType,
         public readonly array $headers,
         public readonly array $cookies,
         public readonly array $files,
-        private array $body,
+        protected array $body,
         public array $parameters
     ) {}
 
@@ -675,38 +679,29 @@ class Response
     }
 }
 
-interface RouteInterface
-{
-    public function name(string $name): static;
-
-    /**
-     * @param callable(Request,callable):Response $middleware
-     */
-    public function middleware(callable $middleware): static;
-}
-
 class Router
 {
     protected const LEAF = "__leafnode__";
 
     protected const PARAM = "__parameter__";
 
-    private static array $middleware = [];
+    /** @var list<callable> */
+    protected array $middleware = [];
 
-    private static string $prefix = "";
+    protected string $prefix = "";
 
-    private static array $routes = [];
+    protected array $routes = [];
 
-    private static array $lookup = [];
+    protected array $lookup = [];
 
     /**
      * Register middleware for current route scope.
      *
      * @param callable(Request, callable(Request): Response): Response $middleware
      */
-    public static function middleware(callable $middleware): void
+    public function middleware(callable $middleware): void
     {
-        static::$middleware[] = $middleware;
+        $this->middleware[] = $middleware;
     }
 
     /**
@@ -714,12 +709,12 @@ class Router
      *
      * @param callable(): void $group
      */
-    public static function group(string $prefix, callable $group): void
+    public function group(string $prefix, callable $group): void
     {
-        [$oldPrefix, $oldMiddleware] = [static::$prefix, static::$middleware];
-        static::$prefix .= $prefix;
+        [$oldPrefix, $oldMiddleware] = [$this->prefix, $this->middleware];
+        $this->prefix .= $prefix;
         $group();
-        [static::$prefix, static::$middleware] = [$oldPrefix, $oldMiddleware];
+        [$this->prefix, $this->middleware] = [$oldPrefix, $oldMiddleware];
     }
 
     /**
@@ -727,11 +722,11 @@ class Router
      *
      * @param callable(Request): mixed $handler
      */
-    public static function route(string $method, string $path, callable $handler): RouteInterface
+    public function route(string $method, string $path, callable $handler): RouterRoute
     {
-        $path = trim((string) preg_replace("#/+#", "/", static::$prefix . $path), "/");
+        $path = trim((string) preg_replace("#/+#", "/", $this->prefix . $path), "/");
         /** @psalm-suppress UnsupportedPropertyReferenceUsage */
-        $node = &static::$routes;
+        $node = &$this->routes;
         $params = [];
 
         foreach (explode("/", $path) as $segment) {
@@ -744,33 +739,17 @@ class Router
             }
         }
 
-        $middleware = static::$middleware;
+        $middleware = $this->middleware;
 
-        return $node[static::LEAF][$method] = new class ($path, $params, $middleware, $handler) implements RouteInterface {
-            public function __construct(public string $path, public array $params, public array $middleware, public $handler) {}
-
-            #[Override]
-            public function name(string $name): static
-            {
-                Router::setName($name, $this->path);
-                return $this;
-            }
-
-            #[Override]
-            public function middleware(callable $middleware): static
-            {
-                $this->middleware[] = $middleware;
-                return $this;
-            }
-        };
+        return $node[static::LEAF][$method] = new RouterRoute($path, $params, $middleware, $handler, $this->setName(...));
     }
 
     /**
      * Assign a name to a route path.
      */
-    public static function setName(string $name, string $path): void
+    protected function setName(string $name, string $path): void
     {
-        static::$lookup[$name] = $path;
+        $this->lookup[$name] = $path;
     }
 
     /**
@@ -778,13 +757,13 @@ class Router
      *
      * @param array<string, scalar> $params
      */
-    public static function makeUrlByName(string $name, array $params): string
+    public function makeUrlByName(string $name, array $params): string
     {
-        if (!isset(static::$lookup[$name])) {
+        if (!isset($this->lookup[$name])) {
             throw new FrameworkException(sprintf("Route named [%s] not found.", $name));
         }
 
-        $url = static::$lookup[$name];
+        $url = $this->lookup[$name];
 
         foreach ($params as $key => $value) {
             $search = ":" . $key;
@@ -805,11 +784,11 @@ class Router
     /**
      * Match a request and execute the route handler.
      */
-    public static function dispatch(Request $request, Response $response): Response
+    public function dispatch(Request $request, Response $response): Response
     {
         $segments = explode("/", $request->path);
         $paramValues = [];
-        $node = static::$routes;
+        $node = $this->routes;
 
         while ($segments) {
             $segment = array_shift($segments);
@@ -858,13 +837,50 @@ class Router
     }
 }
 
+class RouterRoute
+{
+    /**
+     * @var callable
+     */
+    public $handler;
+
+    protected $setName;
+
+    /**
+     * @param list<string> $params
+     * @param list<callable> $middleware
+     */
+    public function __construct(
+        public readonly string $path,
+        public readonly array $params,
+        public array $middleware,
+        callable $handler,
+        callable $setName
+    ) {
+        $this->handler = $handler;
+        $this->setName = $setName;
+    }
+
+    public function name(string $name): static
+    {
+        ($this->setName)($name, $this->path);
+        return $this;
+    }
+
+    public function middleware(callable $middleware): static
+    {
+        $this->middleware[] = $middleware;
+        return $this;
+    }
+}
+
 class Session
 {
-    protected const FLASH_OLD = "__flash_old__";
+    protected const FLASH_OLD = "__flashold__";
 
-    protected const FLASH_NEW = "__flash_new__";
+    protected const FLASH_NEW = "__flashnew__";
 
-    protected const CSRF_KEY = "__csrf_key__";
+    protected const CSRF_KEY = "__csrfkey__";
 
     /**
      * Start the session and prepare flash data for the request.
@@ -948,13 +964,13 @@ class Session
 
 class Template
 {
-    private array $segments = [];
+    protected array $segments = [];
 
-    private ?self $layout = null;
+    protected ?self $layout = null;
 
-    private array $stack = [];
+    protected array $stack = [];
 
-    public function __construct(private readonly string $template) {}
+    public function __construct(protected readonly string $template) {}
 
     /**
      * Set a parent layout template.
@@ -1171,7 +1187,7 @@ class Cast
     /**
      * Return null if input is empty.
      */
-    private static function nullOnEmpty(string $input): mixed
+    protected static function nullOnEmpty(string $input): mixed
     {
         return trim($input) === "" ? null : $input;
     }
@@ -1179,7 +1195,7 @@ class Cast
     /**
      * Extract number from input string.
      */
-    private static function normalizeNumber(string $input, string $message): string
+    protected static function normalizeNumber(string $input, string $message): string
     {
         preg_match_all("/-?\d+(\.\d+)?/", $input, $matches);
         return empty($matches[0]) ? throw new ValidationException($message) : $matches[0][0];
@@ -1255,31 +1271,40 @@ class HttpClient
 
 class Query
 {
-    private string $bool = "AND";
+    protected string $bool = "AND";
 
-    private array $columns = [];
+    protected array $columns = [];
 
-    private string $table = "";
+    protected string $table = "";
 
     /** @var list<string> $where */
-    private array $where = [];
+    protected array $where = [];
 
-    private array $whereParams = [];
+    protected array $whereParams = [];
 
-    private array $groupBys = [];
+    protected array $groupBys = [];
 
     /** @var list<string> $having */
-    private array $having = [];
+    protected array $having = [];
 
-    private array $havingParams = [];
+    protected array $havingParams = [];
 
-    private array $orderBys = [];
+    protected array $orderBys = [];
 
-    private ?int $limit = null;
+    protected ?int $limit = null;
 
-    private ?int $offset = null;
+    protected ?int $offset = null;
 
-    public function __construct(private readonly ?PDO $pdo = null) {}
+    public function __construct(protected readonly ?PDO $pdo = null) {}
+
+    /**
+     * Use AND for the next condition.
+     */
+    public function and(): static
+    {
+        $this->bool = "AND";
+        return $this;
+    }
 
     /**
      * Use OR for the next condition.
@@ -1293,7 +1318,7 @@ class Query
     /**
      * Consume current boolean operator.
      */
-    private function consumeBool(): string
+    protected function consumeBool(): string
     {
         $bool = $this->bool;
         $this->bool = "AND";
@@ -1446,7 +1471,7 @@ class Query
     /**
      * Generate SQL for select.
      */
-    private function selectSql(): string
+    protected function selectSql(): string
     {
         if ($this->table === "" || $this->table === "0") {
             throw new FrameworkException("Table name not specified for query.");
@@ -1486,7 +1511,7 @@ class Query
      *
      * @param list<string> $statements
      */
-    private function clean(array $statements): string
+    protected function clean(array $statements): string
     {
         return (string) preg_replace("/^\s*(AND|OR)\s*/", "", implode(" ", $statements));
     }
@@ -1494,7 +1519,7 @@ class Query
     /**
      * Get combined query parameters.
      */
-    private function getParams(): array
+    protected function getParams(): array
     {
         return array_merge($this->whereParams, $this->havingParams);
     }
@@ -2118,7 +2143,7 @@ function jwt(array|string $payload): array|string
  */
 function middleware(callable $middleware): void
 {
-    Router::middleware($middleware);
+    app(Router::class)->middleware($middleware);
 }
 
 /**
@@ -2126,47 +2151,47 @@ function middleware(callable $middleware): void
  */
 function group(string $prefix, callable $group): void
 {
-    Router::group($prefix, $group);
+    app(Router::class)->group($prefix, $group);
 }
 
 /**
  * Register a GET route.
  */
-function get(string $path, callable $handle): RouteInterface
+function get(string $path, callable $handle): RouterRoute
 {
-    return Router::route("GET", $path, $handle);
+    return app(Router::class)->route("GET", $path, $handle);
 }
 
 /**
  * Register a POST route.
  */
-function post(string $path, callable $handle): RouteInterface
+function post(string $path, callable $handle): RouterRoute
 {
-    return Router::route("POST", $path, $handle);
+    return app(Router::class)->route("POST", $path, $handle);
 }
 
 /**
  * Register a PUT route.
  */
-function put(string $path, callable $handle): RouteInterface
+function put(string $path, callable $handle): RouterRoute
 {
-    return Router::route("PUT", $path, $handle);
+    return app(Router::class)->route("PUT", $path, $handle);
 }
 
 /**
  * Register a PATCH route.
  */
-function patch(string $path, callable $handle): RouteInterface
+function patch(string $path, callable $handle): RouterRoute
 {
-    return Router::route("PATCH", $path, $handle);
+    return app(Router::class)->route("PATCH", $path, $handle);
 }
 
 /**
  * Register a DELETE route.
  */
-function delete(string $path, callable $handle): RouteInterface
+function delete(string $path, callable $handle): RouterRoute
 {
-    return Router::route("DELETE", $path, $handle);
+    return app(Router::class)->route("DELETE", $path, $handle);
 }
 
 /**
@@ -2176,7 +2201,7 @@ function delete(string $path, callable $handle): RouteInterface
  */
 function named_url(string $name, array $params = []): string
 {
-    return Router::makeUrlByName($name, $params);
+    return app(Router::class)->makeUrlByName($name, $params);
 }
 
 /**
