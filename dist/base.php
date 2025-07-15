@@ -47,9 +47,11 @@ class Application
      */
     public static function cli(string $basePath): void
     {
-        Container::instance()->once(Argument::class, fn(): Argument => Argument::create(Container::instance()->get(Helper::class)));
-        Container::instance()->once(Environment::class, fn(): Environment => Environment::create(Container::instance()->get(Helper::class)));
-        Container::instance()->once(Helper::class, fn(): Helper => Helper::create($basePath));
+        $container = Container::instance();
+
+        $container->once(Argument::class, fn(): Argument => Argument::create($container->get(Helper::class)));
+        $container->once(Environment::class, fn(): Environment => Environment::create($container->get(Helper::class)));
+        $container->once(Helper::class, fn(): Helper => Helper::create($basePath));
     }
 
     /**
@@ -57,13 +59,15 @@ class Application
      */
     public static function http(string $basePath): void
     {
-        Container::instance()->once(Environment::class, fn(): Environment => Environment::create(Container::instance()->get(Helper::class)));
-        Container::instance()->once(Helper::class, fn(): Helper => Helper::create($basePath));
-        Container::instance()->once(Jwt::class, fn(): Jwt => Jwt::create(Container::instance()->get(Environment::class)));
-        Container::instance()->once(Request::class, fn(): Request => Request::create());
-        Container::instance()->once(Response::class);
-        Container::instance()->once(Router::class);
-        Container::instance()->once(Session::class, fn(): Session => Session::create());
+        $container = Container::instance();
+
+        $container->once(Environment::class, fn(): Environment => Environment::create($container->get(Helper::class)));
+        $container->once(Helper::class, fn(): Helper => Helper::create($basePath));
+        $container->once(Jwt::class, fn(): Jwt => Jwt::create($container->get(Environment::class)));
+        $container->once(Request::class, fn(): Request => Request::create());
+        $container->once(Response::class);
+        $container->once(Router::class);
+        $container->once(Session::class, fn(): Session => Session::create());
     }
 
     /**
@@ -75,11 +79,12 @@ class Application
             exit(1);
         }
 
-        $request = Container::instance()->get(Request::class);
-        $response = Container::instance()->get(Response::class);
+        $container = Container::instance();
+        $request = $container->get(Request::class);
+        $response = $container->get(Response::class);
 
         try {
-            Container::instance()->get(Router::class)->dispatch($request, $response)->send();
+            $container->get(Router::class)->dispatch($request, $response)->send();
         } catch (HttpException $e) {
             $status = $e->getCode() ?: 500;
             $response->setStatus($status)->setBody($e->getMessage())->send();
