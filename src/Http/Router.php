@@ -1,7 +1,8 @@
 <?php
 
-namespace Essentio\Core;
+namespace Essentio\Http;
 
+use Essentio\FrameworkException;
 use Stringable;
 
 /**
@@ -50,7 +51,7 @@ class Router
      *
      * @param callable(Request): mixed $handler
      */
-    public function route(string $method, string $path, callable $handler): RouterRoute
+    public function route(string $method, string $path, callable $handler): Route
     {
         $path = trim((string) preg_replace("#/+#", "/", $this->prefix . $path), "/");
         /** @psalm-suppress UnsupportedPropertyReferenceUsage */
@@ -69,7 +70,7 @@ class Router
 
         $middleware = $this->middleware;
 
-        return $node[static::LEAF][$method] = new RouterRoute($path, $params, $middleware, $handler, $this->setName(...));
+        return $node[static::LEAF][$method] = new Route($path, $params, $middleware, $handler, $this->setName(...));
     }
 
     /**
@@ -157,7 +158,7 @@ class Router
             return $result;
         }
 
-        if (($result instanceof Stringable || is_scalar($result)) && !in_array(trim((string) $result), ["", "0"], true)) {
+        if (($result instanceof Stringable || is_scalar($result) || $result === null) && !in_array(trim((string) $result), ['', '0'], true)) {
             return $response->setBody($result);
         }
 

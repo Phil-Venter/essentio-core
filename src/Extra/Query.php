@@ -1,14 +1,13 @@
 <?php
 
-namespace Essentio\Core\Extra;
+namespace Essentio\Extra;
 
 use Closure;
 use DateTimeInterface;
+use Essentio\FrameworkException;
 use Generator;
 use PDO;
 use Stringable;
-
-use Essentio\Core\FrameworkException;
 
 /**
  * @api
@@ -17,22 +16,27 @@ class Query
 {
     protected string $bool = "AND";
 
+    /** @var list<string> */
     protected array $columns = [];
 
     protected string $table = "";
 
-    /** @var list<string> $where */
+    /** @var list<string> */
     protected array $where = [];
 
+    /** @var list<mixed> */
     protected array $whereParams = [];
 
+    /** @var list<string> */
     protected array $groupBys = [];
 
-    /** @var list<string> $having */
+    /** @var list<string> */
     protected array $having = [];
 
+    /** @var list<mixed> */
     protected array $havingParams = [];
 
+    /** @var list<string> */
     protected array $orderBys = [];
 
     protected ?int $limit = null;
@@ -71,13 +75,10 @@ class Query
 
     /**
      * Select columns.
-     *
-     * @param list<string>|string ...$columns
      */
-    public function select(array|string ...$columns): static
+    public function select(string ...$columns): static
     {
-        $columns = array_values($columns);
-        $this->columns = array_merge($this->columns, $columns);
+        $this->columns = array_merge($this->columns, array_values($columns));
         return $this;
     }
 
@@ -165,19 +166,16 @@ class Query
     public function whereRaw(string $statement, array $data = []): static
     {
         $this->where[] = sprintf("%s %s", $this->consumeBool(), $statement);
-        $this->whereParams = array_merge($this->whereParams, $data);
+        $this->whereParams = array_merge($this->whereParams, array_values($data));
         return $this;
     }
 
     /**
      * Add group by clauses.
-     *
-     * @param list<string>|string ...$groupBys
      */
-    public function groupBy(array|string ...$groupBys): static
+    public function groupBy(string ...$groupBys): static
     {
-        $groupBys = array_values($groupBys);
-        $this->groupBys = array_merge($this->groupBys, $groupBys);
+        $this->groupBys = array_merge($this->groupBys, array_values($groupBys));
         return $this;
     }
 
@@ -189,7 +187,7 @@ class Query
     public function havingRaw(string $statement, array $data = []): static
     {
         $this->having[] = sprintf("%s %s", $this->consumeBool(), $statement);
-        $this->havingParams = array_merge($this->havingParams, $data);
+        $this->havingParams = array_merge($this->havingParams, array_values($data));
         return $this;
     }
 

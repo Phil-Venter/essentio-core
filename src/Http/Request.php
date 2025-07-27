@@ -1,6 +1,6 @@
 <?php
 
-namespace Essentio\Core;
+namespace Essentio\Http;
 
 /**
  * @api
@@ -19,7 +19,7 @@ class Request
         public readonly array $cookies,
         public readonly array $files,
         protected array $body,
-        public array $parameters
+        public array $parameters,
     ) {}
 
     /**
@@ -39,7 +39,7 @@ class Request
         ?array $post = null,
         ?array $cookies = null,
         ?array $files = null,
-        ?string $body = null
+        ?string $body = null,
     ): static {
         $server ??= $_SERVER;
         $post ??= $_POST;
@@ -49,7 +49,7 @@ class Request
         $headers ??= function_exists("getallheaders") ? getallheaders() : [];
         $rawInput = $body ?? file_get_contents("php://input") ?: "";
 
-        if ($headers === false) {
+        if (is_bool($headers)) {
             $headers = [];
         }
 
@@ -147,7 +147,7 @@ class Request
 
                 $sanitized[$field] = $value;
             } catch (ValidationException $e) {
-                $this->errors[$field][] = $e->getMessage();
+                $this->errors[$field] = $e->getMessage();
             }
         }
 

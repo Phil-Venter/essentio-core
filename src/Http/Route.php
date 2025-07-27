@@ -1,11 +1,11 @@
 <?php
 
-namespace Essentio\Core;
+namespace Essentio\Http;
 
 /**
  * @api
  */
-class RouterRoute
+class Route
 {
     /**
      * @var callable

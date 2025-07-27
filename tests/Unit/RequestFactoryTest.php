@@ -1,6 +1,6 @@
 <?php
 
-use Essentio\Core\Request;
+use Essentio\Http\Request;
 
 function fakeServer(array $overrides = []): array
 {

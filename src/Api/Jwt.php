@@ -1,6 +1,9 @@
 <?php
 
-namespace Essentio\Core;
+namespace Essentio\Api;
+
+use Essentio\Environment;
+use Essentio\FrameworkException;
 
 /**
  * @api

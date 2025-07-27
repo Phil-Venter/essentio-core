@@ -1,7 +1,8 @@
 <?php
 
-namespace Essentio\Core;
+namespace Essentio\Http;
 
+use Essentio\FrameworkException;
 use Throwable;
 
 /**

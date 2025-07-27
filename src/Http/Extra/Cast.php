@@ -1,13 +1,12 @@
 <?php
 
-namespace Essentio\Core\Extra;
+namespace Essentio\Http\Extra;
 
-use BackedEnum;
 use Closure;
 use DateTimeImmutable;
 use Throwable;
-
-use Essentio\Core\ValidationException;
+use BackedEnum;
+use Essentio\Http\ValidationException;
 
 /**
  * @api

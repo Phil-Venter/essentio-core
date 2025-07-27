@@ -1,17 +1,11 @@
 <?php
 
-use Essentio\Core\Argument;
-use Essentio\Core\Helper;
-
-function fakeHelper(): Helper
-{
-    return new Helper("");
-}
+use Essentio\Cli\Argument;
 
 it("parses command with no args", function () {
     $argv = ["cli.php", "deploy"];
 
-    $arg = Argument::create(fakeHelper(), $argv);
+    $arg = Argument::create($argv);
 
     expect($arg->command)->toBe("deploy");
     expect($arg->get(0))->toBeNull();
@@ -21,7 +15,7 @@ it("parses command with no args", function () {
 it("parses long named args with =", function () {
     $argv = ["cli.php", "build", "--env=production", "--debug=true"];
 
-    $arg = Argument::create(fakeHelper(), $argv);
+    $arg = Argument::create($argv);
 
     expect($arg->command)->toBe("build");
     expect($arg->get("env"))->toBe("production");
@@ -31,7 +25,7 @@ it("parses long named args with =", function () {
 it("parses long named args with space", function () {
     $argv = ["cli.php", "run", "--port", "8080"];
 
-    $arg = Argument::create(fakeHelper(), $argv);
+    $arg = Argument::create($argv);
 
     expect($arg->command)->toBe("run");
     expect($arg->get("port"))->toBe(8080);
@@ -40,7 +34,7 @@ it("parses long named args with space", function () {
 it("parses compact short options with inline value", function () {
     $argv = ["cli.php", "serve", "-eproduction"];
 
-    $arg = Argument::create(fakeHelper(), $argv);
+    $arg = Argument::create($argv);
 
     expect($arg->command)->toBe("serve");
     expect($arg->get("e"))->toBe("production");
@@ -49,7 +43,7 @@ it("parses compact short options with inline value", function () {
 it("parses short named args", function () {
     $argv = ["cli.php", "start", "-e", "local", "-d"];
 
-    $arg = Argument::create(fakeHelper(), $argv);
+    $arg = Argument::create($argv);
 
     expect($arg->command)->toBe("start");
     expect($arg->get("e"))->toBe("local");
@@ -59,7 +53,7 @@ it("parses short named args", function () {
 it("parses positional args after command", function () {
     $argv = ["cli.php", "commit", "file1.txt", "file2.txt"];
 
-    $arg = Argument::create(fakeHelper(), $argv);
+    $arg = Argument::create($argv);
 
     expect($arg->command)->toBe("commit");
     expect($arg->get(0))->toBe("file1.txt");
@@ -69,7 +63,7 @@ it("parses positional args after command", function () {
 it("parses values after -- as positional", function () {
     $argv = ["cli.php", "push", "--", "--force", "origin"];
 
-    $arg = Argument::create(fakeHelper(), $argv);
+    $arg = Argument::create($argv);
 
     expect($arg->command)->toBe("push");
     expect($arg->get(0))->toBe("--force");
@@ -79,7 +73,7 @@ it("parses values after -- as positional", function () {
 it("handles no command and no arguments", function () {
     $argv = ["cli.php"];
 
-    $arg = Argument::create(fakeHelper(), $argv);
+    $arg = Argument::create($argv);
 
     expect($arg->command)->toBe("");
     expect($arg->get(0))->toBeNull();

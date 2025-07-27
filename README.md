@@ -4,7 +4,7 @@
 ![Last Commit](https://img.shields.io/github/last-commit/Phil-Venter/essentio-core)
 ![Stars](https://img.shields.io/github/stars/Phil-Venter/essentio-core?style=social)
 
-# Essentio — Minimalist PHP Framework
+# Essentio — Minimalist PHP Framework [WIP]
 
 Essentio isn’t here to impress with design patterns or win internet debates. It’s raw, minimal PHP—for developers who want clarity, speed, and control. No abstractions, no ceremony. Just the essentials.
 
@@ -34,101 +34,123 @@ This isn’t for everyone. It’s for developers who want full control without t
 
 ## 🧪 Quickstart
 
-### One-file Setup
+Choose one of three approaches to pull in the framework, then bootstrap and run your application.
 
-No dependencies. No build steps. Just download and go:
+---
 
-```bash
-# Full version with extras
-curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/full.php -o framework.php
+### 1. Single file (fastest)
 
-# Base version, leanest setup
-curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/base.php -o framework.php
+Include a single PHP file containing only the modules you need. This is great for rapid prototypes or simple scripts.
+
+**Available builds:**
+
+| Component        | base | base+ | cli | cli+ | http | http+ | api | api+ | web | web+ | full | full+ |
+|------------------|:----:|:-----:|:---:|:----:|:----:|:-----:|:---:|:----:|:---:|:----:|:----:|:-----:|
+| Application      | ✓    | ✓     | ✓   | ✓    | ✓    | ✓     | ✓   | ✓    | ✓   | ✓    | ✓    | ✓     |
+| Container        | ✓    | ✓     | ✓   | ✓    | ✓    | ✓     | ✓   | ✓    | ✓   | ✓    | ✓    | ✓     |
+| Environment      | ✓    | ✓     | ✓   | ✓    | ✓    | ✓     | ✓   | ✓    | ✓   | ✓    | ✓    | ✓     |
+| Request/Response |      |       |     |      | ✓    | ✓     | ✓   | ✓    | ✓   | ✓    | ✓    | ✓     |
+| Router/Route     |      |       |     |      | ✓    | ✓     | ✓   | ✓    | ✓   | ✓    | ✓    | ✓     |
+| Jwt              |      |       |     |      |      |       | ✓   | ✓    |     |      | ✓    | ✓     |
+| Session/Template |      |       |     |      |      |       |     |      | ✓   | ✓    | ✓    | ✓     |
+| Cast/Validate    |      |       |     |      |      | ✓     |     | ✓    |     | ✓    |      | ✓     |
+| HttpClient       |      | ✓     |     | ✓    |      | ✓     |     | ✓    |     | ✓    |      | ✓     |
+| Query            |      | ✓     |     | ✓    |      | ✓     |     | ✓    |     | ✓    |      | ✓     |
+
+```txt
+- base  : curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/base.php -o framework.php
+- base+ : curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/base-plus.php -o framework.php
+- cli   : curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/cli.php -o framework.php
+- cli+  : curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/cli-plus.php -o framework.php
+- http  : curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/http.php -o framework.php
+- http+ : curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/http-plus.php -o framework.php
+- api   : curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/api.php -o framework.php
+- api+  : curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/api-plus.php -o framework.php
+- web   : curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/web.php -o framework.php
+- web+  : curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/web-plus.php -o framework.php
+- full  : curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/full.php -o framework.php
+- full+ : curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/full-plus.php -o framework.php
 ```
 
-Then scaffold a minimal app:
+**Download:**
 
-```bash
-mkdir public
+Download the desired file, include it at the top of your script, then start coding:
 
-cat <<'EOF' > public/index.php
+**Bootstrap + Web Entry:** create public/index.php in the project root:
+
+```php
 <?php
 
-require __DIR__ . '/../framework.php';
+require_once __DIR__ . '/../framework.php';
 
-Application::http(__DIR__ . '/..');
-
-get('/', fn() => text('Hello, Essentio!'));
-
+Application::http(__DIR__);
+get('__ping', fn() => text('pong'));
 Application::run();
-EOF
-
-php -S localhost:8080 -t public
 ```
 
 ---
 
-### Composer Install
+### 2. Download into src/ (recommended)
 
-For projects using Composer (or if you prefer that):
+Copy the framework files into a src/ folder for full ownership without Composer.
+
+**Place files:**
+
+Drop src/ into your project root.
+
+**Bootstrap + Web Entry:** create public/index.php in the project root:
+
+```php
+<?php
+
+require_once __DIR__ . '/src/Application.php';
+
+Essentio\Application::autoload([
+    'Essentio' => __DIR__ . '/src',       // required
+    __DIR__ . '/src/functions.php',       // recommended
+    __DIR__ . '/src/Api/functions.php',   // optional
+    __DIR__ . '/src/Cli/functions.php',   // optional
+    __DIR__ . '/src/Extra/functions.php', // optional
+    __DIR__ . '/src/Http/functions.php',  // recommended
+    __DIR__ . '/src/Web/functions.php',   // optional
+]);
+
+Essentio\Application::http(__DIR__ . '/../');
+get('__ping', fn() => text('pong'));
+Essentio\Application::run();
+```
+
+---
+
+### 3. Install via Composer (limited control)
+
+Composer makes installation trivial, but you won’t have direct access to the raw framework files for customization.
 
 ```bash
 composer require essentio/core
 ```
 
-```bash
-mkdir public
+Then bootstrap and run exactly as above:
 
-cat <<'EOF' > public/index.php
+**Bootstrap + Web Entry:** create public/index.php in the project root:
+
+```php
 <?php
 
-require __DIR__ . '/../vendor/autoload.php';
+require_once __DIR__ . '/../vendor/autoload.php';
 
-Essentio\Core\Application::http(__DIR__ . '/..');
-
-get('/', fn() => text('Hello, Essentio!'));
-
-Essentio\Core\Application::run();
-EOF
-
-php -S localhost:8080 -t public
+Essentio\Application::http(__DIR__);
+get('__ping', fn() => text('pong'));
+Essentio\Application::run();
 ```
+
+> **Note:** Composer installs follow our release cycle. If you need to modify core behavior or patch bugs yourself, use the “Single file” or “Download into src/” methods instead.
 
 ---
 
 ## 🧱 Features
 
-Essentio gives you just enough to build apps with precision and no nonsense:
-
-* **Boots fast**: HTTP or CLI mode with one line.
-* **Minimal router**: Params, groups, middleware—no fluff.
-* **Manual DI**: Bind what you want, resolve it yourself.
-* **Environment-aware**: Typed `.env` loading—no YAML.
-* **Input-safe**: Sanitize and validate with zero magic.
-* **Session + CSRF**: Straightforward, not silent.
-* **Templating**: Clean segments and blocks. No DSLs.
-* **Explicit responses**: `json()`, `text()`, `html()`—your call.
-
----
-
-## 🧍 Who It’s For
-
-Essentio is for developers who:
-
-* Want to understand every line
-* Don’t need training wheels
-* Trust code over convention
-* Want fewer files, fewer surprises, and fewer opinions
-
-Whether you’re building tools, APIs, internal apps, or microservices—Essentio gives you a sharp knife and walks away.
-
----
-
-## 🧠 What You Get
-
-### 🧩 Core Components (`base.php` & `full.php`)
-
-#### 📦 Classes
+No ceremony. No surprises.
 
 | Class                 | Description                                       |
 | --------------------- | ------------------------------------------------- |
@@ -144,80 +166,35 @@ Whether you’re building tools, APIs, internal apps, or microservices—Essenti
 | `FrameworkException`  | Base exception type for internal framework errors |
 | `ValidationException` | Thrown when validation rules fail                 |
 | `HttpException`       | Structured HTTP error generator                   |
+| `Cast`                | Input transformation (type coercion)              |
+| `HttpClient`          | Minimal HTTP client using cURL                    |
+| `Query`               | Fluent SQL query builder (PDO-based)              |
+| `Validate`            | Validation rules (regex, bounds, etc.)            |
 
----
-
-### 🌍 Global Helper Functions
-
-#### 🧱 Dependency Injection
-
-| Function            | Description                   |
-| ------------------- | ----------------------------- |
-| `app(class)`        | Get a singleton instance      |
-| `make(class, deps)` | Create a new instance         |
-| `bind(class, ...)`  | Register service (multi-call) |
-| `once(class, ...)`  | Register singleton (one-time) |
-
-#### ⚙️ Environment & Paths
-
-| Function          | Description                 |
-| ----------------- | --------------------------- |
+| Function | Description |
+| --- | --- |
+| `app(class)` | Get a singleton instance |
+| `make(class, deps)` | Create a new instance |
+| `bind(class, ...)` | Register service (multi-call) |
+| `once(class, ...)` | Register singleton (one-time) |
 | `base_path(path)` | Join path to base directory |
-| `env(key)`        | Retrieve `.env` variable    |
-
-#### 🌐 Routing & Requests
-
-| Function                                    | Description                       |
-| ------------------------------------------- | --------------------------------- |
-| `middleware(fn)`                            | Global middleware registration    |
-| `group(prefix, fn)`                         | Grouped routes under a prefix     |
-| `get(path, fn)` `post(path, fn)` `put()`... | Route registration for HTTP verbs |
-| `request(key)`<br>`input(field)`            | Access route/query/form input     |
-| `sanitize(rules, onError)`                  | Cast + validate user input        |
-
-#### 🗂️ Sessions & Security
-
-| Function                 | Description                   |
-| ------------------------ | ----------------------------- |
-| `session(key)`           | Get/set session variable      |
-| `flash(key)`             | Temporary one-request data    |
+| `env(key)` | Retrieve `.env` variable |
+| `middleware(fn)` | Global middleware registration |
+| `group(prefix, fn)` | Grouped routes under a prefix |
+| `get(path, fn)`<br>`post(path, fn)`<br>`put(path, fn)`<br>`patch(path, fn)`<br>`delete(path, fn)` | Route registration for HTTP verbs |
+| `request(key)`<br>`input(field)` | Access route/query/form input |
+| `sanitize(rules, onError)` | Cast + validate user input |
+| `session(key)` | Get/set session variable |
+| `flash(key)` | Temporary one-request data |
 | `csrf()` / `csrf(token)` | Generate or verify CSRF token |
-| `jwt(data)`              | Encode/Decode JWT payload     |
-
-#### 📤 Responses
-
-| Function                                | Description                    |
-| --------------------------------------- | ------------------------------ |
-| `render(template, data)`                | Render template to string      |
-| `html(str)`, `text(str)`, `json(mixed)` | Send typed response content    |
-| `redirect(uri, status)`                 | Issue HTTP redirect            |
-| `view(template, data)`                  | Return templated HTML response |
-
-#### 🛠️ Miscellaneous
-
-| Function                 | Description                  |
-| ------------------------ | ---------------------------- |
+| `jwt(data)` | Encode/Decode JWT payload |
+| `render(template, data)` | Render template to string |
+| `html(str)`, `text(str)`, `json(mixed)` | Send typed response content |
+| `redirect(uri, status)` | Issue HTTP redirect |
+| `view(template, data)` | Return templated HTML response |
 | `throw_if(cond, except)` | Conditionally throw an error |
-
----
-
-### ➕ Extended Utilities (`full.php` only)
-
-#### 📦 Additional Classes
-
-| Class                 | Description                            |
-| --------------------- | -------------------------------------- |
-| `Cast`                | Input transformation (type coercion)   |
-| `HttpClient`          | Minimal HTTP client using cURL         |
-| `Query`               | Fluent SQL query builder (PDO-based)   |
-| `Validate`            | Validation rules (regex, bounds, etc.) |
-
-#### 🌍 Additional Helpers
-
-| Function                           | Description                                |
-| ---------------------------------- | ------------------------------------------ |
 | `curl(method, url, headers, body)` | Send an HTTP request and return `Response` |
-| `query()`                          | Instantiate `Query` object                 |
+| `query()` | Instantiate `Query` object |
 
 You need to explicitly bind the query builder to the container before using it.
 
@@ -225,6 +202,19 @@ You need to explicitly bind the query builder to the container before using it.
 once(PDO::class, fn() => new PDO("sqlite:" . base_path("database.sqlite")));
 bind(Query::class, fn() => new Query(app(PDO::class)));
 ```
+
+---
+
+## 🧍 Who It’s For
+
+Essentio is for developers who:
+
+* Want to understand every line
+* Don’t need training wheels
+* Trust code over convention
+* Want fewer files, fewer surprises, and fewer opinions
+
+Whether you’re building tools, APIs, internal apps, or microservices—Essentio gives you a sharp knife and walks away.
 
 ---
 
@@ -245,38 +235,21 @@ If it happens, it’s because you wrote it.
 
 ## 🧮 Code Size
 
-**Base:**
-<!-- cloc-base -->
-```
-----------------------------------------------------------------------
-language                 files     blank   comment      code     total
-----------------------------------------------------------------------
-php                          1       207       348       798      1354
-----------------------------------------------------------------------
-```
-<!-- ./cloc-base -->
-
-**Full (with Extras):**
-<!-- cloc-full -->
-```
-----------------------------------------------------------------------
-language                 files     blank   comment      code     total
-----------------------------------------------------------------------
-php                          1       376       531      1400      2308
-----------------------------------------------------------------------
-```
-<!-- ./cloc-full -->
-
-**Pre build (src):**
-<!-- cloc-src -->
-```
-----------------------------------------------------------------------
-language                 files     blank   comment      code     total
-----------------------------------------------------------------------
-php                         22       416       607      1500      2545
-----------------------------------------------------------------------
-```
-<!-- ./cloc-src -->
+|FILE|CODE|BLANK|COMMENT|TOTAL|
+| --- |:--- | --- | --- | --- |
+|dist/base.php|200|56|98|354|
+|dist/cli.php|280|76|119|475|
+|dist/http.php|577|151|243|971|
+|dist/api.php|648|173|272|1093|
+|dist/web.php|702|183|304|1189|
+|dist/all.php|1168|308|440|1916|
+|dist/base-plus.php|482|140|192|814|
+|dist/cli-plus.php|562|160|213|935|
+|dist/http-plus.php|1178|320|423|1921|
+|dist/api-plus.php|1249|342|452|2043|
+|dist/web-plus.php|1303|352|484|2139|
+|dist/all-plus.php|1452|392|538|2382|
+|src/*|1544|431|582|2557|
 
 ---
 

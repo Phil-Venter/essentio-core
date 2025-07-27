@@ -1,7 +1,7 @@
 <?php
 
-use Essentio\Core\FrameworkException;
-use Essentio\Core\Jwt;
+use Essentio\FrameworkException;
+use Essentio\Api\Jwt;
 
 beforeEach(function () {
     $this->secret = "test-secret";

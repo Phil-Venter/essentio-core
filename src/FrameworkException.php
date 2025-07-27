@@ -1,6 +1,6 @@
 <?php
 
-namespace Essentio\Core;
+namespace Essentio;
 
 use Exception;
 

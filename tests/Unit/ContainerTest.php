@@ -1,7 +1,7 @@
 <?php
 
-use Essentio\Core\Container;
-use Essentio\Core\FrameworkException;
+use Essentio\Container;
+use Essentio\FrameworkException;
 
 class DummyService
 {

@@ -21,4 +21,8 @@ return Rector\Config\RectorConfig::configure()
         Rector\TypeDeclaration\Rector\ClassMethod\AddReturnTypeDeclarationRector::class,
         Rector\TypeDeclaration\Rector\Property\AddPropertyTypeDeclarationRector::class,
         Rector\TypeDeclaration\Rector\Property\TypedPropertyFromAssignsRector::class,
+    ])
+    ->withSkip([
+        Rector\CodeQuality\Rector\FuncCall\InlineIsAInstanceOfRector::class,
+        Rector\EarlyReturn\Rector\If_\ChangeOrIfContinueToMultiContinueRector::class,
     ]);

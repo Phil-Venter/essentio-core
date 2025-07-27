@@ -1,6 +1,6 @@
 <?php
 
-use Essentio\Core\Extra\Query;
+use Essentio\Extra\Query;
 
 function setupDatabase(): PDO
 {

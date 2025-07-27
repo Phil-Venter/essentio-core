@@ -1,21 +1,27 @@
 <?php
 
-namespace Essentio\Core\Extra;
+namespace Essentio\Extra;
 
-use Essentio\Core\FrameworkException;
-use Essentio\Core\Response;
+use Essentio\FrameworkException;
+use Stringable;
 
 /**
  * @api
  */
 class HttpClient
 {
+    public function __construct(
+        public int $status = 200,
+        public array $headers = [],
+        public bool|float|int|string|Stringable|null $body = null,
+    ) {}
+
     /**
      * Send an HTTP request and return a Response.
      *
      * @param array<string,mixed> $headers
      */
-    public static function request(string $method, string $url, array $headers = [], string $body = ""): Response
+    public static function request(string $method, string $url, array $headers = [], string $body = ""): static
     {
         $curl = curl_init();
 
@@ -52,10 +58,6 @@ class HttpClient
             $headerText = substr((string) $raw, 0, $headerSize);
             $bodyText = substr((string) $raw, $headerSize);
 
-            $response = new Response();
-            $response->setStatus($statusCode);
-            $response->setBody($bodyText);
-
             $headerLines = explode("\r\n", trim($headerText));
             $parsedHeaders = [];
 
@@ -67,8 +69,7 @@ class HttpClient
                 }
             }
 
-            $response->addHeaders($parsedHeaders);
-            return $response;
+            return new static($statusCode, $parsedHeaders, $bodyText);
         } finally {
             curl_close($curl);
         }

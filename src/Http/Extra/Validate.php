@@ -1,11 +1,10 @@
 <?php
 
-namespace Essentio\Core\Extra;
+namespace Essentio\Http\Extra;
 
 use Closure;
 use DateTimeInterface;
-
-use Essentio\Core\ValidationException;
+use Essentio\Http\ValidationException;
 
 /**
  * @api

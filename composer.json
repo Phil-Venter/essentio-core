@@ -5,11 +5,15 @@
     "type": "library",
     "autoload": {
         "psr-4": {
-            "Essentio\\Core\\": "src/"
+            "Essentio\\": "src/"
         },
         "files": [
             "src/functions.php",
-            "src/Extra/functions.php"
+            "src/Api/functions.php",
+            "src/Cli/functions.php",
+            "src/Extra/functions.php",
+            "src/Http/functions.php",
+            "src/Web/functions.php"
         ]
     },
     "require": {
@@ -24,12 +28,44 @@
         "ext-pdo": "Required for database access using PDO (e.g. MySQL, SQLite, PostgreSQL)"
     },
     "scripts": {
-        "runner": "composer format; composer analyze; composer test; composer build:base 'dist/base.php'; composer build:full 'dist/full.php'",
+        "runner": [
+            "@format",
+            "@analyze",
+            "@test",
+            "@build:all+"
+        ],
         "format": "php ./vendor/bin/rector",
         "analyze": "php ./vendor/bin/psalm",
         "test": "php ./vendor/bin/pest",
-        "build:base": "php ./bin/build.php",
-        "build:full": "php ./bin/build.php --extra",
+        "build:all": [
+            "@build:base dist/base.php",
+            "@build:full dist/full.php",
+            "@build:cli dist/cli.php",
+            "@build:http dist/http.php",
+            "@build:api dist/api.php",
+            "@build:web dist/web.php"
+        ],
+        "build:all+": [
+            "@build:all",
+            "@build:base+ dist/base-plus.php",
+            "@build:full+ dist/full-plus.php",
+            "@build:cli+ dist/cli-plus.php",
+            "@build:http+ dist/http-plus.php",
+            "@build:api+ dist/api-plus.php",
+            "@build:web+ dist/web-plus.php"
+        ],
+        "build:base": "php ./bin/build.php --",
+        "build:base+": "php ./bin/build.php --extra --",
+        "build:api": "php ./bin/build.php --api --",
+        "build:api+": "php ./bin/build.php --api --extra --",
+        "build:cli": "php ./bin/build.php --cli --",
+        "build:cli+": "php ./bin/build.php --cli --extra --",
+        "build:http": "php ./bin/build.php --http --",
+        "build:http+": "php ./bin/build.php --http --extra --",
+        "build:web": "php ./bin/build.php --web --",
+        "build:web+": "php ./bin/build.php --web --extra --",
+        "build:full": "php ./bin/build.php --full --",
+        "build:full+": "php ./bin/build.php --full --extra --",
         "cloc:update": "php ./bin/cloc.php"
     },
     "config": {

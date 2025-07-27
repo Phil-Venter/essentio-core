@@ -1,6 +1,6 @@
 <?php
 
-namespace Essentio\Core;
+namespace Essentio\Cli;
 
 /**
  * @api
@@ -17,7 +17,7 @@ class Argument
      *
      * @param list<string>|null $argv
      */
-    public static function create(Helper $helper, ?array $argv = null): static
+    public static function create(?array $argv = null): static
     {
         $argv ??= $_SERVER["argv"] ?? [];
 
@@ -31,7 +31,7 @@ class Argument
 
         while (($arg = array_shift($argv)) !== null) {
             if ($arg === "--") {
-                $arguments = array_merge($arguments, array_map($helper->autoCast(...), $argv));
+                $arguments = array_merge($arguments, array_map(static::autoCast(...), $argv));
                 break;
             }
 
@@ -49,7 +49,7 @@ class Argument
                     $value = true;
                 }
 
-                $arguments[$key] = $helper->autoCast($value);
+                $arguments[$key] = static::autoCast($value);
                 continue;
             }
 
@@ -57,18 +57,18 @@ class Argument
                 $key = $arg[1];
                 $value = substr((string) $arg, 2);
 
-                if ($value === "" || $value === "0") {
+                if ($value === "") {
                     $value = isset($argv[0]) && $argv[0][0] !== "-" ? array_shift($argv) : true;
                 }
 
-                $arguments[$key] = $helper->autoCast($value);
+                $arguments[$key] = static::autoCast($value);
                 continue;
             }
 
             if (empty($command)) {
                 $command = $arg;
             } else {
-                $arguments[] = $helper->autoCast($arg);
+                $arguments[] = static::autoCast($arg);
             }
         }
 
@@ -81,5 +81,29 @@ class Argument
     public function get(int|string $key): mixed
     {
         return $this->arguments[$key] ?? null;
+    }
+
+    /**
+     * Convert a string to a native type if possible.
+     */
+    protected static function autoCast(mixed $value): mixed
+    {
+        if (!is_string($value)) {
+            return $value;
+        }
+
+        if (preg_match('/^(["\']).*\1$/', $value)) {
+            return substr($value, 1, -1);
+        }
+
+        $lower = strtolower($value);
+
+        return match (true) {
+            $lower === "true" => true,
+            $lower === "false" => false,
+            $lower === "null" => null,
+            is_numeric($value) => preg_match("/[e\.]/", $value) ? (float) $value : (int) $value,
+            default => $value,
+        };
     }
 }

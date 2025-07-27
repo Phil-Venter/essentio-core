@@ -1,10 +1,10 @@
 <?php
 
-use Essentio\Core\FrameworkException;
-use Essentio\Core\Router;
-use Essentio\Core\Request;
-use Essentio\Core\Response;
-use Essentio\Core\HttpException;
+use Essentio\FrameworkException;
+use Essentio\Http\Router;
+use Essentio\Http\Request;
+use Essentio\Http\Response;
+use Essentio\Http\HttpException;
 
 function createRequest(string $method, string $path): Request
 {

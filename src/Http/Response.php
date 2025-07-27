@@ -1,6 +1,6 @@
 <?php
 
-namespace Essentio\Core;
+namespace Essentio\Http;
 
 use Stringable;
 
@@ -58,25 +58,39 @@ class Response
     /**
      * Send the HTTP response to the client.
      */
-    public function send(): void
+    public function send(bool $flush = false): void
     {
         if (headers_sent()) {
             return;
         }
 
         http_response_code($this->status);
-
         foreach ($this->headers as $key => $value) {
-            if (is_array($value)) {
-                foreach ($value as $i => $v) {
-                    header(sprintf("%s: %s", $key, $v), $i === 0);
-                }
-            } else {
-                header(sprintf("%s: %s", $key, $value), true);
+            foreach ((array) $value as $i => $v) {
+                header(sprintf("%s: %s", $key, $v), $i === 0);
             }
         }
 
         header_remove("X-Powered-By");
         echo (string) $this->body;
+
+        if (!$flush) {
+            return;
+        }
+
+        if (function_exists('fastcgi_finish_request')) {
+            fastcgi_finish_request();
+            return;
+        }
+
+        $flags = PHP_OUTPUT_HANDLER_REMOVABLE | PHP_OUTPUT_HANDLER_FLUSHABLE;
+
+        foreach (ob_get_status(true) as $stat) {
+            if (($stat['del'] ?? false) || (($stat['flags'] ?? 0) & $flags) === $flags) {
+                @ob_end_flush();
+            }
+        }
+
+        flush();
     }
 }
