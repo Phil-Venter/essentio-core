@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 use Essentio\Extra\HttpClient;
 use Essentio\Extra\Query;

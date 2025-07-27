@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 use Essentio\Web\Session;
 use Essentio\Web\Template;

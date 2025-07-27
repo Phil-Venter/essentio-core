@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 use Essentio\Container;
 use Essentio\Application;
