@@ -31,6 +31,9 @@ class Request
      * @param array<string,mixed>|null $post
      * @param array<string,mixed>|null $cookies
      * @param array<string,mixed>|null $files
+     *
+     * XML payloads are parsed with `LIBXML_NONET` to prevent external entity
+     * loading.
      */
     public static function create(
         ?array $server = null,
@@ -98,7 +101,7 @@ class Request
 
         $parsedBody = match ($contentType) {
             "application/json" => json_decode($rawInput, true) ?? [],
-            "application/xml", "text/xml" => ($xml = simplexml_load_string($rawInput))
+            "application/xml", "text/xml" => ($xml = simplexml_load_string($rawInput, null, LIBXML_NONET))
                 ? json_decode(json_encode($xml, JSON_THROW_ON_ERROR), true)
                 : [],
             default => $post,

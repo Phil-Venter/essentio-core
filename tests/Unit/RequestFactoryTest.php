@@ -81,3 +81,20 @@ it("normalizes files array into flat structure", function () {
     expect($req->files[0]["name"])->toBe("file.txt");
     expect($req->files[0]["error"])->toBe(UPLOAD_ERR_OK);
 });
+
+it("ignores external entities in XML payloads", function () {
+    $server = fakeServer([
+        "REQUEST_METHOD" => "POST",
+        "REQUEST_URI" => "/xml",
+    ]);
+    $headers = ["Content-Type" => "application/xml"];
+    $body = <<<'XML'
+<?xml version="1.0"?>
+<!DOCTYPE data [<!ENTITY ext SYSTEM "file:///etc/passwd">]>
+<root><a>&ext;</a></root>
+XML;
+
+    $req = Request::create($server, $headers, [], [], [], [], $body);
+
+    expect($req->input('a'))->not()->toBeString();
+});
