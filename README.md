@@ -94,9 +94,14 @@ Application::run();
 
 Copy the framework files into a src/ folder for full ownership without Composer.
 
-**Place files:**
+**Init:**
 
-Drop src/ into your project root.
+```bash
+mkdir <project>
+cd <project>
+curl -s https://raw.githubusercontent.com/Phil-Venter/essentio-core/refs/heads/main/bin/download.sh | bash
+php cli serve
+```
 
 **Bootstrap + Web Entry:** create public/index.php in the project root:
 
