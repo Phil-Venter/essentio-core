@@ -103,27 +103,7 @@ curl -s https://raw.githubusercontent.com/Phil-Venter/essentio-core/refs/heads/m
 php cli serve
 ```
 
-**Bootstrap + Web Entry:** create public/index.php in the project root:
-
-```php
-<?php
-
-require_once __DIR__ . '/src/Application.php';
-
-Essentio\Application::autoload([
-    'Essentio' => __DIR__ . '/src',       // required
-    __DIR__ . '/src/functions.php',       // recommended
-    __DIR__ . '/src/Api/functions.php',   // optional
-    __DIR__ . '/src/Cli/functions.php',   // optional
-    __DIR__ . '/src/Extra/functions.php', // optional
-    __DIR__ . '/src/Http/functions.php',  // recommended
-    __DIR__ . '/src/Web/functions.php',   // optional
-]);
-
-Essentio\Application::http(__DIR__ . '/../');
-get('__ping', fn() => text('pong'));
-Essentio\Application::run();
-```
+**Visit:** http://localhost:8000/__ping
 
 ---
 
