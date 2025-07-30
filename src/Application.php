@@ -67,41 +67,6 @@ class Application
     }
 
     /**
-     * Autoloading without composer required.
-     */
-    public static function autoload(array $registry): void
-    {
-        foreach ($registry as $prefix => $path) {
-            // Immediate inclusion for individual files
-            if (is_file($path)) {
-                if (is_readable($path)) {
-                    require_once $path;
-                }
-
-                continue;
-            }
-
-            // Normalize prefix and base directory
-            $prefix = rtrim($prefix, '\\') . '\\';
-            $length = strlen($prefix);
-            $path = rtrim((string) $path, '/') . '/';
-
-            // Register class autoloader
-            spl_autoload_register(function ($class) use ($prefix, $length, $path): void {
-                if (strncmp($prefix, $class, $length) !== 0) {
-                    return;
-                }
-
-                $file = $path . str_replace('\\', '/', substr($class, $length)) . '.php';
-
-                if (is_file($file) && is_readable($file)) {
-                    require_once $file;
-                }
-            });
-        }
-    }
-
-    /**
      * Run the application and handle the request.
      */
     public static function run(): void
