@@ -5,17 +5,23 @@ class Application
     public static string $basePath;
 
     /**
+     * Bootstrap the application with minimal dependancies.
+     */
+    public static function base(string $basePath): void
+    {
+        static::$basePath = rtrim($basePath, '/') . '/';
+
+        Container::instance()->once(Environment::class, fn(): Environment => Environment::create(static::fromBase('.env')));
+    }
+
+    /**
      * Bootstrap the application for CLI mode.
      */
     public static function cli(string $basePath): void
     {
-        static::$basePath = rtrim($basePath, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+        static::base($basePath);
 
-        Container::instance()->once(Environment::class, fn(): Environment => Environment::create(static::fromBase('.env')));
-
-        if (class_exists(Argument::class)) {
-            Container::instance()->once(Argument::class, fn(): Argument => Argument::create());
-        }
+        Container::instance()->once(Argument::class, fn(): Argument => Argument::create());
     }
 
     /**
@@ -23,21 +29,11 @@ class Application
      */
     public static function http(string $basePath): void
     {
-        static::$basePath = rtrim($basePath, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+        static::base($basePath);
 
-        Container::instance()->once(Environment::class, fn(): Environment => Environment::create(static::fromBase('.env')));
-
-        if (class_exists(Request::class)) {
-            Container::instance()->once(Request::class, fn(): Request => Request::create());
-        }
-
-        if (class_exists(Response::class)) {
-            Container::instance()->once(Response::class);
-        }
-
-        if (class_exists(Router::class)) {
-            Container::instance()->once(Router::class);
-        }
+        Container::instance()->once(Request::class, fn(): Request => Request::create());
+        Container::instance()->once(Response::class);
+        Container::instance()->once(Router::class);
 
         if (class_exists(Jwt::class)) {
             Container::instance()->once(Jwt::class, fn(): Jwt => Jwt::create(Container::instance()->get(Environment::class)));
@@ -53,7 +49,7 @@ class Application
      */
     public static function fromBase(string $path): string
     {
-        return static::$basePath . ltrim($path, DIRECTORY_SEPARATOR);
+        return static::$basePath . ltrim($path, '/');
     }
 
     /**
@@ -74,7 +70,7 @@ class Application
             // Normalize prefix and base directory
             $prefix = rtrim($prefix, '\\') . '\\';
             $length = strlen($prefix);
-            $path = rtrim((string) $path, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+            $path = rtrim((string) $path, '/') . '/';
 
             // Register class autoloader
             spl_autoload_register(function ($class) use ($prefix, $length, $path): void {
@@ -82,7 +78,8 @@ class Application
                     return;
                 }
 
-                $file = $path . str_replace('\\', DIRECTORY_SEPARATOR, substr($class, $length)) . '.php';
+                $file = $path . str_replace('\\', '/', substr($class, $length)) . '.php';
+
                 if (is_file($file) && is_readable($file)) {
                     require_once $file;
                 }
@@ -99,21 +96,14 @@ class Application
             exit(1);
         }
 
-        try {
-            $request = Container::instance()->get(Request::class);
-            $response = Container::instance()->get(Response::class);
-        } catch (Throwable) {
-            http_response_code(500);
-            echo 'Initialization Error';
-            return;
-        }
+        $request = Container::instance()->get(Request::class);
+        $response = Container::instance()->get(Response::class);
 
         try {
             Container::instance()->get(Router::class)->dispatch($request, $response)->send();
         } catch (Throwable $throwable) {
             if (class_exists(HttpException::class) && is_a($throwable, HttpException::class)) {
-                $status = $throwable->getCode() ?: 500;
-                $response->setStatus($status)->setBody($throwable->getMessage())->send();
+                $response->setStatus($throwable->getCode() ?: 500)->setBody($throwable->getMessage())->send();
             } else {
                 error_log($throwable->getMessage());
                 $response->setStatus(500)->setBody("Internal Server Error")->send();
@@ -193,7 +183,10 @@ class Container
         }
 
         $concrete = $this->bindings[$id];
-        $resolved = is_string($concrete) ? new $concrete(...$dependencies) : $concrete(...$dependencies);
+
+        $resolved = is_string($concrete)
+            ? new $concrete(...$dependencies)
+            : $concrete(...$dependencies);
 
         if ($once) {
             $this->cache[$id] = $resolved;
@@ -233,7 +226,6 @@ class Environment
 
             /** @psalm-suppress PossiblyUndefinedArrayOffset */
             [$key, $value] = explode("=", $line, 2);
-
             $data[trim($key)] = static::autoCast(trim($value));
         }
 
