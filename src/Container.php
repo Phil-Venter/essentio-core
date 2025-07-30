@@ -76,7 +76,10 @@ class Container
         }
 
         $concrete = $this->bindings[$id];
-        $resolved = is_string($concrete) ? new $concrete(...$dependencies) : $concrete(...$dependencies);
+
+        $resolved = is_string($concrete)
+            ? new $concrete(...$dependencies)
+            : $concrete(...$dependencies);
 
         if ($once) {
             $this->cache[$id] = $resolved;

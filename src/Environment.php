@@ -31,7 +31,6 @@ class Environment
 
             /** @psalm-suppress PossiblyUndefinedArrayOffset */
             [$key, $value] = explode("=", $line, 2);
-
             $data[trim($key)] = static::autoCast(trim($value));
         }
 
