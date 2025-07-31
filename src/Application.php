@@ -67,6 +67,38 @@ class Application
     }
 
     /**
+     * Optimistic PSR-4 style autloading
+     */
+    public static function autoload(array $registry): void
+    {
+        foreach ($registry as $prefix => $path) {
+            $prefix = trim($prefix, '\\') . '\\';
+            $path = rtrim((string) $path, '/\\') . '/';
+
+            if (is_file($path)) {
+                if (is_readable($path)) {
+                    require_once $path;
+                }
+
+                continue;
+            }
+
+            spl_autoload_register(function (string $class) use ($prefix, $path): void {
+                if (!str_starts_with($class, $prefix)) {
+                    return;
+                }
+
+                $relative = substr($class, strlen($prefix));
+                $file = $path . str_replace('\\', '/', $relative) . '.php';
+
+                if (is_readable($file)) {
+                    require_once $file;
+                }
+            });
+        }
+    }
+
+    /**
      * Run the application and handle the request.
      */
     public static function run(): void

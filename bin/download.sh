@@ -74,7 +74,9 @@ cat << 'EOF' > public/index.php
 <?php
 
 // autoload web
-(require_once __DIR__ . '/../src/autoloader.php')([
+require_once __DIR__ . '/src/Application.php';
+
+Essentio\Application::autoload([
     'App'      => __DIR__ . '/../app',
     'Essentio' => __DIR__ . '/../src',
     __DIR__ . '/../src/functions.php',
@@ -86,8 +88,8 @@ cat << 'EOF' > public/index.php
 
 // init and run web
 Essentio\Application::http(__DIR__ . '/..');
-require_once base_path('bootstrap.php');
-require_once base_path('routes.php');
+require_once base_path('/bootstrap.php');
+require_once base_path('/routes.php');
 Essentio\Application::run();
 EOF
 
@@ -97,7 +99,9 @@ cat << 'EOF' > cli
 <?php
 
 // autoload cli
-(require_once __DIR__ . '/src/autoloader.php')([
+require_once __DIR__ . '/src/Application.php';
+
+Essentio\Application::autoload([
     'Essentio' => __DIR__ . '/src',
     __DIR__ . '/src/functions.php',
     __DIR__ . '/src/Cli/functions.php',
@@ -106,7 +110,7 @@ cat << 'EOF' > cli
 
 // init and run cli
 Essentio\Application::cli(__DIR__);
-require_once base_path('bootstrap.php');
+require_once base_path('/bootstrap.php');
 
 command('serve', fn() => exec('php -S localhost:8000 -t public'));
 

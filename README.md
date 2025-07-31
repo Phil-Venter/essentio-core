@@ -222,19 +222,19 @@ If it happens, it’s because you wrote it.
 
 |FILE|CODE|BLANK|COMMENT|TOTAL|
 | --- |:--- | --- | --- | --- |
-|dist/api-plus.php|1241|342|453|2036|
-|dist/api.php|640|173|273|1086|
-|dist/base-plus.php|474|140|193|807|
-|dist/base.php|192|56|99|347|
-|dist/cli-plus.php|554|160|214|928|
-|dist/cli.php|272|76|120|468|
-|dist/full-plus.php|1446|394|535|2375|
-|dist/full.php|1164|310|441|1915|
-|dist/http-plus.php|1170|320|424|1914|
-|dist/http.php|569|151|244|964|
-|dist/web-plus.php|1295|352|485|2132|
-|dist/web.php|694|183|305|1182|
-|src/*|1537|431|583|2551|
+|dist/api-plus.php|1239|341|452|2032|
+|dist/api.php|638|172|272|1082|
+|dist/base-plus.php|472|139|192|803|
+|dist/base.php|190|55|98|343|
+|dist/cli-plus.php|552|159|213|924|
+|dist/cli.php|270|75|119|464|
+|dist/full-plus.php|1444|393|534|2371|
+|dist/full.php|1162|309|440|1911|
+|dist/http-plus.php|1168|319|423|1910|
+|dist/http.php|567|150|243|960|
+|dist/web-plus.php|1293|351|484|2128|
+|dist/web.php|692|182|304|1178|
+|src/*|1534|430|582|2546|
 
 ---
 
