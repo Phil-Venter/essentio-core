@@ -61,14 +61,6 @@ class Application
             $prefix = trim($prefix, '\\') . '\\';
             $path = rtrim((string) $path, '/\\') . '/';
 
-            if (is_file($path)) {
-                if (is_readable($path)) {
-                    require_once $path;
-                }
-
-                continue;
-            }
-
             spl_autoload_register(function (string $class) use ($prefix, $path): void {
                 if (!str_starts_with($class, $prefix)) {
                     return;
