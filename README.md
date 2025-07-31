@@ -44,37 +44,32 @@ Include a single PHP file containing only the modules you need. This is great fo
 
 **Available builds:**
 
-| Component        | base | base+ | cli | cli+ | http | http+ | api | api+ | web | web+ | full | full+ |
-|------------------|:----:|:-----:|:---:|:----:|:----:|:-----:|:---:|:----:|:---:|:----:|:----:|:-----:|
-| Application      | ✓    | ✓     | ✓   | ✓    | ✓    | ✓     | ✓   | ✓    | ✓   | ✓    | ✓    | ✓     |
-| Container        | ✓    | ✓     | ✓   | ✓    | ✓    | ✓     | ✓   | ✓    | ✓   | ✓    | ✓    | ✓     |
-| Environment      | ✓    | ✓     | ✓   | ✓    | ✓    | ✓     | ✓   | ✓    | ✓   | ✓    | ✓    | ✓     |
-| Request/Response |      |       |     |      | ✓    | ✓     | ✓   | ✓    | ✓   | ✓    | ✓    | ✓     |
-| Router/Route     |      |       |     |      | ✓    | ✓     | ✓   | ✓    | ✓   | ✓    | ✓    | ✓     |
-| Jwt              |      |       |     |      |      |       | ✓   | ✓    |     |      | ✓    | ✓     |
-| Session/Template |      |       |     |      |      |       |     |      | ✓   | ✓    | ✓    | ✓     |
-| Cast/Validate    |      |       |     |      |      | ✓     |     | ✓    |     | ✓    |      | ✓     |
-| HttpClient       |      | ✓     |     | ✓    |      | ✓     |     | ✓    |     | ✓    |      | ✓     |
-| Query            |      | ✓     |     | ✓    |      | ✓     |     | ✓    |     | ✓    |      | ✓     |
-
-```txt
-- base  : curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/base.php -o framework.php
-- base+ : curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/base-plus.php -o framework.php
-- cli   : curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/cli.php -o framework.php
-- cli+  : curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/cli-plus.php -o framework.php
-- http  : curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/http.php -o framework.php
-- http+ : curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/http-plus.php -o framework.php
-- api   : curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/api.php -o framework.php
-- api+  : curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/api-plus.php -o framework.php
-- web   : curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/web.php -o framework.php
-- web+  : curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/web-plus.php -o framework.php
-- full  : curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/full.php -o framework.php
-- full+ : curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/full-plus.php -o framework.php
-```
+| Component                             | base  | base+ | cli   | cli+  | http  | http+ | api   | api+  | web   | web+  | full  | full+ |
+| ------------------------------------- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| Application + Container + Environment | ✓     | ✓     | ✓     | ✓     | ✓     | ✓     | ✓     | ✓     | ✓     | ✓     | ✓     | ✓     |
+| Argument                              |       |       | ✓     | ✓     |       |       |       |       |       |       | ✓     | ✓     |
+| Request + Response + Router + Route   |       |       |       |       | ✓     | ✓     | ✓     | ✓     | ✓     | ✓     | ✓     | ✓     |
+| Jwt                                   |       |       |       |       |       |       | ✓     | ✓     |       |       | ✓     | ✓     |
+| Session + Template                    |       |       |       |       |       |       |       |       | ✓     | ✓     | ✓     | ✓     |
+| Cast + Validate                       |       |       |       |       |       | ✓     |       | ✓     |       | ✓     |       | ✓     |
+| HttpClient + Query                    |       | ✓     |       | ✓     |       | ✓     |       | ✓     |       | ✓     |       | ✓     |
 
 **Download:**
 
-Download the desired file, include it at the top of your script, then start coding:
+| Build | Download link                                                                                                  |
+| ----- | -------------------------------------------------------------------------------------------------------------- |
+| base  | `curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/base.php -o framework.php`      |
+| base+ | `curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/base-plus.php -o framework.php` |
+| cli   | `curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/cli.php -o framework.php`       |
+| cli+  | `curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/cli-plus.php -o framework.php`  |
+| http  | `curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/http.php -o framework.php`      |
+| http+ | `curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/http-plus.php -o framework.php` |
+| api   | `curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/api.php -o framework.php`       |
+| api+  | `curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/api-plus.php -o framework.php`  |
+| web   | `curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/web.php -o framework.php`       |
+| web+  | `curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/web-plus.php -o framework.php`  |
+| full  | `curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/full.php -o framework.php`      |
+| full+ | `curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/full-plus.php -o framework.php` |
 
 **Bootstrap + Web Entry:** create public/index.php in the project root:
 
@@ -156,30 +151,30 @@ No ceremony. No surprises.
 | `Query`               | Fluent SQL query builder (PDO-based)              |
 | `Validate`            | Validation rules (regex, bounds, etc.)            |
 
-| Function | Description |
-| --- | --- |
-| `app(class)` | Get a singleton instance |
-| `make(class, deps)` | Create a new instance |
-| `bind(class, ...)` | Register service (multi-call) |
-| `once(class, ...)` | Register singleton (one-time) |
-| `base_path(path)` | Join path to base directory |
-| `env(key)` | Retrieve `.env` variable |
-| `middleware(fn)` | Global middleware registration |
-| `group(prefix, fn)` | Grouped routes under a prefix |
-| `get(path, fn)`<br>`post(path, fn)`<br>`put(path, fn)`<br>`patch(path, fn)`<br>`delete(path, fn)` | Route registration for HTTP verbs |
-| `request(key)`<br>`input(field)` | Access route/query/form input |
-| `sanitize(rules, onError)` | Cast + validate user input |
-| `session(key)` | Get/set session variable |
-| `flash(key)` | Temporary one-request data |
-| `csrf()` / `csrf(token)` | Generate or verify CSRF token |
-| `jwt(data)` | Encode/Decode JWT payload |
-| `render(template, data)` | Render template to string |
-| `html(str)`, `text(str)`, `json(mixed)` | Send typed response content |
-| `redirect(uri, status)` | Issue HTTP redirect |
-| `view(template, data)` | Return templated HTML response |
-| `throw_if(cond, except)` | Conditionally throw an error |
-| `curl(method, url, headers, body)` | Send an HTTP request and return `Response` |
-| `query()` | Instantiate `Query` object |
+| Function                                                                                          | Description                                |
+| ------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| `app(class)`                                                                                      | Get a singleton instance                   |
+| `make(class, deps)`                                                                               | Create a new instance                      |
+| `bind(class, ...)`                                                                                | Register service (multi-call)              |
+| `once(class, ...)`                                                                                | Register singleton (one-time)              |
+| `base_path(path)`                                                                                 | Join path to base directory                |
+| `env(key)`                                                                                        | Retrieve `.env` variable                   |
+| `middleware(fn)`                                                                                  | Global middleware registration             |
+| `group(prefix, fn)`                                                                               | Grouped routes under a prefix              |
+| `get(path, fn)`<br>`post(path, fn)`<br>`put(path, fn)`<br>`patch(path, fn)`<br>`delete(path, fn)` | Route registration for HTTP verbs          |
+| `request(key)`<br>`input(field)`                                                                  | Access route/query/form input              |
+| `sanitize(rules, onError)`                                                                        | Cast + validate user input                 |
+| `session(key)`                                                                                    | Get/set session variable                   |
+| `flash(key)`                                                                                      | Temporary one-request data                 |
+| `csrf()` / `csrf(token)`                                                                          | Generate or verify CSRF token              |
+| `jwt(data)`                                                                                       | Encode/Decode JWT payload                  |
+| `render(template, data)`                                                                          | Render template to string                  |
+| `html(str)`, `text(str)`, `json(mixed)`                                                           | Send typed response content                |
+| `redirect(uri, status)`                                                                           | Issue HTTP redirect                        |
+| `view(template, data)`                                                                            | Return templated HTML response             |
+| `throw_if(cond, except)`                                                                          | Conditionally throw an error               |
+| `curl(method, url, headers, body)`                                                                | Send an HTTP request and return `Response` |
+| `query()`                                                                                         | Instantiate `Query` object                 |
 
 You need to explicitly bind the query builder to the container before using it.
 
@@ -220,21 +215,21 @@ If it happens, it’s because you wrote it.
 
 ## 🧮 Code Size
 
-| FILE | CODE | BLANK | COMMENT | TOTAL |
-| --- |:--- | --- | --- | --- |
-| dist/api-plus.php | 1216 | 335 | 449 | 2000 |
-| dist/api.php | 615 | 166 | 269 | 1050 |
-| dist/base-plus.php | 449 | 133 | 189 | 771 |
-| dist/base.php | 167 | 49 | 95 | 311 |
-| dist/cli-plus.php | 529 | 153 | 210 | 892 |
-| dist/cli.php | 247 | 69 | 116 | 432 |
-| dist/full-plus.php | 1421 | 387 | 531 | 2339 |
-| dist/full.php | 1139 | 303 | 437 | 1879 |
-| dist/http-plus.php | 1145 | 313 | 420 | 1878 |
-| dist/http.php | 544 | 144 | 240 | 928 |
-| dist/web-plus.php | 1270 | 345 | 481 | 2096 |
-| dist/web.php | 669 | 176 | 301 | 1146 |
-| src/* | 1553 | 452 | 582 | 2587 |
+| FILE          | CODE | BLANK | COMMENT | TOTAL |
+| ------------- | ---- | ----- | ------- | ----- |
+| api-plus.php  | 1216 | 335   | 449     | 2000  |
+| api.php       | 615  | 166   | 269     | 1050  |
+| base-plus.php | 449  | 133   | 189     | 771   |
+| base.php      | 167  | 49    | 95      | 311   |
+| cli-plus.php  | 529  | 153   | 210     | 892   |
+| cli.php       | 247  | 69    | 116     | 432   |
+| full-plus.php | 1421 | 387   | 531     | 2339  |
+| full.php      | 1139 | 303   | 437     | 1879  |
+| http-plus.php | 1145 | 313   | 420     | 1878  |
+| http.php      | 544  | 144   | 240     | 928   |
+| web-plus.php  | 1270 | 345   | 481     | 2096  |
+| web.php       | 669  | 176   | 301     | 1146  |
+| src/*         | 1553 | 452   | 582     | 2587  |
 
 ---
 
