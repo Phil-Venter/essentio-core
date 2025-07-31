@@ -1,0 +1,3 @@
+<?php
+
+get('__ping', [App\PingController::class, 'ping']);

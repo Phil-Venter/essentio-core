@@ -1,0 +1,6 @@
+<?php
+
+use Essentio\Extra\Query;
+
+once(PDO::class, fn() => new PDO("sqlite:" . base_path("database.sqlite")));
+bind(Query::class, fn() => new Query(app(PDO::class)));

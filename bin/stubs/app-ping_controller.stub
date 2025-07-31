@@ -1,0 +1,13 @@
+<?php
+
+namespace App;
+
+use Essentio\Http\Response;
+
+class PingController
+{
+    public static function ping(): Response
+    {
+        return text('pong');
+    }
+}
