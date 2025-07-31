@@ -222,19 +222,19 @@ If it happens, it’s because you wrote it.
 
 | FILE | CODE | BLANK | COMMENT | TOTAL |
 | --- |:--- | --- | --- | --- |
-| dist/api-plus.php | 1233 | 339 | 452 | 2024 |
-| dist/api.php | 632 | 170 | 272 | 1074 |
-| dist/base-plus.php | 466 | 137 | 192 | 795 |
-| dist/base.php | 184 | 53 | 98 | 335 |
-| dist/cli-plus.php | 546 | 157 | 213 | 916 |
-| dist/cli.php | 264 | 73 | 119 | 456 |
-| dist/full-plus.php | 1438 | 391 | 534 | 2363 |
-| dist/full.php | 1156 | 307 | 440 | 1903 |
-| dist/http-plus.php | 1162 | 317 | 423 | 1902 |
-| dist/http.php | 561 | 148 | 243 | 952 |
-| dist/web-plus.php | 1287 | 349 | 484 | 2120 |
-| dist/web.php | 686 | 180 | 304 | 1170 |
-| src/* | 1528 | 428 | 582 | 2538 |
+| dist/api-plus.php | 1216 | 335 | 449 | 2000 |
+| dist/api.php | 615 | 166 | 269 | 1050 |
+| dist/base-plus.php | 449 | 133 | 189 | 771 |
+| dist/base.php | 167 | 49 | 95 | 311 |
+| dist/cli-plus.php | 529 | 153 | 210 | 892 |
+| dist/cli.php | 247 | 69 | 116 | 432 |
+| dist/full-plus.php | 1421 | 387 | 531 | 2339 |
+| dist/full.php | 1139 | 303 | 437 | 1879 |
+| dist/http-plus.php | 1145 | 313 | 420 | 1878 |
+| dist/http.php | 544 | 144 | 240 | 928 |
+| dist/web-plus.php | 1270 | 345 | 481 | 2096 |
+| dist/web.php | 669 | 176 | 301 | 1146 |
+| src/* | 1529 | 428 | 582 | 2539 |
 
 ---
 

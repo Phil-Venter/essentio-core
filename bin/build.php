@@ -56,6 +56,10 @@ foreach ($globs as $glob) {
             continue;
         }
 
+        if (str_ends_with($file, 'autoload.php')) {
+            continue;
+        }
+
         if (str_ends_with($file, 'functions.php')) {
             $files[] = $file;
         } else {

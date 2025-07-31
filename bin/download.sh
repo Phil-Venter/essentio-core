@@ -72,9 +72,7 @@ cat << 'EOF' > public/index.php
 <?php
 
 // autoload web
-require_once __DIR__ . '/../src/Application.php';
-
-Essentio\Application::autoload([
+(require_once __DIR__ . '/../src/autoload.php')([
     'App'      => __DIR__ . '/../app',
     'Essentio' => __DIR__ . '/../src',
 ]);
@@ -98,9 +96,7 @@ cat << 'EOF' > cli
 <?php
 
 // autoload cli
-require_once __DIR__ . '/src/Application.php';
-
-Essentio\Application::autoload([
+(require_once __DIR__ . '/../src/autoload.php')([
     'Essentio' => __DIR__ . '/src'
 ]);
 
