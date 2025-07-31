@@ -65,8 +65,7 @@
         "build:web": "php ./bin/build.php --web --",
         "build:web+": "php ./bin/build.php --web --extra --",
         "build:full": "php ./bin/build.php --full --",
-        "build:full+": "php ./bin/build.php --full --extra --",
-        "cloc:update": "php ./bin/cloc.php"
+        "build:full+": "php ./bin/build.php --full --extra --"
     },
     "config": {
         "allow-plugins": {
