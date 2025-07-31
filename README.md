@@ -234,7 +234,7 @@ If it happens, it’s because you wrote it.
 | dist/http.php | 544 | 144 | 240 | 928 |
 | dist/web-plus.php | 1270 | 345 | 481 | 2096 |
 | dist/web.php | 669 | 176 | 301 | 1146 |
-| src/* | 1529 | 428 | 582 | 2539 |
+| src/* | 1553 | 452 | 582 | 2587 |
 
 ---
 

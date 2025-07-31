@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Essentio\Http\Request;
 use Essentio\Http\Response;
 use Essentio\Http\Route;

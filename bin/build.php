@@ -72,7 +72,7 @@ foreach ($globs as $glob) {
 function parseFile(string $filePath): string
 {
     $lines = file($filePath, FILE_IGNORE_NEW_LINES);
-    $filtered = array_filter($lines, fn($line) => !preg_match("/^\s*(namespace|use)\b/", $line));
+    $filtered = array_filter($lines, fn($line) => !preg_match("/^\s*(namespace|use|declare\()\b/", $line));
     array_shift($filtered);
     return preg_replace('/\/\*\*\n\s\*\s@api\n\s\*\//', "", implode(PHP_EOL, $filtered));
 }

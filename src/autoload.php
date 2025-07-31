@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * Simple optimistic PSR-4 style autloading without composer
  */
