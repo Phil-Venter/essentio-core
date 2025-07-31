@@ -53,6 +53,38 @@ class Application
     }
 
     /**
+     * Optimistic PSR-4 style autloading
+     */
+    public static function autoload(array $registry): void
+    {
+        foreach ($registry as $prefix => $path) {
+            $prefix = trim($prefix, '\\') . '\\';
+            $path = rtrim((string) $path, '/\\') . '/';
+
+            if (is_file($path)) {
+                if (is_readable($path)) {
+                    require_once $path;
+                }
+
+                continue;
+            }
+
+            spl_autoload_register(function (string $class) use ($prefix, $path): void {
+                if (!str_starts_with($class, $prefix)) {
+                    return;
+                }
+
+                $relative = substr($class, strlen($prefix));
+                $file = $path . str_replace('\\', '/', $relative) . '.php';
+
+                if (is_readable($file)) {
+                    require_once $file;
+                }
+            });
+        }
+    }
+
+    /**
      * Run the application and handle the request.
      */
     public static function run(): void
@@ -232,42 +264,6 @@ class Environment
 }
 
 class FrameworkException extends Exception {}
-
-return function (array $registry): void {
-    foreach ($registry as $prefix => $path) {
-        // skip invalid syntax
-        if (!is_string($prefix) || !is_string($path)) {
-            continue;
-        }
-
-        // Immediate inclusion for individual files
-        if (is_file($path)) {
-            if (is_readable($path)) {
-                require_once $path;
-            }
-
-            continue;
-        }
-
-        // Normalize prefix and base directory
-        $prefix = rtrim($prefix, '\\') . '\\';
-        $path = rtrim($path, '/') . '/';
-
-        // Register class autoloader
-        spl_autoload_register(function ($class) use ($prefix, $path): void {
-            if (!str_starts_with($class, $prefix)) {
-                return;
-            }
-
-            $relative = substr($class, strlen($prefix));
-            $file = $path . str_replace('\\', '/', $relative) . '.php';
-
-            if (is_file($file) && is_readable($file)) {
-                require_once $file;
-            }
-        });
-    }
-};
 
 class Argument
 {
