@@ -11,6 +11,8 @@ mkdir -p src/Http/Extra
 mkdir -p src/Web
 
 declare -A FILES=(
+    ["src/autoload.php"]="https://raw.githubusercontent.com/Phil-Venter/essentio-core/refs/heads/main/src/autoload.php"
+
     # base
     ["src/Application.php"]="https://raw.githubusercontent.com/Phil-Venter/essentio-core/refs/heads/main/src/Application.php"
     ["src/Container.php"]="https://raw.githubusercontent.com/Phil-Venter/essentio-core/refs/heads/main/src/Container.php"
@@ -96,7 +98,7 @@ cat << 'EOF' > cli
 <?php
 
 // autoload cli
-(require_once __DIR__ . '/../src/autoload.php')([
+(require_once __DIR__ . '/src/autoload.php')([
     'Essentio' => __DIR__ . '/src'
 ]);
 
