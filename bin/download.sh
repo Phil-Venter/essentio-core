@@ -11,8 +11,6 @@ mkdir -p src/Http/Extra
 mkdir -p src/Web
 
 declare -A FILES=(
-    ["src/autoloader.php"]="https://raw.githubusercontent.com/Phil-Venter/essentio-core/refs/heads/main/src/autoloader.php"
-
     # base
     ["src/Application.php"]="https://raw.githubusercontent.com/Phil-Venter/essentio-core/refs/heads/main/src/Application.php"
     ["src/Container.php"]="https://raw.githubusercontent.com/Phil-Venter/essentio-core/refs/heads/main/src/Container.php"
@@ -74,17 +72,18 @@ cat << 'EOF' > public/index.php
 <?php
 
 // autoload web
-require_once __DIR__ . '/src/Application.php';
+require_once __DIR__ . '/../src/Application.php';
 
 Essentio\Application::autoload([
     'App'      => __DIR__ . '/../app',
     'Essentio' => __DIR__ . '/../src',
-    __DIR__ . '/../src/functions.php',
-    __DIR__ . '/../src/Api/functions.php',
-    __DIR__ . '/../src/Extra/functions.php',
-    __DIR__ . '/../src/Http/functions.php',
-    __DIR__ . '/../src/Web/functions.php',
 ]);
+
+require_once __DIR__ . '/../src/functions.php';
+require_once __DIR__ . '/../src/Api/functions.php';
+require_once __DIR__ . '/../src/Extra/functions.php';
+require_once __DIR__ . '/../src/Http/functions.php';
+require_once __DIR__ . '/../src/Web/functions.php';
 
 // init and run web
 Essentio\Application::http(__DIR__ . '/..');
@@ -102,11 +101,12 @@ cat << 'EOF' > cli
 require_once __DIR__ . '/src/Application.php';
 
 Essentio\Application::autoload([
-    'Essentio' => __DIR__ . '/src',
-    __DIR__ . '/src/functions.php',
-    __DIR__ . '/src/Cli/functions.php',
-    __DIR__ . '/src/Extra/functions.php',
+    'Essentio' => __DIR__ . '/src'
 ]);
+
+require_once __DIR__ . '/src/functions.php';
+require_once __DIR__ . '/src/Cli/functions.php';
+require_once __DIR__ . '/src/Extra/functions.php';
 
 // init and run cli
 Essentio\Application::cli(__DIR__);

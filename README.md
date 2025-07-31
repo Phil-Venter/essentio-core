@@ -220,21 +220,21 @@ If it happens, it’s because you wrote it.
 
 ## 🧮 Code Size
 
-|FILE|CODE|BLANK|COMMENT|TOTAL|
+| FILE | CODE | BLANK | COMMENT | TOTAL |
 | --- |:--- | --- | --- | --- |
-|dist/api-plus.php|1239|341|452|2032|
-|dist/api.php|638|172|272|1082|
-|dist/base-plus.php|472|139|192|803|
-|dist/base.php|190|55|98|343|
-|dist/cli-plus.php|552|159|213|924|
-|dist/cli.php|270|75|119|464|
-|dist/full-plus.php|1444|393|534|2371|
-|dist/full.php|1162|309|440|1911|
-|dist/http-plus.php|1168|319|423|1910|
-|dist/http.php|567|150|243|960|
-|dist/web-plus.php|1293|351|484|2128|
-|dist/web.php|692|182|304|1178|
-|src/*|1534|430|582|2546|
+| dist/api-plus.php | 1233 | 339 | 452 | 2024 |
+| dist/api.php | 632 | 170 | 272 | 1074 |
+| dist/base-plus.php | 466 | 137 | 192 | 795 |
+| dist/base.php | 184 | 53 | 98 | 335 |
+| dist/cli-plus.php | 546 | 157 | 213 | 916 |
+| dist/cli.php | 264 | 73 | 119 | 456 |
+| dist/full-plus.php | 1438 | 391 | 534 | 2363 |
+| dist/full.php | 1156 | 307 | 440 | 1903 |
+| dist/http-plus.php | 1162 | 317 | 423 | 1902 |
+| dist/http.php | 561 | 148 | 243 | 952 |
+| dist/web-plus.php | 1287 | 349 | 484 | 2120 |
+| dist/web.php | 686 | 180 | 304 | 1170 |
+| src/* | 1528 | 428 | 582 | 2538 |
 
 ---
 
