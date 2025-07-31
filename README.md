@@ -44,15 +44,15 @@ Include a single PHP file containing only the modules you need. This is great fo
 
 **Available builds:**
 
-| Component                             | base  | base+ | cli   | cli+  | http  | http+ | api   | api+  | web   | web+  | full  | full+ |
-| ------------------------------------- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| Application + Container + Environment | ✓     | ✓     | ✓     | ✓     | ✓     | ✓     | ✓     | ✓     | ✓     | ✓     | ✓     | ✓     |
-| Argument                              |       |       | ✓     | ✓     |       |       |       |       |       |       | ✓     | ✓     |
-| Request + Response + Router + Route   |       |       |       |       | ✓     | ✓     | ✓     | ✓     | ✓     | ✓     | ✓     | ✓     |
-| Jwt                                   |       |       |       |       |       |       | ✓     | ✓     |       |       | ✓     | ✓     |
-| Session + Template                    |       |       |       |       |       |       |       |       | ✓     | ✓     | ✓     | ✓     |
-| Cast + Validate                       |       |       |       |       |       | ✓     |       | ✓     |       | ✓     |       | ✓     |
-| HttpClient + Query                    |       | ✓     |       | ✓     |       | ✓     |       | ✓     |       | ✓     |       | ✓     |
+| Component                                                         | base | base+ | cli | cli+ | http | http+ | api | api+ | web | web+ | full | full+ |
+|-------------------------------------------------------------------|:----:|:-----:|:---:|:----:|:----:|:-----:|:---:|:----:|:---:|:----:|:----:|:-----:|
+| Application&nbsp;+&nbsp;Container&nbsp;+&nbsp;Environment         | ✓    | ✓     | ✓   | ✓    | ✓    | ✓     | ✓   | ✓    | ✓   | ✓    | ✓    | ✓     |
+| Argument                                                          |      |       | ✓   | ✓    |      |       |     |      |     |      | ✓    | ✓     |
+| Request&nbsp;+&nbsp;Response&nbsp;+&nbsp;Router&nbsp;+&nbsp;Route |      |       |     |      | ✓    | ✓     | ✓   | ✓    | ✓   | ✓    | ✓    | ✓     |
+| Jwt                                                               |      |       |     |      |      |       | ✓   | ✓    |     |      | ✓    | ✓     |
+| Session&nbsp;+&nbsp;Template                                      |      |       |     |      |      |       |     |      | ✓   | ✓    | ✓    | ✓     |
+| Cast&nbsp;+&nbsp;Validate                                         |      |       |     |      |      | ✓     |     | ✓    |     | ✓    |      | ✓     |
+| HttpClient&nbsp;+&nbsp;Query                                      |      | ✓     |     | ✓    |      | ✓     |     | ✓    |     | ✓    |      | ✓     |
 
 **Download:**
 
@@ -169,7 +169,7 @@ No ceremony. No surprises.
 | `csrf()` / `csrf(token)`                                                                          | Generate or verify CSRF token              |
 | `jwt(data)`                                                                                       | Encode/Decode JWT payload                  |
 | `render(template, data)`                                                                          | Render template to string                  |
-| `html(str)`, `text(str)`, `json(mixed)`                                                           | Send typed response content                |
+| `html(str)`<br>`text(str)`<br>`json(mixed)`                                                       | Send typed response content                |
 | `redirect(uri, status)`                                                                           | Issue HTTP redirect                        |
 | `view(template, data)`                                                                            | Return templated HTML response             |
 | `throw_if(cond, except)`                                                                          | Conditionally throw an error               |
