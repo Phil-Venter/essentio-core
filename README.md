@@ -217,16 +217,16 @@ If it happens, it’s because you wrote it.
 
 | FILE          | CODE | BLANK | COMMENT | TOTAL |
 | ------------- | ---- | ----- | ------- | ----- |
-| api-plus.php  | 1139 | 303   | 437     | 1879  |
-| api.php       | 247  | 69    | 116     | 432   |
-| base-plus.php | 544  | 144   | 240     | 928   |
+| api-plus.php  | 1216 | 335   | 449     | 2000  |
+| api.php       | 615  | 166   | 269     | 1050  |
+| base-plus.php | 449  | 133   | 189     | 771   |
 | base.php      | 167  | 49    | 95      | 311   |
-| cli-plus.php  | 669  | 176   | 301     | 1146  |
-| cli.php       | 615  | 166   | 269     | 1050  |
-| full-plus.php | 1145 | 313   | 420     | 1878  |
-| full.php      | 449  | 133   | 189     | 771   |
-| http-plus.php | 1270 | 345   | 481     | 2096  |
-| http.php      | 1216 | 335   | 449     | 2000  |
+| cli-plus.php  | 529  | 153   | 210     | 892   |
+| cli.php       | 247  | 69    | 116     | 432   |
+| full-plus.php | 1421 | 387   | 531     | 2339  |
+| full.php      | 1139 | 303   | 437     | 1879  |
+| http-plus.php | 1145 | 313   | 420     | 1878  |
+| http.php      | 544  | 144   | 240     | 928   |
 | web-plus.php  | 1270 | 345   | 481     | 2096  |
 | web.php       | 669  | 176   | 301     | 1146  |
 | src/*         | 1553 | 452   | 582     | 2587  |
