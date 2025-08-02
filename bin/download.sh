@@ -45,11 +45,11 @@ declare -A FILES=(
     ["src/Extra/functions.php"]="${shared_prefix}/src/Extra/functions.php"
 
     # stubs
-    ["app/PingController.php"]="${shared_prefix}/bin/stubs/app-ping_controller.stub"
-    ["routes.php"]="${shared_prefix}/bin/stubs/routes.stub"
-    ["public/index.php"]="${shared_prefix}/bin/stubs/public-index.stub"
-    ["cli"]="${shared_prefix}/bin/stubs/cli.stub"
-    ["bootstrap.php"]="${shared_prefix}/bin/stubs/bootstrap.stub"
+    ["app/PingController.php"]="${shared_prefix}/stubs/app-ping_controller.stub"
+    ["routes.php"]="${shared_prefix}/stubs/routes.stub"
+    ["public/index.php"]="${shared_prefix}/stubs/public-index.stub"
+    ["cli"]="${shared_prefix}/stubs/cli.stub"
+    ["bootstrap.php"]="${shared_prefix}/stubs/bootstrap.stub"
 )
 
 command -v curl >/dev/null 2>&1 || { echo '❌ curl is required.'; exit 1; }
