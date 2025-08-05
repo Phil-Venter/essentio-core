@@ -44,15 +44,15 @@ Include a single PHP file containing only the modules you need. This is great fo
 
 **Available builds:**
 
-| Component                                                         | base | base+ | cli | cli+ | http | http+ | api | api+ | web | web+ | full | full+ |
-|-------------------------------------------------------------------|:----:|:-----:|:---:|:----:|:----:|:-----:|:---:|:----:|:---:|:----:|:----:|:-----:|
-| Application&nbsp;+&nbsp;Container&nbsp;+&nbsp;Environment         | ✓    | ✓     | ✓   | ✓    | ✓    | ✓     | ✓   | ✓    | ✓   | ✓    | ✓    | ✓     |
-| Argument                                                          |      |       | ✓   | ✓    |      |       |     |      |     |      | ✓    | ✓     |
-| Request&nbsp;+&nbsp;Response&nbsp;+&nbsp;Router&nbsp;+&nbsp;Route |      |       |     |      | ✓    | ✓     | ✓   | ✓    | ✓   | ✓    | ✓    | ✓     |
-| Jwt                                                               |      |       |     |      |      |       | ✓   | ✓    |     |      | ✓    | ✓     |
-| Session&nbsp;+&nbsp;Template                                      |      |       |     |      |      |       |     |      | ✓   | ✓    | ✓    | ✓     |
-| Cast&nbsp;+&nbsp;Validate                                         |      |       |     |      |      | ✓     |     | ✓    |     | ✓    |      | ✓     |
-| HttpClient&nbsp;+&nbsp;Query                                      |      | ✓     |     | ✓    |      | ✓     |     | ✓    |     | ✓    |      | ✓     |
+| Component                               | base | base+ | cli | cli+ | http | http+ | api | api+ | web | web+ | full | full+ |
+|-----------------------------------------|:----:|:-----:|:---:|:----:|:----:|:-----:|:---:|:----:|:---:|:----:|:----:|:-----:|
+| Application<br>Container<br>Environment | ✓    | ✓     | ✓   | ✓    | ✓    | ✓     | ✓   | ✓    | ✓   | ✓    | ✓    | ✓     |
+| Argument                                |      |       | ✓   | ✓    |      |       |     |      |     |      | ✓    | ✓     |
+| Request<br>Response<br>Router<br>Route  |      |       |     |      | ✓    | ✓     | ✓   | ✓    | ✓   | ✓    | ✓    | ✓     |
+| Jwt                                     |      |       |     |      |      |       | ✓   | ✓    |     |      | ✓    | ✓     |
+| Session<br>Template                     |      |       |     |      |      |       |     |      | ✓   | ✓    | ✓    | ✓     |
+| Cast<br>Validate                        |      |       |     |      |      | ✓     |     | ✓    |     | ✓    |      | ✓     |
+| HttpClient<br>Query                     |      | ✓     |     | ✓    |      | ✓     |     | ✓    |     | ✓    |      | ✓     |
 
 **Download:**
 
@@ -223,13 +223,13 @@ If it happens, it’s because you wrote it.
 | base.php      | 167  | 49    | 95      | 311   |
 | cli-plus.php  | 529  | 153   | 210     | 892   |
 | cli.php       | 247  | 69    | 116     | 432   |
-| full-plus.php | 1421 | 387   | 531     | 2339  |
-| full.php      | 1139 | 303   | 437     | 1879  |
+| full-plus.php | 1428 | 389   | 537     | 2354  |
+| full.php      | 1146 | 305   | 443     | 1894  |
 | http-plus.php | 1145 | 313   | 420     | 1878  |
 | http.php      | 544  | 144   | 240     | 928   |
-| web-plus.php  | 1270 | 345   | 481     | 2096  |
-| web.php       | 669  | 176   | 301     | 1146  |
-| src/*         | 1553 | 452   | 582     | 2587  |
+| web-plus.php  | 1277 | 347   | 487     | 2111  |
+| web.php       | 676  | 178   | 307     | 1161  |
+| src/*         | 1560 | 454   | 588     | 2602  |
 
 ---
 
