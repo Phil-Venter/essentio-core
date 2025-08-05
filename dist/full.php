@@ -1859,6 +1859,21 @@ function csrf(string $csrf = ""): string|bool
 }
 
 /**
+ * Escapes a value for safe use in HTML.
+ *
+ * @param scalar $val
+ * @throws InvalidArgumentException
+ */
+function e(mixed $val): string
+{
+    if (is_scalar($val) || ($val instanceof Stringable)) {
+        return htmlspecialchars((string) $val, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    }
+
+    throw new InvalidArgumentException('Invalid value type');
+}
+
+/**
  * Render a PHP template to string.
  *
  * @param array<string,mixed> $data
