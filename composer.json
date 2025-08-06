@@ -31,8 +31,7 @@
         "runner": [
             "@format",
             "@analyze",
-            "@test",
-            "@build:all+"
+            "@test"
         ],
         "format": "php ./vendor/bin/rector",
         "analyze": "php ./vendor/bin/psalm",

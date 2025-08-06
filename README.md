@@ -4,11 +4,13 @@
 ![Last Commit](https://img.shields.io/github/last-commit/Phil-Venter/essentio-core)
 ![Stars](https://img.shields.io/github/stars/Phil-Venter/essentio-core?style=social)
 
-# Essentio — Minimalist PHP Framework [WIP]
+# Essentio - Minimalist PHP Framework [WIP]
 
-Essentio isn’t here to impress with design patterns or win internet debates. It’s raw, minimal PHP—for developers who want clarity, speed, and control. No abstractions, no ceremony. Just the essentials.
+Essentio isn’t here to impress with design patterns or win internet debates. It’s raw, minimal PHP for developers who want clarity, speed, and control. No abstractions, no ceremony. Just the essentials.
 
-You can learn the whole framework in an afternoon. That’s the point.
+**Built specifically for building apps, Essentio focuses on a powerful set of helper functions that streamline common development tasks. So you can go from zero to working application in minutes.**
+
+You can learn the entire framework in an afternoon. That’s the point.
 
 ---
 
@@ -22,19 +24,19 @@ Essentio is built around simpler questions:
 
 * **Why can’t I just write code and have it run?**
 * **Why does “Hello World” pull in a hundred packages?**
-* **Do frameworks need to be opinionated—or just useful?**
+* **Do frameworks need to be opinionated, or just useful?**
 * **Why all the scaffolding, code generation, and ceremony?**
 * **What if I could learn the entire framework in a single afternoon?**
 
 This isn’t for everyone. It’s for developers who want full control without the hand-holding. Who trust their own judgment more than someone else’s defaults. Who read the source instead of tutorials.
 
-**Essentio doesn’t try to teach you how to code. It gives you just enough structure to be useful—and nothing that gets in your way.**
+**Essentio doesn’t try to teach you how to code. It gives you just enough structure to be useful and nothing that gets in your way.**
 
 ---
 
 ## 🧪 Quickstart
 
-Choose one of three approaches to pull in the framework, then bootstrap and run your application.
+**Choose one of three approaches to pull in the framework, then bootstrap and run your application.**
 
 ---
 
@@ -44,15 +46,15 @@ Include a single PHP file containing only the modules you need. This is great fo
 
 **Available builds:**
 
-| Component                               | base | base+ | cli | cli+ | http | http+ | api | api+ | web | web+ | full | full+ |
-|-----------------------------------------|:----:|:-----:|:---:|:----:|:----:|:-----:|:---:|:----:|:---:|:----:|:----:|:-----:|
-| Application<br>Container<br>Environment | ✓    | ✓     | ✓   | ✓    | ✓    | ✓     | ✓   | ✓    | ✓   | ✓    | ✓    | ✓     |
-| Argument                                |      |       | ✓   | ✓    |      |       |     |      |     |      | ✓    | ✓     |
-| Request<br>Response<br>Router<br>Route  |      |       |     |      | ✓    | ✓     | ✓   | ✓    | ✓   | ✓    | ✓    | ✓     |
-| Jwt                                     |      |       |     |      |      |       | ✓   | ✓    |     |      | ✓    | ✓     |
-| Session<br>Template                     |      |       |     |      |      |       |     |      | ✓   | ✓    | ✓    | ✓     |
-| Cast<br>Validate                        |      |       |     |      |      | ✓     |     | ✓    |     | ✓    |      | ✓     |
-| HttpClient<br>Query                     |      | ✓     |     | ✓    |      | ✓     |     | ✓    |     | ✓    |      | ✓     |
+| Component                               | base  | base+ | cli   | cli+  | http  | http+ | api   | api+  | web   | web+  | full  | full+ |
+| --------------------------------------- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| Application<br>Container<br>Environment | ✓     | ✓     | ✓     | ✓     | ✓     | ✓     | ✓     | ✓     | ✓     | ✓     | ✓     | ✓     |
+| Argument                                |       |       | ✓     | ✓     |       |       |       |       |       |       | ✓     | ✓     |
+| Request<br>Response<br>Router<br>Route  |       |       |       |       | ✓     | ✓     | ✓     | ✓     | ✓     | ✓     | ✓     | ✓     |
+| Jwt                                     |       |       |       |       |       |       | ✓     | ✓     |       |       | ✓     | ✓     |
+| Session<br>Template                     |       |       |       |       |       |       |       |       | ✓     | ✓     | ✓     | ✓     |
+| Cast<br>Validate                        |       |       |       |       |       | ✓     |       | ✓     |       | ✓     |       | ✓     |
+| HttpClient<br>Query                     |       | ✓     |       | ✓     |       | ✓     |       | ✓     |       | ✓     |       | ✓     |
 
 **Download:**
 
@@ -78,7 +80,7 @@ Include a single PHP file containing only the modules you need. This is great fo
 
 require_once __DIR__ . '/../framework.php';
 
-Application::http(__DIR__);
+Application::http(__DIR__ '/..');
 get('__ping', fn() => text('pong'));
 Application::run();
 ```
@@ -107,10 +109,8 @@ php cli serve
 Composer makes installation trivial, but you won’t have direct access to the raw framework files for customization.
 
 ```bash
-composer require essentio/core
+composer require essentio/core:dev-main # Just until we cut the first release
 ```
-
-Then bootstrap and run exactly as above:
 
 **Bootstrap + Web Entry:** create public/index.php in the project root:
 
@@ -124,13 +124,13 @@ get('__ping', fn() => text('pong'));
 Essentio\Application::run();
 ```
 
-> **Note:** Composer installs follow our release cycle. If you need to modify core behavior or patch bugs yourself, use the “Single file” or “Download into src/” methods instead.
+> **Note:** Composer will follow our release cycle. If you need to modify core behavior or patch bugs yourself, use the “Single file” or “Download into src/” methods instead.
 
 ---
 
 ## 🧱 Features
 
-No ceremony. No surprises.
+No ceremony. No surprises. A focused set of helper functions makes building applications straightforward and efficient.
 
 | Class                 | Description                                       |
 | --------------------- | ------------------------------------------------- |
@@ -168,7 +168,7 @@ No ceremony. No surprises.
 | `flash(key)`                                                                                      | Temporary one-request data                 |
 | `csrf()` / `csrf(token)`                                                                          | Generate or verify CSRF token              |
 | `jwt(data)`                                                                                       | Encode/Decode JWT payload                  |
-| `data_to_xml(array|object)`                                                                       | Convert a datastructure to XML string      |
+| `data_to_xml(array\|object)`                                                                      | Convert a datastructure to XML string      |
 | `e(scalar/Stringable)`                                                                            | Safely escapes a value for use in HTML     |
 | `render(template, data)`                                                                          | Render template to string                  |
 | `html(str)`<br>`text(str)`<br>`json(mixed)`<br>`xml(array|object)`                                | Send typed response content                |
@@ -195,8 +195,9 @@ Essentio is for developers who:
 * Don’t need training wheels
 * Trust code over convention
 * Want fewer files, fewer surprises, and fewer opinions
+* Sick of the boilerplate of big framework
 
-Whether you’re building tools, APIs, internal apps, or microservices—Essentio gives you a sharp knife and walks away.
+Whether you’re building tools, APIs, internal apps, or microservices, Essentio gives you a sharp knife and walks away.
 
 ---
 
@@ -251,4 +252,4 @@ Pull requests welcome. Ideas welcome. Opinions optional.
 
 ---
 
-> Essentio is yours to love, hate, or ignore. The world won’t always agree—but that’s not your problem.
+> Essentio is yours to love, hate, or ignore. The world won’t always agree, but that’s not your problem.
