@@ -168,6 +168,7 @@ No ceremony. No surprises.
 | `flash(key)`                                                                                      | Temporary one-request data                 |
 | `csrf()` / `csrf(token)`                                                                          | Generate or verify CSRF token              |
 | `jwt(data)`                                                                                       | Encode/Decode JWT payload                  |
+| `e(scalar/Stringable)`                                                                            | Safely escapes a value for use in HTML     |
 | `render(template, data)`                                                                          | Render template to string                  |
 | `html(str)`<br>`text(str)`<br>`json(mixed)`                                                       | Send typed response content                |
 | `redirect(uri, status)`                                                                           | Issue HTTP redirect                        |
