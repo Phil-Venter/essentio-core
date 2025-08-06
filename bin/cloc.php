@@ -61,17 +61,8 @@ function countPhpFileStats($filename) {
     return [$code, $blank, $comment, count($lines)];
 }
 
-function printRow($row, $colWidths) {
-    echo "|";
-    foreach ($row as $i => $value) {
-        $min = $i === 'FILE' ? '-' : '';
-        printf(" %{$min}{$colWidths[$i]}s |", $value);
-    }
-    echo "\n";
-}
-
+// COLLECT FILES TO CLOC
 $distFiles = [...glob('dist/*.php'), 'src/*' => scanPhpFiles('src/*')];
-
 $rows = [];
 
 foreach ($distFiles as $key => $file) {
@@ -98,30 +89,33 @@ foreach ($distFiles as $key => $file) {
     $rows['TOTAL'][] = (string) $total;
 }
 
+// COUNT LENGTH OF EACH COLUMN
 $fileLength = max(strlen('FILE'), ...array_map(fn ($val) => strlen($val), $rows['FILE']));
 $codeLength = max(strlen('CODE'), ...array_map(fn ($val) => strlen($val), $rows['CODE']));
 $blankLength = max(strlen('BLANK'), ...array_map(fn ($val) => strlen($val), $rows['BLANK']));
 $commentLength = max(strlen('COMMENT'), ...array_map(fn ($val) => strlen($val), $rows['COMMENT']));
 $totalLength = max(strlen('TOTAL'), ...array_map(fn ($val) => strlen($val), $rows['TOTAL']));
 
+// GENERATE CLOC MD TABLE
 $output = "<!-- cloc -->\n";
+
 $output .= vsprintf("| %-{$fileLength}s | %-{$codeLength}s | %-{$blankLength}s | %-{$commentLength}s | %-{$totalLength}s |\n",
     ['FILE', 'CODE', 'BLANK', 'COMMENT', 'TOTAL']);
 
-$output .= vsprintf("| %s | %s: | %s: | %s: | %s: |\n", [
-        str_repeat('-', $fileLength),
-        str_repeat('-', $codeLength - 1),
-        str_repeat('-', $blankLength - 1),
-        str_repeat('-', $commentLength - 1),
-        str_repeat('-', $totalLength - 1)
-    ]);
+$output .= "| " . str_repeat('-', $fileLength) . " | " .
+    str_repeat('-', $codeLength - 1) . ": | " .
+    str_repeat('-', $blankLength - 1) . ": | " .
+    str_repeat('-', $commentLength - 1) . ": | " .
+    str_repeat('-', $totalLength - 1) . ": |\n";
 
 for ($i = 0; $i < count($rows['FILE']); $i++) {
     $output .= vsprintf("| %-{$fileLength}s | %{$codeLength}s | %{$blankLength}s | %{$commentLength}s | %{$totalLength}s |\n",
         [$rows['FILE'][$i], $rows['CODE'][$i], $rows['BLANK'][$i], $rows['COMMENT'][$i], $rows['TOTAL'][$i]]);
 }
+
 $output .= "<!-- ./cloc -->";
 
+// PERSIST NEW TABLE TO README
 $readme = file_get_contents(__DIR__ . '/../README.md');
 $updated = preg_replace('/<!-- cloc -->(.*?)<!-- \.\/cloc -->/s', $output, $readme);
 file_put_contents(__DIR__ . '/../README.md', $updated);
