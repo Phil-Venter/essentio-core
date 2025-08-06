@@ -116,6 +116,6 @@ for ($i = 0; $i < count($rows['FILE']); $i++) {
 $output .= "<!-- ./cloc -->";
 
 // PERSIST NEW TABLE TO README
-$readme = file_get_contents(__DIR__ . '/../README.md');
+$readme = file_get_contents('README.md');
 $updated = preg_replace('/<!-- cloc -->(.*?)<!-- \.\/cloc -->/s', $output, $readme);
-file_put_contents(__DIR__ . '/../README.md', $updated);
+file_put_contents('README.md', $updated);
