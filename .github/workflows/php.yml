@@ -68,7 +68,7 @@ jobs:
             - name: Build dist
               run: |
                   composer build:all+
-                  composer update-cloc
+                  composer update-readme-with-cloc
 
             - name: Commit and push changes
               run: |
