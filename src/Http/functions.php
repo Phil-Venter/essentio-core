@@ -1,7 +1,6 @@
 <?php
 
 declare(strict_types=1);
-
 use Essentio\Http\Request;
 use Essentio\Http\Response;
 use Essentio\Http\Route;
@@ -118,6 +117,41 @@ function redirect(string $uri, int $status = 302): Response
     return app(Response::class)
         ->setStatus($status)
         ->addHeaders(["Location" => $uri]);
+}
+
+/**
+ * Convert an array or object to an xml string.
+ */
+function data_to_xml(array|object $data, string $rootElement = 'root', ?SimpleXMLElement $xml = null): string
+{
+    if (!$xml instanceof SimpleXMLElement) {
+        $xml = new SimpleXMLElement(sprintf('<?xml version="1.0"?><%s></%s>', $rootElement, $rootElement));
+    }
+
+    foreach ((array) $data as $key => $value) {
+        if (is_numeric($key)) {
+            $key = "item";
+        }
+
+        if (is_array($value) || is_object($value)) {
+            data_to_xml($value, $key, $xml->addChild($key));
+        } else {
+            $xml->addChild($key, htmlspecialchars((string)$value));
+        }
+    }
+
+    return $xml->asXML();
+}
+
+/**
+ * Create an XML response.
+ */
+function xml(array|object $data, int $status = 200): Response
+{
+    return app(Response::class)
+        ->setStatus($status)
+        ->addHeaders(["Content-Type" => "application/xml"])
+        ->setBody(data_to_xml($data));
 }
 
 /**
