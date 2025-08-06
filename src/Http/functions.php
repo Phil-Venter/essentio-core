@@ -140,7 +140,7 @@ function data_to_xml(array|object $data, string $rootElement = 'root', ?SimpleXM
         }
     }
 
-    return $xml->asXML();
+    return $xml->asXML() ?: '';
 }
 
 /**
