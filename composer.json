@@ -34,8 +34,8 @@
             "@test"
         ],
         "format": "php ./vendor/bin/rector",
-        "analyze": "php ./vendor/bin/psalm",
-        "test": "php ./vendor/bin/pest",
+        "analyze": "php ./vendor/bin/psalm --threads=8",
+        "test": "php ./vendor/bin/pest --parallel",
         "build:all": [
             "@build:base dist/base.php",
             "@build:full dist/full.php",

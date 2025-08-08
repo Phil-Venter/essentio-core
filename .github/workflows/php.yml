@@ -35,20 +35,22 @@ jobs:
               run: composer validate --strict
 
             - name: Cache Composer packages
+              id: cache-vendor-php${{ matrix.php }}
               uses: actions/cache@v3
               with:
                   path: vendor
-                  key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
+                  key: ${{ runner.os }}-php${{ matrix.php }}-${{ hashFiles('**/composer.lock') }}
                   restore-keys: ${{ runner.os }}-php-
 
             - name: Install dependencies
+              if: steps.cache-vendor-php${{ matrix.php }}.outputs.cache-hit != 'true
               run: composer install --prefer-dist --no-progress
 
             - name: Run analyzer
-              run: php ./vendor/bin/psalm
+              run: php ./vendor/bin/psalm --threads=8
 
             - name: Run test suite
-              run: php ./vendor/bin/pest
+              run: php ./vendor/bin/pest --parallel
 
     build-and-commit:
         runs-on: ubuntu-latest
