@@ -87,8 +87,6 @@ class Argument
 
     /**
      * Convert a string to a native type if possible.
-     *
-     * @param string|true $value
      */
     protected static function autoCast(string|bool $value): mixed
     {
