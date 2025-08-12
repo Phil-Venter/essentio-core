@@ -88,7 +88,10 @@ class Application
             Container::instance()->get(Router::class)->dispatch($request, $response)->send();
         } catch (Throwable $throwable) {
             if (class_exists(HttpException::class) && is_a($throwable, HttpException::class)) {
-                $response->setStatus($throwable->getCode() ?: 500)->setBody($throwable->getMessage())->send();
+                $response
+                    ->setStatus($throwable->getCode() ?: 500)
+                    ->setBody($throwable->getMessage())
+                    ->send();
             } else {
                 error_log($throwable->getMessage());
                 $response->setStatus(500)->setBody("Internal Server Error")->send();
