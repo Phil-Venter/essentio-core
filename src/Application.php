@@ -65,7 +65,11 @@ class Application
      */
     public static function fromBase(string $path): string
     {
-        return static::$basePath . ltrim($path, '/');
+        if (!isset(static::$basePath)) {
+            throw new FrameworkException("Application base path not initialized.");
+        }
+
+        return static::$basePath . ltrim($path, "/");
     }
 
     /**

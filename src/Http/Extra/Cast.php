@@ -148,7 +148,13 @@ class Cast
      */
     public static function string(bool $trim = false): Closure
     {
-        return fn(string $input): string => $trim ? trim($input) : $input;
+        return function (?string $input) use ($trim): ?string {
+            if ($input === null) {
+                return null;
+            }
+
+            return $trim ? trim($input) : $input;
+        };
     }
 
     /**

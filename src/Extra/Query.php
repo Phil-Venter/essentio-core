@@ -198,7 +198,13 @@ class Query
      */
     public function orderBy(string $column, string $direction = "ASC"): static
     {
-        $this->orderBys[] = sprintf("%s %s", $column, $direction);
+        $dir = strtoupper($direction);
+
+        if (!in_array($dir, ["ASC", "DESC"], true)) {
+            throw new FrameworkException("Invalid ORDER BY direction.");
+        }
+
+        $this->orderBys[] = sprintf("%s %s", $column, $dir);
         return $this;
     }
 

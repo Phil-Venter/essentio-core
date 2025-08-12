@@ -108,7 +108,13 @@ final readonly class Jwt
             $data .= str_repeat("=", 4 - $remainder);
         }
 
-        return base64_decode(strtr($data, "-_", "+/"));
+        $out = base64_decode(strtr($data, "-_", "+/"), true);
+
+        if ($out === false) {
+            throw new FrameworkException("Invalid base64url segment");
+        }
+
+        return $out;
     }
 
     /**
