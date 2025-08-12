@@ -1,11 +1,24 @@
 <?php
 
-require_once __DIR__ . '/../src/Cli/Argument.php';
+require_once __DIR__ . "/../src/Cli/Argument.php";
+
+function globBuilder(string $path): string
+{
+    return __DIR__ . "/../src/" . ltrim($path, "/");
+}
+
+function parseFile(string $filePath): string
+{
+    $lines = file($filePath, FILE_IGNORE_NEW_LINES);
+    $filtered = array_filter($lines, fn($line) => !preg_match("/^\s*(namespace|use|declare\()\b/", $line));
+    array_shift($filtered);
+    return preg_replace('/\/\*\*\n\s\*\s@api\n\s\*\//', "", implode(PHP_EOL, $filtered));
+}
 
 $args = Essentio\Cli\Argument::create();
 
 if (!$args->get(0)) {
-    throw new RuntimeException('No file specified.');
+    throw new RuntimeException("No file specified.");
 }
 
 if (!is_dir(dirname($args->get(0)))) {
@@ -13,36 +26,33 @@ if (!is_dir(dirname($args->get(0)))) {
 }
 
 // Path globulator
-function globBuilder(string $path): string
-{
-    return __DIR__ . '/../src/' . ltrim($path, '/');
+$globs = [globBuilder("Exceptions/*.php"), globBuilder("*.php")];
+
+if ($args->get("full") || $args->get("cli")) {
+    $globs[] = globBuilder("Cli/*.php");
 }
 
-$globs = [globBuilder('Exceptions/*.php'), globBuilder('*.php')];
+if ($args->get("full") || $args->get("api") || $args->get("http") || $args->get("web")) {
+    $globs[] = globBuilder("Http/*.php");
 
-if ($args->get('full') || $args->get('cli')) {
-    $globs[] = globBuilder('Cli/*.php');
+    if ($args->get("extra")) {
+        $globs[] = globBuilder("Http/Extra/*.php");
+    }
 }
 
-if ($args->get('full') || $args->get('api') || $args->get('http') || $args->get('web')) {
-    $globs[] = globBuilder('Http/*.php');
+if ($args->get("full") || $args->get("api")) {
+    $globs[] = globBuilder("Api/*.php");
 }
 
-if ($args->get('full') || $args->get('api')) {
-    $globs[] = globBuilder('Api/*.php');
+if ($args->get("full") || $args->get("web")) {
+    $globs[] = globBuilder("Web/*.php");
 }
 
-if ($args->get('full') || $args->get('web')) {
-    $globs[] = globBuilder('Web/*.php');
+if ($args->get("extra")) {
+    $globs[] = globBuilder("Extra/*.php");
 }
 
-if ($args->get('full') || ($args->get('api') || $args->get('http') || $args->get('web')) && $args->get('extra')) {
-    $globs[] = globBuilder('Http/Extra/*.php');
-}
-
-if ($args->get('extra')) {
-    $globs[] = globBuilder('Extra/*.php');
-}
+$globs = array_unique($globs);
 
 // Get files and split into classes and functions
 $classes = [];
@@ -56,25 +66,16 @@ foreach ($globs as $glob) {
             continue;
         }
 
-        if (str_ends_with($file, 'autoload.php')) {
+        if (str_ends_with($file, "autoload.php")) {
             continue;
         }
 
-        if (str_ends_with($file, 'functions.php')) {
+        if (str_ends_with($file, "functions.php")) {
             $files[] = $file;
         } else {
             $classes[] = $file;
         }
     }
-}
-
-// Compile all the things
-function parseFile(string $filePath): string
-{
-    $lines = file($filePath, FILE_IGNORE_NEW_LINES);
-    $filtered = array_filter($lines, fn($line) => !preg_match("/^\s*(namespace|use|declare\()\b/", $line));
-    array_shift($filtered);
-    return preg_replace('/\/\*\*\n\s\*\s@api\n\s\*\//', "", implode(PHP_EOL, $filtered));
 }
 
 $output = ["<?php"];

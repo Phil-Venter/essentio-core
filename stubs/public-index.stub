@@ -1,19 +1,19 @@
 <?php
 
 // autoload web
-(require_once __DIR__ . '/../src/autoload.php')([
-    'App'      => __DIR__ . '/../app',
-    'Essentio' => __DIR__ . '/../src',
+require_once __DIR__ . "/../src/autoload.php"([
+    "App" => __DIR__ . "/../app",
+    "Essentio" => __DIR__ . "/../src",
 ]);
 
-require_once __DIR__ . '/../src/functions.php';
-require_once __DIR__ . '/../src/Api/functions.php';
-require_once __DIR__ . '/../src/Extra/functions.php';
-require_once __DIR__ . '/../src/Http/functions.php';
-require_once __DIR__ . '/../src/Web/functions.php';
+require_once __DIR__ . "/../src/functions.php";
+require_once __DIR__ . "/../src/Api/functions.php";
+require_once __DIR__ . "/../src/Extra/functions.php";
+require_once __DIR__ . "/../src/Http/functions.php";
+require_once __DIR__ . "/../src/Web/functions.php";
 
 // init and run web
-Essentio\Application::http(__DIR__ . '/..');
-require_once base_path('/bootstrap.php');
-require_once base_path('/routes.php');
+Essentio\Application::http(__DIR__ . "/..");
+require_once base_path("/bootstrap.php");
+require_once base_path("/routes.php");
 Essentio\Application::run();

@@ -1,7 +1,8 @@
 <?php
 
-function scanPhpFiles($directory) {
-    $directory = rtrim($directory, '/*');
+function scanPhpFiles($directory)
+{
+    $directory = rtrim($directory, "/*");
 
     $rii = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($directory));
     $files = [];
@@ -11,7 +12,7 @@ function scanPhpFiles($directory) {
             continue;
         }
 
-        if (strtolower($file->getExtension()) !== 'php') {
+        if (strtolower($file->getExtension()) !== "php") {
             continue;
         }
 
@@ -21,7 +22,8 @@ function scanPhpFiles($directory) {
     return $files;
 }
 
-function countPhpFileStats($filename) {
+function countPhpFileStats($filename)
+{
     $lines = file($filename, FILE_IGNORE_NEW_LINES);
 
     $blank = 0;
@@ -33,25 +35,29 @@ function countPhpFileStats($filename) {
     foreach ($lines as $line) {
         $trim = trim($line);
 
-        if ($trim === '') {
+        if ($trim === "") {
             $blank++;
             continue;
         }
 
         if ($inBlockComment) {
             $comment++;
-            if (strpos($trim, '*/') !== false) $inBlockComment = false;
+            if (strpos($trim, "*/") !== false) {
+                $inBlockComment = false;
+            }
             continue;
         }
 
-        if (preg_match('/^\s*\/\//', $trim) || preg_match('/^\s*#/', $trim)) {
+        if (preg_match("/^\s*\/\//", $trim) || preg_match("/^\s*#/", $trim)) {
             $comment++;
             continue;
         }
 
-        if (preg_match('/^\s*\/\*/', $trim)) {
+        if (preg_match("/^\s*\/\*/", $trim)) {
             $comment++;
-            if (strpos($trim, '*/') === false) $inBlockComment = true;
+            if (strpos($trim, "*/") === false) {
+                $inBlockComment = true;
+            }
             continue;
         }
 
@@ -62,7 +68,7 @@ function countPhpFileStats($filename) {
 }
 
 // COLLECT FILES TO CLOC
-$distFiles = [...glob('dist/*.php'), 'src/*' => scanPhpFiles('src/*')];
+$distFiles = [...glob("dist/*.php"), "src/*" => scanPhpFiles("src/*")];
 $rows = [];
 
 foreach ($distFiles as $key => $file) {
@@ -82,40 +88,57 @@ foreach ($distFiles as $key => $file) {
         $key = basename($file);
     }
 
-    $rows['FILE'][] = $key;
-    $rows['CODE'][] = (string) $code;
-    $rows['BLANK'][] = (string) $blank;
-    $rows['COMMENT'][] = (string) $comment;
-    $rows['TOTAL'][] = (string) $total;
+    $rows["FILE"][] = $key;
+    $rows["CODE"][] = (string) $code;
+    $rows["BLANK"][] = (string) $blank;
+    $rows["COMMENT"][] = (string) $comment;
+    $rows["TOTAL"][] = (string) $total;
 }
 
 // COUNT LENGTH OF EACH COLUMN
-$fileLength = max(strlen('FILE'), ...array_map(fn ($val) => strlen($val), $rows['FILE']));
-$codeLength = max(strlen('CODE'), ...array_map(fn ($val) => strlen($val), $rows['CODE']));
-$blankLength = max(strlen('BLANK'), ...array_map(fn ($val) => strlen($val), $rows['BLANK']));
-$commentLength = max(strlen('COMMENT'), ...array_map(fn ($val) => strlen($val), $rows['COMMENT']));
-$totalLength = max(strlen('TOTAL'), ...array_map(fn ($val) => strlen($val), $rows['TOTAL']));
+$fileLength = max(strlen("FILE"), ...array_map(fn($val) => strlen($val), $rows["FILE"]));
+$codeLength = max(strlen("CODE"), ...array_map(fn($val) => strlen($val), $rows["CODE"]));
+$blankLength = max(strlen("BLANK"), ...array_map(fn($val) => strlen($val), $rows["BLANK"]));
+$commentLength = max(strlen("COMMENT"), ...array_map(fn($val) => strlen($val), $rows["COMMENT"]));
+$totalLength = max(strlen("TOTAL"), ...array_map(fn($val) => strlen($val), $rows["TOTAL"]));
 
 // GENERATE CLOC MD TABLE
 $output = "<!-- cloc -->\n";
 
-$output .= vsprintf("| %-{$fileLength}s | %-{$codeLength}s | %-{$blankLength}s | %-{$commentLength}s | %-{$totalLength}s |\n",
-    ['FILE', 'CODE', 'BLANK', 'COMMENT', 'TOTAL']);
+$output .= vsprintf("| %-{$fileLength}s | %-{$codeLength}s | %-{$blankLength}s | %-{$commentLength}s | %-{$totalLength}s |\n", [
+    "FILE",
+    "CODE",
+    "BLANK",
+    "COMMENT",
+    "TOTAL",
+]);
 
-$output .= "| " . str_repeat('-', $fileLength) . " | " .
-    str_repeat('-', $codeLength - 1) . ": | " .
-    str_repeat('-', $blankLength - 1) . ": | " .
-    str_repeat('-', $commentLength - 1) . ": | " .
-    str_repeat('-', $totalLength - 1) . ": |\n";
+$output .=
+    "| " .
+    str_repeat("-", $fileLength) .
+    " | " .
+    str_repeat("-", $codeLength - 1) .
+    ": | " .
+    str_repeat("-", $blankLength - 1) .
+    ": | " .
+    str_repeat("-", $commentLength - 1) .
+    ": | " .
+    str_repeat("-", $totalLength - 1) .
+    ": |\n";
 
-for ($i = 0; $i < count($rows['FILE']); $i++) {
-    $output .= vsprintf("| %-{$fileLength}s | %{$codeLength}s | %{$blankLength}s | %{$commentLength}s | %{$totalLength}s |\n",
-        [$rows['FILE'][$i], $rows['CODE'][$i], $rows['BLANK'][$i], $rows['COMMENT'][$i], $rows['TOTAL'][$i]]);
+for ($i = 0; $i < count($rows["FILE"]); $i++) {
+    $output .= vsprintf("| %-{$fileLength}s | %{$codeLength}s | %{$blankLength}s | %{$commentLength}s | %{$totalLength}s |\n", [
+        $rows["FILE"][$i],
+        $rows["CODE"][$i],
+        $rows["BLANK"][$i],
+        $rows["COMMENT"][$i],
+        $rows["TOTAL"][$i],
+    ]);
 }
 
 $output .= "<!-- ./cloc -->";
 
 // PERSIST NEW TABLE TO README
-$readme = file_get_contents('README.md');
-$updated = preg_replace('/<!-- cloc -->(.*?)<!-- \.\/cloc -->/s', $output, $readme);
-file_put_contents('README.md', $updated);
+$readme = file_get_contents("README.md");
+$updated = preg_replace("/<!-- cloc -->(.*?)<!-- \.\/cloc -->/s", $output, $readme);
+file_put_contents("README.md", $updated);

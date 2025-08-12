@@ -8,6 +8,6 @@ class PingController
 {
     public static function ping(): Response
     {
-        return text('pong');
+        return text("pong");
     }
 }

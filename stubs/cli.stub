@@ -2,18 +2,18 @@
 <?php
 
 // autoload cli
-(require_once __DIR__ . '/src/autoload.php')([
-    'Essentio' => __DIR__ . '/src'
+require_once __DIR__ . "/src/autoload.php"([
+    "Essentio" => __DIR__ . "/src",
 ]);
 
-require_once __DIR__ . '/src/functions.php';
-require_once __DIR__ . '/src/Cli/functions.php';
-require_once __DIR__ . '/src/Extra/functions.php';
+require_once __DIR__ . "/src/functions.php";
+require_once __DIR__ . "/src/Cli/functions.php";
+require_once __DIR__ . "/src/Extra/functions.php";
 
 // init and run cli
 Essentio\Application::cli(__DIR__);
-require_once base_path('/bootstrap.php');
+require_once base_path("/bootstrap.php");
 
-command('serve', fn() => exec('php -S localhost:8000 -t public'));
+command("serve", fn() => exec("php -S localhost:8000 -t public"));
 
 Essentio\Application::run();
