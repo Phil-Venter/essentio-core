@@ -42,11 +42,11 @@ function csrf(string $csrf = ""): string|bool
  */
 function e(mixed $val): string
 {
-    if (is_scalar($val) || ($val instanceof Stringable)) {
-        return htmlspecialchars((string) $val, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    if (is_scalar($val) || $val instanceof Stringable) {
+        return htmlspecialchars((string) $val, ENT_QUOTES | ENT_SUBSTITUTE, "UTF-8");
     }
 
-    throw new InvalidArgumentException('Invalid value type');
+    throw new InvalidArgumentException("Invalid value type");
 }
 
 /**

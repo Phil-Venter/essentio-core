@@ -122,7 +122,7 @@ function redirect(string $uri, int $status = 302): Response
 /**
  * Convert an array or object to an xml string.
  */
-function data_to_xml(array|object $data, string $rootElement = 'root', ?SimpleXMLElement $xml = null): string
+function data_to_xml(array|object $data, string $rootElement = "root", ?SimpleXMLElement $xml = null): string
 {
     if (!$xml instanceof SimpleXMLElement) {
         $xml = new SimpleXMLElement(sprintf('<?xml version="1.0"?><%s></%s>', $rootElement, $rootElement));
@@ -136,11 +136,11 @@ function data_to_xml(array|object $data, string $rootElement = 'root', ?SimpleXM
         if (is_array($value) || is_object($value)) {
             data_to_xml($value, $key, $xml->addChild($key));
         } else {
-            $xml->addChild($key, htmlspecialchars((string)$value));
+            $xml->addChild($key, htmlspecialchars((string) $value));
         }
     }
 
-    return (string) ($xml->asXML() ?: '');
+    return (string) ($xml->asXML() ?: "");
 }
 
 /**

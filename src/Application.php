@@ -25,9 +25,9 @@ class Application
      */
     public static function base(string $basePath): void
     {
-        static::$basePath = rtrim($basePath, '/') . '/';
+        static::$basePath = rtrim($basePath, "/") . "/";
 
-        Container::instance()->once(Environment::class, fn(): Environment => Environment::create(static::fromBase('.env')));
+        Container::instance()->once(Environment::class, fn(): Environment => Environment::create(static::fromBase(".env")));
     }
 
     /**

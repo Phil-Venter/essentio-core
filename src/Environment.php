@@ -16,7 +16,7 @@ class Environment
      */
     public static function create(?string $file = null): static
     {
-        $file ??= Application::fromBase('.env');
+        $file ??= Application::fromBase(".env");
 
         if (!file_exists($file)) {
             return new static();
