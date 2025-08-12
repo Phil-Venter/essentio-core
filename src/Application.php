@@ -18,10 +18,10 @@ use Throwable;
  */
 class Application
 {
-    public static string $basePath;
+    public static ?string $basePath = null;
 
     /**
-     * Bootstrap the application with minimal dependancies.
+     * Bootstrap the application with minimal dependencies.
      */
     public static function base(string $basePath): void
     {
@@ -65,7 +65,7 @@ class Application
      */
     public static function fromBase(string $path): string
     {
-        if (!isset(static::$basePath)) {
+        if (static::$basePath === null) {
             throw new FrameworkException("Application base path not initialized.");
         }
 

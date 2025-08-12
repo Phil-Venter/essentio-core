@@ -163,7 +163,7 @@ class Router
 
         if ($result instanceof Response) {
             if ($request->method === "HEAD") {
-                return $result->addHeaders(["Content-Length" => "0"])->setBody("");
+                return $result->setBody("");
             }
 
             return $result;
@@ -171,7 +171,7 @@ class Router
 
         if ($result instanceof Stringable || is_scalar($result)) {
             if ($request->method === "HEAD") {
-                return $response->addHeaders(["Content-Length" => "0"]);
+                return $response->addHeaders(["Content-Length" => (string) mb_strlen((string) $result)]);
             }
 
             return $response->setBody((string) $result);

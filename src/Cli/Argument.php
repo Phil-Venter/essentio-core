@@ -12,7 +12,7 @@ class Argument
     /**
      * @param array<int|string,mixed> $arguments
      */
-    public function __construct(public readonly string $command = "", protected array $arguments = []) {}
+    public function __construct(public readonly string $command = "", public array $arguments = []) {}
 
     /**
      * Parse CLI arguments into command and options.
@@ -56,17 +56,8 @@ class Argument
             }
 
             if ($arg[0] === "-") {
-                if ($arg[0] === "-" && strlen($arg) > 2 && $arg[1] !== "-") {
-                    for ($i = 1; $i < strlen($arg) - 1; $i++) {
-                        $arguments[$arg[$i]] = true;
-                    }
-
-                    $key = $arg[strlen($arg) - 1];
-                    $value = "";
-                } else {
-                    $key = $arg[1];
-                    $value = substr((string) $arg, 2);
-                }
+                $key = $arg[1];
+                $value = substr((string) $arg, 2);
 
                 if ($value === "") {
                     $value = isset($argv[0]) && $argv[0][0] !== "-" ? array_shift($argv) : true;
