@@ -3,6 +3,9 @@ name: tests
 on:
     push:
         branches: ["main"]
+        paths-ignore:
+            - "dist/**"
+            - "README.md"
     pull_request:
         branches: ["main"]
 
@@ -24,26 +27,23 @@ jobs:
         steps:
             - uses: actions/checkout@v4
 
-            - name: Setup PHP
-              uses: shivammathur/setup-php@v2
+            - uses: shivammathur/setup-php@v2
               with:
                   php-version: ${{ matrix.php }}
-                  extensions: pdo, pdo_sqlite
+                  extensions: pdo, pdo_sqlite, curl
+                  ini-values: memory_limit=-1
                   coverage: none
+                  tools: composer:v2
 
-            - name: Validate composer.json and composer.lock
-              run: composer validate --strict
+            - run: composer validate --strict
 
-            - name: Install PHP deps (with cache)
-              uses: ramsey/composer-install@v3
+            - uses: ramsey/composer-install@v3
               with:
                   composer-options: --no-interaction --prefer-dist
 
-            - name: Run analyzer
-              run: php ./vendor/bin/psalm --threads=8
-
-            - name: Run test suite
-              run: php ./vendor/bin/pest --parallel
+            - run: php ./vendor/bin/rector --dry-run --no-diffs
+            - run: php ./vendor/bin/psalm --threads=8 --taint-analysis --output-format=github
+            - run: php ./vendor/bin/pest --parallel
 
     build-and-commit:
         runs-on: ubuntu-latest
@@ -66,11 +66,13 @@ jobs:
                   composer update-readme-with-cloc
 
             - name: Commit and push changes
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               run: |
                   git config user.name "github-actions[bot]"
                   git config user.email "github-actions[bot]@users.noreply.github.com"
+                  git fetch origin main
+                  git rebase origin/main || true
                   git add -f dist/* README.md
                   git commit -m "[action] Build dist" || exit 0
                   git push
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
