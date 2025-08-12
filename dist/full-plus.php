@@ -807,286 +807,6 @@ class Router
 
 class ValidationException extends FrameworkException {}
 
-final readonly class Jwt
-{
-    public function __construct(private string $secret, private ?string $issuer = null) {}
-
-    /**
-     * Create a new Jwt instance from environment values.
-     */
-    public static function create(Environment $environment): static
-    {
-        return new self($environment->get("JWT_SECRET") ?? "", $environment->get("JWT_ISSUER"));
-    }
-
-    /**
-     * Encode a payload into a JWT string.
-     *
-     * @param array<string,mixed> $payload
-     */
-    public function encode(array $payload): string
-    {
-        if ($this->issuer !== null) {
-            $payload["iss"] = $this->issuer;
-        }
-
-        $segments = [$this->encodeBase64(json_encode(["alg" => "HS256", "typ" => "JWT"], JSON_THROW_ON_ERROR))];
-        $segments[] = $this->encodeBase64(json_encode($payload, JSON_THROW_ON_ERROR));
-        $signature = $this->sign(implode(".", $segments));
-        $segments[] = $this->encodeBase64($signature);
-
-        return implode(".", $segments);
-    }
-
-    /**
-     * Decode and validate a JWT string.
-     *
-     * @return array<string,mixed>
-     */
-    public function decode(string $token): array
-    {
-        $parts = explode(".", $token);
-        if (count($parts) !== 3) {
-            throw new FrameworkException("Invalid token format");
-        }
-
-        [$header64, $payload64, $signature64] = $parts;
-        $signature = $this->decodeBase64($signature64);
-
-        $header = json_decode($this->decodeBase64($header64), true);
-
-        if (!is_array($header) || ($header["alg"] ?? null) !== "HS256") {
-            throw new FrameworkException("Unsupported or missing algorithm");
-        }
-
-        if (!hash_equals($this->sign(sprintf("%s.%s", $header64, $payload64)), $signature)) {
-            throw new FrameworkException("Invalid token signature");
-        }
-
-        $payload = json_decode($this->decodeBase64($payload64), true);
-
-        if (!is_array($payload)) {
-            throw new FrameworkException("Invalid payload format");
-        }
-
-        if (($this->issuer ?? null) !== ($payload["iss"] ?? null)) {
-            throw new FrameworkException("Invalid issuer");
-        }
-
-        if (isset($payload["exp"]) && time() > (int) $payload["exp"]) {
-            throw new FrameworkException("Token has expired");
-        }
-
-        if (isset($payload["iat"]) && time() < (int) $payload["iat"]) {
-            throw new FrameworkException("Token not valid yet");
-        }
-
-        if (isset($payload["nbf"]) && time() < (int) $payload["nbf"]) {
-            throw new FrameworkException("Token not valid yet");
-        }
-
-        return $payload;
-    }
-
-    /**
-     * Encode data to base64url format.
-     */
-    private function encodeBase64(string $data): string
-    {
-        return rtrim(strtr(base64_encode($data), "+/", "-_"), "=");
-    }
-
-    /**
-     * Decode data from base64url format.
-     */
-    private function decodeBase64(string $data): string
-    {
-        if (($remainder = strlen($data) % 4) !== 0) {
-            $data .= str_repeat("=", 4 - $remainder);
-        }
-
-        return base64_decode(strtr($data, "-_", "+/"));
-    }
-
-    /**
-     * Sign input string using HMAC-SHA256.
-     */
-    private function sign(string $input): string
-    {
-        return hash_hmac("sha256", $input, $this->secret, true);
-    }
-}
-
-class Session
-{
-    protected const FLASH_OLD = "__flashold__";
-
-    protected const FLASH_NEW = "__flashnew__";
-
-    protected const CSRF_KEY = "__csrfkey__";
-
-    /**
-     * Start the session and prepare flash data for the request.
-     */
-    public static function create(?SessionHandler $sessionHandler = null): static
-    {
-        if ($sessionHandler instanceof SessionHandler) {
-            session_set_save_handler($sessionHandler);
-        }
-
-        if (session_status() !== PHP_SESSION_ACTIVE) {
-            session_set_cookie_params([
-                "lifetime" => 0,
-                "path" => "/",
-                "domain" => "",
-                "secure" => !empty($_SERVER["HTTPS"]),
-                "httponly" => true,
-                "samesite" => "Lax",
-            ]);
-
-            session_start();
-        }
-
-        $_SESSION[static::FLASH_OLD] = $_SESSION[static::FLASH_NEW] ?? [];
-        $_SESSION[static::FLASH_NEW] = [];
-        return new static();
-    }
-
-    /**
-     * Set a session value.
-     */
-    public function set(string $key, mixed $value): mixed
-    {
-        return $_SESSION[$key] = $value;
-    }
-
-    /**
-     * Get a session value.
-     */
-    public function get(string $key): mixed
-    {
-        return $_SESSION[$key] ?? null;
-    }
-
-    /**
-     * Set flash data for the next request.
-     */
-    public function setFlash(string $key, mixed $value): mixed
-    {
-        return $_SESSION[static::FLASH_NEW][$key] = $value;
-    }
-
-    /**
-     * Get flash data from the previous request.
-     */
-    public function getFlash(string $key): mixed
-    {
-        return $_SESSION[static::FLASH_OLD][$key] ?? null;
-    }
-
-    /**
-     * Get or generate a CSRF token.
-     */
-    public function getCsrf(): string
-    {
-        return $_SESSION[static::CSRF_KEY] ??= bin2hex(random_bytes(32));
-    }
-
-    /**
-     * Validate and rotate a CSRF token.
-     */
-    public function verifyCsrf(string $csrf): bool
-    {
-        if ($valid = hash_equals($_SESSION[static::CSRF_KEY] ?? "", $csrf)) {
-            $_SESSION[static::CSRF_KEY] = bin2hex(random_bytes(32));
-        }
-
-        return $valid;
-    }
-}
-
-class Template
-{
-    protected array $segments = [];
-
-    protected ?self $layout = null;
-
-    protected array $stack = [];
-
-    public function __construct(protected readonly string $template) {}
-
-    /**
-     * Set a parent layout template.
-     */
-    public function layout(string $template): void
-    {
-        $this->layout = new static($template);
-    }
-
-    /**
-     * Get the content of a named segment.
-     */
-    public function yield(string $name): ?string
-    {
-        return $this->segments[$name] ?? null;
-    }
-
-    /**
-     * Start or set a segment's content.
-     */
-    public function segment(string $name, ?string $value = null): void
-    {
-        if ($value === null) {
-            $this->stack[] = $name;
-            ob_start();
-        } else {
-            $this->segments[$name] = $value;
-        }
-    }
-
-    /**
-     * End the current segment buffer.
-     */
-    public function end(): void
-    {
-        if ($this->stack === []) {
-            throw new FrameworkException("No segment started");
-        }
-
-        $name = array_pop($this->stack);
-        $this->segments[$name] = ob_get_clean();
-    }
-
-    /**
-     * Render the view and optional layout.
-     *
-     * @param array<string, mixed> $data
-     */
-    public function render(array $data = []): string
-    {
-        if (!file_exists($this->template)) {
-            throw new FrameworkException("Template file not found");
-        }
-
-        $content =
-            (function (array $data): string|false {
-                ob_start();
-                extract($data);
-                include $this->template;
-                return ob_get_clean();
-            })($data) ?:
-            "";
-
-        if ($this->layout instanceof static) {
-            $this->segments["content"] = $content;
-            $this->layout->segments = $this->segments;
-            return $this->layout->render();
-        }
-
-        return $content;
-    }
-}
-
 class Cast
 {
     /**
@@ -1574,6 +1294,286 @@ class Validate
 
             return $input;
         };
+    }
+}
+
+final readonly class Jwt
+{
+    public function __construct(private string $secret, private ?string $issuer = null) {}
+
+    /**
+     * Create a new Jwt instance from environment values.
+     */
+    public static function create(Environment $environment): static
+    {
+        return new self($environment->get("JWT_SECRET") ?? "", $environment->get("JWT_ISSUER"));
+    }
+
+    /**
+     * Encode a payload into a JWT string.
+     *
+     * @param array<string,mixed> $payload
+     */
+    public function encode(array $payload): string
+    {
+        if ($this->issuer !== null) {
+            $payload["iss"] = $this->issuer;
+        }
+
+        $segments = [$this->encodeBase64(json_encode(["alg" => "HS256", "typ" => "JWT"], JSON_THROW_ON_ERROR))];
+        $segments[] = $this->encodeBase64(json_encode($payload, JSON_THROW_ON_ERROR));
+        $signature = $this->sign(implode(".", $segments));
+        $segments[] = $this->encodeBase64($signature);
+
+        return implode(".", $segments);
+    }
+
+    /**
+     * Decode and validate a JWT string.
+     *
+     * @return array<string,mixed>
+     */
+    public function decode(string $token): array
+    {
+        $parts = explode(".", $token);
+        if (count($parts) !== 3) {
+            throw new FrameworkException("Invalid token format");
+        }
+
+        [$header64, $payload64, $signature64] = $parts;
+        $signature = $this->decodeBase64($signature64);
+
+        $header = json_decode($this->decodeBase64($header64), true);
+
+        if (!is_array($header) || ($header["alg"] ?? null) !== "HS256") {
+            throw new FrameworkException("Unsupported or missing algorithm");
+        }
+
+        if (!hash_equals($this->sign(sprintf("%s.%s", $header64, $payload64)), $signature)) {
+            throw new FrameworkException("Invalid token signature");
+        }
+
+        $payload = json_decode($this->decodeBase64($payload64), true);
+
+        if (!is_array($payload)) {
+            throw new FrameworkException("Invalid payload format");
+        }
+
+        if (($this->issuer ?? null) !== ($payload["iss"] ?? null)) {
+            throw new FrameworkException("Invalid issuer");
+        }
+
+        if (isset($payload["exp"]) && time() > (int) $payload["exp"]) {
+            throw new FrameworkException("Token has expired");
+        }
+
+        if (isset($payload["iat"]) && time() < (int) $payload["iat"]) {
+            throw new FrameworkException("Token not valid yet");
+        }
+
+        if (isset($payload["nbf"]) && time() < (int) $payload["nbf"]) {
+            throw new FrameworkException("Token not valid yet");
+        }
+
+        return $payload;
+    }
+
+    /**
+     * Encode data to base64url format.
+     */
+    private function encodeBase64(string $data): string
+    {
+        return rtrim(strtr(base64_encode($data), "+/", "-_"), "=");
+    }
+
+    /**
+     * Decode data from base64url format.
+     */
+    private function decodeBase64(string $data): string
+    {
+        if (($remainder = strlen($data) % 4) !== 0) {
+            $data .= str_repeat("=", 4 - $remainder);
+        }
+
+        return base64_decode(strtr($data, "-_", "+/"));
+    }
+
+    /**
+     * Sign input string using HMAC-SHA256.
+     */
+    private function sign(string $input): string
+    {
+        return hash_hmac("sha256", $input, $this->secret, true);
+    }
+}
+
+class Session
+{
+    protected const FLASH_OLD = "__flashold__";
+
+    protected const FLASH_NEW = "__flashnew__";
+
+    protected const CSRF_KEY = "__csrfkey__";
+
+    /**
+     * Start the session and prepare flash data for the request.
+     */
+    public static function create(?SessionHandler $sessionHandler = null): static
+    {
+        if ($sessionHandler instanceof SessionHandler) {
+            session_set_save_handler($sessionHandler);
+        }
+
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            session_set_cookie_params([
+                "lifetime" => 0,
+                "path" => "/",
+                "domain" => "",
+                "secure" => !empty($_SERVER["HTTPS"]),
+                "httponly" => true,
+                "samesite" => "Lax",
+            ]);
+
+            session_start();
+        }
+
+        $_SESSION[static::FLASH_OLD] = $_SESSION[static::FLASH_NEW] ?? [];
+        $_SESSION[static::FLASH_NEW] = [];
+        return new static();
+    }
+
+    /**
+     * Set a session value.
+     */
+    public function set(string $key, mixed $value): mixed
+    {
+        return $_SESSION[$key] = $value;
+    }
+
+    /**
+     * Get a session value.
+     */
+    public function get(string $key): mixed
+    {
+        return $_SESSION[$key] ?? null;
+    }
+
+    /**
+     * Set flash data for the next request.
+     */
+    public function setFlash(string $key, mixed $value): mixed
+    {
+        return $_SESSION[static::FLASH_NEW][$key] = $value;
+    }
+
+    /**
+     * Get flash data from the previous request.
+     */
+    public function getFlash(string $key): mixed
+    {
+        return $_SESSION[static::FLASH_OLD][$key] ?? null;
+    }
+
+    /**
+     * Get or generate a CSRF token.
+     */
+    public function getCsrf(): string
+    {
+        return $_SESSION[static::CSRF_KEY] ??= bin2hex(random_bytes(32));
+    }
+
+    /**
+     * Validate and rotate a CSRF token.
+     */
+    public function verifyCsrf(string $csrf): bool
+    {
+        if ($valid = hash_equals($_SESSION[static::CSRF_KEY] ?? "", $csrf)) {
+            $_SESSION[static::CSRF_KEY] = bin2hex(random_bytes(32));
+        }
+
+        return $valid;
+    }
+}
+
+class Template
+{
+    protected array $segments = [];
+
+    protected ?self $layout = null;
+
+    protected array $stack = [];
+
+    public function __construct(protected readonly string $template) {}
+
+    /**
+     * Set a parent layout template.
+     */
+    public function layout(string $template): void
+    {
+        $this->layout = new static($template);
+    }
+
+    /**
+     * Get the content of a named segment.
+     */
+    public function yield(string $name): ?string
+    {
+        return $this->segments[$name] ?? null;
+    }
+
+    /**
+     * Start or set a segment's content.
+     */
+    public function segment(string $name, ?string $value = null): void
+    {
+        if ($value === null) {
+            $this->stack[] = $name;
+            ob_start();
+        } else {
+            $this->segments[$name] = $value;
+        }
+    }
+
+    /**
+     * End the current segment buffer.
+     */
+    public function end(): void
+    {
+        if ($this->stack === []) {
+            throw new FrameworkException("No segment started");
+        }
+
+        $name = array_pop($this->stack);
+        $this->segments[$name] = ob_get_clean();
+    }
+
+    /**
+     * Render the view and optional layout.
+     *
+     * @param array<string, mixed> $data
+     */
+    public function render(array $data = []): string
+    {
+        if (!file_exists($this->template)) {
+            throw new FrameworkException("Template file not found");
+        }
+
+        $content =
+            (function (array $data): string|false {
+                ob_start();
+                extract($data);
+                include $this->template;
+                return ob_get_clean();
+            })($data) ?:
+            "";
+
+        if ($this->layout instanceof static) {
+            $this->segments["content"] = $content;
+            $this->layout->segments = $this->segments;
+            return $this->layout->render();
+        }
+
+        return $content;
     }
 }
 

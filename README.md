@@ -228,7 +228,7 @@ If it happens, it’s because you wrote it.
 | cli-plus.php  |  529 |   153 |     210 |   892 |
 | cli.php       |  247 |    69 |     116 |   432 |
 | full-plus.php | 1452 |   394 |     543 |  2389 |
-| full.php      | 1170 |   310 |     449 |  1929 |
+| full.php      |  851 |   225 |     363 |  1439 |
 | http-plus.php | 1169 |   318 |     426 |  1913 |
 | http.php      |  568 |   149 |     246 |   963 |
 | web-plus.php  | 1301 |   352 |     493 |  2146 |
