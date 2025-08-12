@@ -138,15 +138,20 @@ class Router
             throw HttpException::create(404);
         }
 
+        $method = $request->method;
+        if ($request->method === "HEAD" && !isset($node[self::LEAF]["HEAD"]) && isset($node[self::LEAF]["GET"])) {
+            $method = "GET";
+        }
+
         if (!isset($node[static::LEAF])) {
             throw HttpException::create(404);
         }
 
-        if (!isset($node[static::LEAF][$request->method])) {
+        if (!isset($node[static::LEAF][$method])) {
             throw HttpException::create(405);
         }
 
-        $route = $node[static::LEAF][$request->method];
+        $route = $node[static::LEAF][$method];
         $request->parameters = array_combine($route->params, $paramValues);
         $handler = $route->handler;
 
@@ -157,11 +162,19 @@ class Router
         $result = $handler($request);
 
         if ($result instanceof Response) {
+            if ($request->method === "HEAD") {
+                return $result->addHeaders(["Content-Length" => "0"])->setBody("");
+            }
+
             return $result;
         }
 
-        if (($result instanceof Stringable || is_scalar($result) || $result === null) && !in_array(trim((string) $result), ['', '0'], true)) {
-            return $response->setBody($result);
+        if ($result instanceof Stringable || is_scalar($result)) {
+            if ($request->method === "HEAD") {
+                return $response->addHeaders(["Content-Length" => "0"]);
+            }
+
+            return $response->setBody((string) $result);
         }
 
         throw HttpException::create(204);

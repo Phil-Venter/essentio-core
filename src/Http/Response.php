@@ -74,7 +74,10 @@ class Response
         }
 
         header_remove("X-Powered-By");
-        echo (string) $this->body;
+
+        if (!in_array($this->status, [204, 304], true)) {
+            echo (string) $this->body;
+        }
 
         if (!$flush) {
             return;
