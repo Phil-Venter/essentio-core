@@ -58,20 +58,22 @@ Include a single PHP file containing only the modules you need. This is great fo
 
 **Download:**
 
-| Build | Download link                                                                                                  |
-| ----- | -------------------------------------------------------------------------------------------------------------- |
-| base  | `curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/base.php -o framework.php`      |
-| base+ | `curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/base-plus.php -o framework.php` |
-| cli   | `curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/cli.php -o framework.php`       |
-| cli+  | `curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/cli-plus.php -o framework.php`  |
-| http  | `curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/http.php -o framework.php`      |
-| http+ | `curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/http-plus.php -o framework.php` |
-| api   | `curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/api.php -o framework.php`       |
-| api+  | `curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/api-plus.php -o framework.php`  |
-| web   | `curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/web.php -o framework.php`       |
-| web+  | `curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/web-plus.php -o framework.php`  |
-| full  | `curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/full.php -o framework.php`      |
-| full+ | `curl -L https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/full-plus.php -o framework.php` |
+| Build | URL                                                                                 |
+| ----- | ----------------------------------------------------------------------------------- |
+| base  | https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/base.php      |
+| base+ | https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/base-plus.php |
+| cli   | https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/cli.php       |
+| cli+  | https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/cli-plus.php  |
+| http  | https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/http.php      |
+| http+ | https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/http-plus.php |
+| api   | https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/api.php       |
+| api+  | https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/api-plus.php  |
+| web   | https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/web.php       |
+| web+  | https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/web-plus.php  |
+| full  | https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/full.php      |
+| full+ | https://raw.githubusercontent.com/Phil-Venter/essentio-core/main/dist/full-plus.php |
+
+And run `curl -L <url> -o framework.php`
 
 **Bootstrap + Web Entry:** create public/index.php in the project root:
 
@@ -92,6 +94,8 @@ Application::run();
 Copy the framework files into a src/ folder for full ownership without Composer.
 
 **Init:**
+
+This scaffolds out a simple starting point (You can also manually build this out, you are not bound to this)
 
 ```bash
 mkdir <project>
