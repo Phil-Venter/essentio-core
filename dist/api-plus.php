@@ -215,7 +215,7 @@ class Environment
     /**
      * Convert a string to a native type if possible.
      */
-    protected static function autoCast(mixed $value): mixed
+    protected static function autoCast(string $value): mixed
     {
         if (!is_string($value)) {
             return $value;

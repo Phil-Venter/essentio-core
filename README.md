@@ -229,15 +229,15 @@ If it happens, it’s because you wrote it.
 | api.php       |  665 |   180 |     275 |  1120 |
 | base-plus.php |  459 |   136 |     189 |   784 |
 | base.php      |  173 |    50 |      95 |   318 |
-| cli-plus.php  |  539 |   156 |     210 |   905 |
-| cli.php       |  253 |    70 |     116 |   439 |
-| full-plus.php | 1487 |   406 |     543 |  2436 |
-| full.php      |  877 |   234 |     363 |  1474 |
+| cli-plus.php  |  539 |   156 |     212 |   907 |
+| cli.php       |  253 |    70 |     118 |   441 |
+| full-plus.php | 1487 |   406 |     545 |  2438 |
+| full.php      |  877 |   234 |     365 |  1476 |
 | http-plus.php | 1196 |   326 |     426 |  1948 |
 | http.php      |  586 |   154 |     246 |   986 |
 | web-plus.php  | 1328 |   360 |     493 |  2181 |
 | web.php       |  718 |   188 |     313 |  1219 |
-| src/*         | 1618 |   470 |     594 |  2682 |
+| src/*         | 1618 |   470 |     596 |  2684 |
 <!-- ./cloc -->
 
 ---
