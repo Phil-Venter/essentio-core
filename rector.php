@@ -1,19 +1,18 @@
 <?php
 
-use Rector\Set\ValueObject\SetList;
-
 return Rector\Config\RectorConfig::configure()
     ->withPaths(paths: [__DIR__ . "/src"])
     ->withPhpSets(php82: true)
     ->withSets([
-        SetList::CODE_QUALITY,
-        SetList::DEAD_CODE,
-        SetList::TYPE_DECLARATION,
-        SetList::CODING_STYLE,
-        SetList::NAMING,
-        SetList::EARLY_RETURN,
-        SetList::PRIVATIZATION,
-        SetList::STRICT_BOOLEANS,
+        Rector\Set\ValueObject\SetList::PHP_82,
+        Rector\Set\ValueObject\SetList::CODE_QUALITY,
+        Rector\Set\ValueObject\SetList::DEAD_CODE,
+        Rector\Set\ValueObject\SetList::TYPE_DECLARATION,
+        Rector\Set\ValueObject\SetList::CODING_STYLE,
+        Rector\Set\ValueObject\SetList::NAMING,
+        Rector\Set\ValueObject\SetList::EARLY_RETURN,
+        Rector\Set\ValueObject\SetList::PRIVATIZATION,
+        Rector\Set\ValueObject\SetList::STRICT_BOOLEANS,
     ])
     ->withImportNames(removeUnusedImports: true)
     ->withRules([
