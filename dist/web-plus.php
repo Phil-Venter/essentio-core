@@ -2,16 +2,16 @@
 
 class Application
 {
-    public static string $basePath;
+    public static ?string $basePath = null;
 
     /**
-     * Bootstrap the application with minimal dependancies.
+     * Bootstrap the application with minimal dependencies.
      */
     public static function base(string $basePath): void
     {
-        static::$basePath = rtrim($basePath, '/') . '/';
+        static::$basePath = rtrim($basePath, "/") . "/";
 
-        Container::instance()->once(Environment::class, fn(): Environment => Environment::create(static::fromBase('.env')));
+        Container::instance()->once(Environment::class, fn(): Environment => Environment::create(static::fromBase(".env")));
     }
 
     /**
@@ -49,7 +49,11 @@ class Application
      */
     public static function fromBase(string $path): string
     {
-        return static::$basePath . ltrim($path, '/');
+        if (static::$basePath === null) {
+            throw new FrameworkException("Application base path not initialized.");
+        }
+
+        return static::$basePath . ltrim($path, "/");
     }
 
     /**
@@ -68,7 +72,10 @@ class Application
             Container::instance()->get(Router::class)->dispatch($request, $response)->send();
         } catch (Throwable $throwable) {
             if (class_exists(HttpException::class) && is_a($throwable, HttpException::class)) {
-                $response->setStatus($throwable->getCode() ?: 500)->setBody($throwable->getMessage())->send();
+                $response
+                    ->setStatus($throwable->getCode() ?: 500)
+                    ->setBody($throwable->getMessage())
+                    ->send();
             } else {
                 error_log($throwable->getMessage());
                 $response->setStatus(500)->setBody("Internal Server Error")->send();
@@ -174,7 +181,7 @@ class Environment
      */
     public static function create(?string $file = null): static
     {
-        $file ??= Application::fromBase('.env');
+        $file ??= Application::fromBase(".env");
 
         if (!file_exists($file)) {
             return new static();
@@ -484,7 +491,10 @@ class Response
         }
 
         header_remove("X-Powered-By");
-        echo (string) $this->body;
+
+        if (!in_array($this->status, [204, 304], true)) {
+            echo (string) $this->body;
+        }
 
         if (!$flush) {
             return;
@@ -672,15 +682,20 @@ class Router
             throw HttpException::create(404);
         }
 
+        $method = $request->method;
+        if ($request->method === "HEAD" && !isset($node[self::LEAF]["HEAD"]) && isset($node[self::LEAF]["GET"])) {
+            $method = "GET";
+        }
+
         if (!isset($node[static::LEAF])) {
             throw HttpException::create(404);
         }
 
-        if (!isset($node[static::LEAF][$request->method])) {
+        if (!isset($node[static::LEAF][$method])) {
             throw HttpException::create(405);
         }
 
-        $route = $node[static::LEAF][$request->method];
+        $route = $node[static::LEAF][$method];
         $request->parameters = array_combine($route->params, $paramValues);
         $handler = $route->handler;
 
@@ -691,11 +706,19 @@ class Router
         $result = $handler($request);
 
         if ($result instanceof Response) {
+            if ($request->method === "HEAD") {
+                return $result->setBody("");
+            }
+
             return $result;
         }
 
-        if (($result instanceof Stringable || is_scalar($result) || $result === null) && !in_array(trim((string) $result), ['', '0'], true)) {
-            return $response->setBody($result);
+        if ($result instanceof Stringable || is_scalar($result)) {
+            if ($request->method === "HEAD") {
+                return $response->addHeaders(["Content-Length" => (string) mb_strlen((string) $result)]);
+            }
+
+            return $response->setBody((string) $result);
         }
 
         throw HttpException::create(204);
@@ -839,7 +862,13 @@ class Cast
      */
     public static function string(bool $trim = false): Closure
     {
-        return fn(string $input): string => $trim ? trim($input) : $input;
+        return function (?string $input) use ($trim): ?string {
+            if ($input === null) {
+                return null;
+            }
+
+            return $trim ? trim($input) : $input;
+        };
     }
 
     /**
@@ -1616,7 +1645,13 @@ class Query
      */
     public function orderBy(string $column, string $direction = "ASC"): static
     {
-        $this->orderBys[] = sprintf("%s %s", $column, $direction);
+        $dir = strtoupper($direction);
+
+        if (!in_array($dir, ["ASC", "DESC"], true)) {
+            throw new FrameworkException("Invalid ORDER BY direction.");
+        }
+
+        $this->orderBys[] = sprintf("%s %s", $column, $dir);
         return $this;
     }
 
@@ -1999,7 +2034,7 @@ function redirect(string $uri, int $status = 302): Response
 /**
  * Convert an array or object to an xml string.
  */
-function data_to_xml(array|object $data, string $rootElement = 'root', ?SimpleXMLElement $xml = null): string
+function data_to_xml(array|object $data, string $rootElement = "root", ?SimpleXMLElement $xml = null): string
 {
     if (!$xml instanceof SimpleXMLElement) {
         $xml = new SimpleXMLElement(sprintf('<?xml version="1.0"?><%s></%s>', $rootElement, $rootElement));
@@ -2013,11 +2048,11 @@ function data_to_xml(array|object $data, string $rootElement = 'root', ?SimpleXM
         if (is_array($value) || is_object($value)) {
             data_to_xml($value, $key, $xml->addChild($key));
         } else {
-            $xml->addChild($key, htmlspecialchars((string)$value));
+            $xml->addChild($key, htmlspecialchars((string) $value));
         }
     }
 
-    return (string) ($xml->asXML() ?: '');
+    return (string) ($xml->asXML() ?: "");
 }
 
 /**
@@ -2100,11 +2135,11 @@ function csrf(string $csrf = ""): string|bool
  */
 function e(mixed $val): string
 {
-    if (is_scalar($val) || ($val instanceof Stringable)) {
-        return htmlspecialchars((string) $val, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    if (is_scalar($val) || $val instanceof Stringable) {
+        return htmlspecialchars((string) $val, ENT_QUOTES | ENT_SUBSTITUTE, "UTF-8");
     }
 
-    throw new InvalidArgumentException('Invalid value type');
+    throw new InvalidArgumentException("Invalid value type");
 }
 
 /**

@@ -2,16 +2,16 @@
 
 class Application
 {
-    public static string $basePath;
+    public static ?string $basePath = null;
 
     /**
-     * Bootstrap the application with minimal dependancies.
+     * Bootstrap the application with minimal dependencies.
      */
     public static function base(string $basePath): void
     {
-        static::$basePath = rtrim($basePath, '/') . '/';
+        static::$basePath = rtrim($basePath, "/") . "/";
 
-        Container::instance()->once(Environment::class, fn(): Environment => Environment::create(static::fromBase('.env')));
+        Container::instance()->once(Environment::class, fn(): Environment => Environment::create(static::fromBase(".env")));
     }
 
     /**
@@ -49,7 +49,11 @@ class Application
      */
     public static function fromBase(string $path): string
     {
-        return static::$basePath . ltrim($path, '/');
+        if (static::$basePath === null) {
+            throw new FrameworkException("Application base path not initialized.");
+        }
+
+        return static::$basePath . ltrim($path, "/");
     }
 
     /**
@@ -68,7 +72,10 @@ class Application
             Container::instance()->get(Router::class)->dispatch($request, $response)->send();
         } catch (Throwable $throwable) {
             if (class_exists(HttpException::class) && is_a($throwable, HttpException::class)) {
-                $response->setStatus($throwable->getCode() ?: 500)->setBody($throwable->getMessage())->send();
+                $response
+                    ->setStatus($throwable->getCode() ?: 500)
+                    ->setBody($throwable->getMessage())
+                    ->send();
             } else {
                 error_log($throwable->getMessage());
                 $response->setStatus(500)->setBody("Internal Server Error")->send();
@@ -174,7 +181,7 @@ class Environment
      */
     public static function create(?string $file = null): static
     {
-        $file ??= Application::fromBase('.env');
+        $file ??= Application::fromBase(".env");
 
         if (!file_exists($file)) {
             return new static();
@@ -238,7 +245,7 @@ class Argument
     /**
      * @param array<int|string,mixed> $arguments
      */
-    public function __construct(public readonly string $command = "", protected array $arguments = []) {}
+    public function __construct(public readonly string $command = "", public array $arguments = []) {}
 
     /**
      * Parse CLI arguments into command and options.
