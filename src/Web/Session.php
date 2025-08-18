@@ -6,6 +6,14 @@ namespace Essentio\Web;
 
 use SessionHandler;
 
+use function bin2hex;
+use function hash_equals;
+use function random_bytes;
+use function session_set_cookie_params;
+use function session_set_save_handler;
+use function session_start;
+use function session_status;
+
 /**
  * @api
  */

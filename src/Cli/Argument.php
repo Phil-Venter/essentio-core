@@ -4,6 +4,19 @@ declare(strict_types=1);
 
 namespace Essentio\Cli;
 
+use function array_map;
+use function array_merge;
+use function array_shift;
+use function count;
+use function explode;
+use function is_numeric;
+use function is_string;
+use function mb_stripos;
+use function preg_match;
+use function str_starts_with;
+use function strtolower;
+use function substr;
+
 /**
  * @api
  */

@@ -4,9 +4,20 @@ declare(strict_types=1);
 
 namespace Essentio\Http\Extra;
 
+use Essentio\Http\ValidationException;
+
 use Closure;
 use DateTimeInterface;
-use Essentio\Http\ValidationException;
+
+use function filter_var;
+use function in_array;
+use function is_string;
+use function mb_strlen;
+use function mb_strtolower;
+use function mb_strtoupper;
+use function preg_match;
+use function str_ends_with;
+use function trim;
 
 /**
  * @api

@@ -11,7 +11,14 @@ use Essentio\Http\Request;
 use Essentio\Http\Response;
 use Essentio\Http\Router;
 use Essentio\Web\Session;
+
 use Throwable;
+
+use function class_exists;
+use function error_log;
+use function is_a;
+use function ltrim;
+use function rtrim;
 
 /**
  * @api

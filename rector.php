@@ -23,5 +23,6 @@ return Rector\Config\RectorConfig::configure()
     ])
     ->withSkip([
         Rector\CodeQuality\Rector\FuncCall\InlineIsAInstanceOfRector::class,
+        Rector\DeadCode\Rector\ClassMethod\RemoveUselessReturnTagRector::class,
         Rector\EarlyReturn\Rector\If_\ChangeOrIfContinueToMultiContinueRector::class,
     ]);

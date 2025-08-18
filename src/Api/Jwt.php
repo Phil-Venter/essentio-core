@@ -7,6 +7,23 @@ namespace Essentio\Api;
 use Essentio\Environment;
 use Essentio\FrameworkException;
 
+use function base64_decode;
+use function base64_encode;
+use function count;
+use function explode;
+use function hash_equals;
+use function hash_hmac;
+use function implode;
+use function is_array;
+use function json_decode;
+use function json_encode;
+use function rtrim;
+use function sprintf;
+use function str_repeat;
+use function strlen;
+use function strtr;
+use function time;
+
 /**
  * @api
  */

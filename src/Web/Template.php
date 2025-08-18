@@ -6,6 +6,12 @@ namespace Essentio\Web;
 
 use Essentio\FrameworkException;
 
+use function array_pop;
+use function extract;
+use function file_exists;
+use function ob_get_clean;
+use function ob_start;
+
 /**
  * @api
  */

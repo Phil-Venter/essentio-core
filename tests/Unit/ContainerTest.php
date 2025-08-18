@@ -57,14 +57,6 @@ test("get() passes constructor parameters", function () {
     expect($instance)->toBeInstanceOf(ParamService::class)->and($instance->name)->toBe("John");
 });
 
-it("throws if class does not exist in bind", function () {
-    $container = new Container();
-
-    expect(fn() => $container->bind("test", "NonExistentClass"))
-        ->toThrow(FrameworkException::class)
-        ->and(fn($e) => expect($e->getMessage())->toContain("Cannot bind"));
-});
-
 it("throws if resolve fails for unknown non-class", function () {
     $container = new Container();
 

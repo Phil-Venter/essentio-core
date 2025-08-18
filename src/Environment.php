@@ -4,6 +4,16 @@ declare(strict_types=1);
 
 namespace Essentio;
 
+use function explode;
+use function file;
+use function file_exists;
+use function is_numeric;
+use function preg_match;
+use function str_contains;
+use function strtolower;
+use function substr;
+use function trim;
+
 /**
  * @api
  */
@@ -52,10 +62,6 @@ class Environment
      */
     protected static function autoCast(string $value): mixed
     {
-        if (!is_string($value)) {
-            return $value;
-        }
-
         if (preg_match('/^(["\']).*\1$/', $value)) {
             return substr($value, 1, -1);
         }

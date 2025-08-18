@@ -4,11 +4,18 @@ declare(strict_types=1);
 
 namespace Essentio\Http\Extra;
 
+use Essentio\Http\ValidationException;
+
 use Closure;
 use DateTimeImmutable;
 use Throwable;
 use BackedEnum;
-use Essentio\Http\ValidationException;
+
+use function enum_exists;
+use function filter_var;
+use function is_subclass_of;
+use function preg_match_all;
+use function trim;
 
 /**
  * @api

@@ -4,12 +4,31 @@ declare(strict_types=1);
 
 namespace Essentio\Extra;
 
+use Essentio\FrameworkException;
+
 use Closure;
 use DateTimeInterface;
-use Essentio\FrameworkException;
 use Generator;
 use PDO;
 use Stringable;
+
+use function array_fill;
+use function array_is_list;
+use function array_keys;
+use function array_map;
+use function array_merge;
+use function array_values;
+use function count;
+use function implode;
+use function in_array;
+use function is_array;
+use function is_scalar;
+use function mb_stripos;
+use function preg_replace;
+use function sprintf;
+use function strtolower;
+use function strtoupper;
+use function trim;
 
 /**
  * @api

@@ -6,6 +6,18 @@ namespace Essentio\Http;
 
 use Stringable;
 
+use function array_merge;
+use function flush;
+use function function_exists;
+use function header;
+use function header_remove;
+use function headers_sent;
+use function http_response_code;
+use function in_array;
+use function ob_end_flush;
+use function ob_get_status;
+use function sprintf;
+
 /**
  * @api
  */

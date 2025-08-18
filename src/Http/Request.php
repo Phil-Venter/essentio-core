@@ -2,6 +2,21 @@
 
 namespace Essentio\Http;
 
+use function count;
+use function explode;
+use function file_get_contents;
+use function function_exists;
+use function in_array;
+use function is_array;
+use function is_bool;
+use function json_decode;
+use function json_encode;
+use function parse_url;
+use function simplexml_load_string;
+use function str_contains;
+use function strtoupper;
+use function trim;
+
 /**
  * @api
  */

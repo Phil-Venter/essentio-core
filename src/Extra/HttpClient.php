@@ -5,7 +5,22 @@ declare(strict_types=1);
 namespace Essentio\Extra;
 
 use Essentio\FrameworkException;
+
 use Stringable;
+
+use function array_keys;
+use function array_map;
+use function curl_close;
+use function curl_exec;
+use function curl_getinfo;
+use function curl_init;
+use function curl_setopt_array;
+use function explode;
+use function sprintf;
+use function str_contains;
+use function strtoupper;
+use function substr;
+use function trim;
 
 /**
  * @api
