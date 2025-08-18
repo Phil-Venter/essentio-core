@@ -103,28 +103,28 @@ class Container
     /**
      * Bind a class or factory to the container.
      *
-     * @template T
-     * @param class-string<T> $id
-     * @param callable():T|class-string<T>|null $concrete
+     * @template T of object
+     * @param class-string<T>|string $id
+     * @param callable():T|T|class-string<T>|null $concrete
      */
-    public function bind(string $id, callable|string|null $concrete = null): void
+    public function bind(string $id, callable|object|string|null $concrete = null): void
     {
-        /** @var string $concrete */
-        if (is_string($concrete ??= $id) && !class_exists($concrete, true)) {
-            throw new FrameworkException(sprintf("Cannot bind [%s] to [%s].", $id, $concrete));
-        }
-
+        $concrete ??= $id;
         $this->bindings[$id] = $concrete;
+
+        if (!is_string($concrete) && !is_callable($concrete)) {
+            $this->cache[$id] = $concrete;
+        }
     }
 
     /**
      * Bind a singleton to the container.
      *
-     * @template T
-     * @param class-string<T> $id
-     * @param callable():T|class-string<T>|null $concrete
+     * @template T of object
+     * @param class-string<T>|string $id
+     * @param callable():T|T|class-string<T>|null $concrete
      */
-    public function once(string $id, callable|string|null $concrete = null): void
+    public function once(string $id, callable|object|string|null $concrete = null): void
     {
         $this->cache[$id] = null;
         $this->bind($id, $concrete);
@@ -133,41 +133,43 @@ class Container
     /**
      * Resolve a class or binding from the container.
      *
-     * @template T
-     * @param class-string<T> $id
+     * @template T of object
+     * @param class-string<T>|string $id
      * @param array<string,mixed>|list<mixed> $dependencies
      * @return T
      */
     public function get(string $id, array $dependencies = []): object
     {
-        if (!isset($this->bindings[$id])) {
+        if (!array_key_exists($id, $this->bindings)) {
             if (class_exists($id, true)) {
+                /** @psalm-suppress InvalidReturnStatement */
                 return new $id(...$dependencies);
             }
 
             throw new FrameworkException(sprintf("Service [%s] is not bound and cannot be instantiated.", $id));
         }
 
-        $once = array_key_exists($id, $this->cache);
-
-        if ($once && $this->cache[$id] !== null) {
+        if (isset($this->cache[$id])) {
             return $this->cache[$id];
         }
 
-        $concrete = $this->bindings[$id];
+        $resolved = $this->bindings[$id];
 
-        $resolved = is_string($concrete)
-            ? new $concrete(...$dependencies)
-            : $concrete(...$dependencies);
+        if (is_string($resolved) && class_exists($resolved, true)) {
+            $resolved = new $resolved(...$dependencies);
+        } elseif (is_callable($resolved)) {
+            $resolved = $resolved(...$dependencies);
+        }
 
-        if ($once) {
+        if (!is_object($resolved)) {
+            throw new FrameworkException(sprintf("Service [%s] did not resolve to an object.", $id));
+        }
+
+        if (array_key_exists($id, $this->cache)) {
             $this->cache[$id] = $resolved;
         }
 
-        /**
-         * @template T
-         * @var T $resolved
-         */
+        /** @var T $resolved */
         return $resolved;
     }
 }
@@ -217,10 +219,6 @@ class Environment
      */
     protected static function autoCast(string $value): mixed
     {
-        if (!is_string($value)) {
-            return $value;
-        }
-
         if (preg_match('/^(["\']).*\1$/', $value)) {
             return substr($value, 1, -1);
         }
