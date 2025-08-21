@@ -36,7 +36,7 @@ final readonly class Jwt
      */
     public static function create(Environment $environment): static
     {
-        $secret = (string) ($environment->get("JWT_SECRET") ?? $environment->get("APP_KEY") ?? "");
+        $secret = (string) ($environment->get("JWT_SECRET") ?? ($environment->get("APP_KEY") ?? ""));
 
         if ($secret === "" || strlen($secret) < 16) {
             throw new FrameworkException("JWT secret not configured or too short.");

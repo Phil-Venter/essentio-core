@@ -25,7 +25,7 @@ class Argument
     /**
      * @param array<int|string,mixed> $arguments
      */
-    public function __construct(public readonly string $command = "", public array $arguments = []) {}
+    public function __construct(public readonly string $command = "", protected array $arguments = []) {}
 
     /**
      * Parse CLI arguments into command and options.

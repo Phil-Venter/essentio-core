@@ -3,7 +3,6 @@
 declare(strict_types=1);
 use Essentio\Http\Request;
 use Essentio\Http\Response;
-use Essentio\Http\Route;
 use Essentio\Http\Router;
 
 /**
@@ -61,52 +60,62 @@ function group(string $prefix, callable $group): void
 
 /**
  * Register a GET route.
+ *
+ * @param callable(Request):mixed $handler
+ * @param list<callable(Request,callable):Response> $middleware
  */
-function get(string $path, callable $handle): Route
+function get(string $path, callable $handler, callable ...$middleware): void
 {
-    return app(Router::class)->route("GET", $path, $handle);
+    /** @var list<callable(Request,callable):Response> $middleware */
+    app(Router::class)->route("GET", $path, $handler, $middleware);
 }
 
 /**
  * Register a POST route.
+ *
+ * @param callable(Request):mixed $handler
+ * @param list<callable(Request,callable):Response> $middleware
  */
-function post(string $path, callable $handle): Route
+function post(string $path, callable $handler, callable ...$middleware): void
 {
-    return app(Router::class)->route("POST", $path, $handle);
+    /** @var list<callable(Request,callable):Response> $middleware */
+    app(Router::class)->route("POST", $path, $handler, $middleware);
 }
 
 /**
  * Register a PUT route.
+ *
+ * @param callable(Request):mixed $handler
+ * @param list<callable(Request,callable):Response> $middleware
  */
-function put(string $path, callable $handle): Route
+function put(string $path, callable $handler, callable ...$middleware): void
 {
-    return app(Router::class)->route("PUT", $path, $handle);
+    /** @var list<callable(Request,callable):Response> $middleware */
+    app(Router::class)->route("PUT", $path, $handler, $middleware);
 }
 
 /**
  * Register a PATCH route.
+ *
+ * @param callable(Request):mixed $handler
+ * @param list<callable(Request,callable):Response> $middleware
  */
-function patch(string $path, callable $handle): Route
+function patch(string $path, callable $handler, callable ...$middleware): void
 {
-    return app(Router::class)->route("PATCH", $path, $handle);
+    /** @var list<callable(Request,callable):Response> $middleware */
+    app(Router::class)->route("PATCH", $path, $handler, $middleware);
 }
 
 /**
  * Register a DELETE route.
- */
-function delete(string $path, callable $handle): Route
-{
-    return app(Router::class)->route("DELETE", $path, $handle);
-}
-
-/**
- * Generate a named route URL.
  *
- * @param array<string,scalar> $params
+ * @param callable(Request):mixed $handler
+ * @param list<callable(Request,callable):Response> $middleware
  */
-function named_url(string $name, array $params = []): string
+function delete(string $path, callable $handler, callable ...$middleware): void
 {
-    return app(Router::class)->makeUrlByName($name, $params);
+    /** @var list<callable(Request,callable):Response> $middleware */
+    app(Router::class)->route("DELETE", $path, $handler, $middleware);
 }
 
 /**

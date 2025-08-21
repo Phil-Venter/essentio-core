@@ -141,10 +141,10 @@ it("applies global middleware in correct order", function () {
 it("applies route-specific middleware", function () {
     $trace = [];
 
-    $this->router->route("GET", "route/mw", fn() => "done")->middleware(function (Request $r, callable $next) use (&$trace) {
+    $this->router->route("GET", "route/mw", fn() => "done", [function (Request $r, callable $next) use (&$trace) {
         $trace[] = "route-mw";
         return $next($r);
-    });
+    }]);
 
     $req = createRequest("GET", "route/mw");
     $res = $this->router->dispatch($req, createResponse());
@@ -154,30 +154,4 @@ it("applies route-specific middleware", function () {
     ob_end_clean();
 
     expect($trace)->toBe(["route-mw"]);
-});
-
-it("builds named route URL", function () {
-    $this->router->route("GET", "users/:id", fn() => "irrelevant")->name("user.view");
-
-    $url = $this->router->makeUrlByName("user.view", ["id" => 7]);
-
-    expect($url)->toBe("/users/7");
-});
-
-it("throws for unknown named route", function () {
-    expect(fn() => $this->router->makeUrlByName("missing", []))->toThrow(FrameworkException::class);
-});
-
-it("throws if named route param missing", function () {
-    $this->router->route("GET", "articles/:slug", fn() => "")->name("article.view");
-
-    expect(fn() => $this->router->makeUrlByName("article.view", []))->toThrow(FrameworkException::class);
-});
-
-it("adds query string for extra params in named route", function () {
-    $this->router->route("GET", "search/:term", fn() => "")->name("search");
-
-    $url = $this->router->makeUrlByName("search", ["term" => "cat", "page" => 3]);
-
-    expect($url)->toBe("/search/cat?page=3");
 });

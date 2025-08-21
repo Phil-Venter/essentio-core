@@ -9,9 +9,10 @@ use Essentio\Environment;
 /**
  * Resolve a class from the container.
  *
- * @template T
- * @param class-string<T> $id
- * @return T
+ * @template T of object
+ * @template U of class-string<T>|string
+ * @param U $id
+ * @return (U is class-string<T> ? T : object)
  */
 function app(string $id): object
 {
@@ -21,10 +22,11 @@ function app(string $id): object
 /**
  * Instantiate a class with dependencies.
  *
- * @template T
- * @param class-string<T> $id
+ * @template T of object
+ * @template U of class-string<T>|string
+ * @param U $id
  * @param array<string,mixed>|list<mixed> $dependencies
- * @return T
+ * @return (U is class-string<T> ? T : object)
  */
 function make(string $id, array $dependencies = []): object
 {
@@ -34,9 +36,9 @@ function make(string $id, array $dependencies = []): object
 /**
  * Register a binding into the container.
  *
- * @template T
- * @param class-string<T> $id
- * @param callable():T|class-string<T>|null $concrete
+ * @template T of object
+ * @param class-string<T>|string $id
+ * @param callable():T|T|class-string<T>|string|null $concrete
  */
 function bind(string $id, callable|string|null $concrete = null): void
 {
@@ -46,9 +48,9 @@ function bind(string $id, callable|string|null $concrete = null): void
 /**
  * Register a singleton into the container.
  *
- * @template T
- * @param class-string<T> $id
- * @param callable():T|class-string<T>|null $concrete
+ * @template T of object
+ * @param class-string<T>|string $id
+ * @param callable():T|T|class-string<T>|null $concrete
  */
 function once(string $id, callable|string|null $concrete = null): void
 {

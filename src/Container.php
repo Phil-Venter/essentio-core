@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Essentio;
 
+use Throwable;
+
 use function array_key_exists;
 use function class_exists;
 use function is_callable;
@@ -14,20 +16,26 @@ use function sprintf;
 /**
  * @api
  */
-class Container
+final class Container
 {
-    protected static $instance;
+    protected const BOUND_CLASS = "__new__";
 
-    protected array $bindings = [];
+    protected const BOUND_FACTORY = "__call__";
 
-    protected array $cache = [];
+    protected const BOUND_ALIAS = "__alias__";
+
+    private static $instance;
+
+    private array $bindings = [];
+
+    private array $cache = [];
 
     /**
      * Get the container singleton instance.
      */
     public static function instance(): static
     {
-        return static::$instance ??= new static();
+        return static::$instance ??= new self();
     }
 
     /**
@@ -35,15 +43,27 @@ class Container
      *
      * @template T of object
      * @param class-string<T>|string $id
-     * @param callable():T|T|class-string<T>|null $concrete
+     * @param callable():T|T|class-string<T>|string|null $concrete
      */
     public function bind(string $id, callable|object|string|null $concrete = null): void
     {
         $concrete ??= $id;
-        $this->bindings[$id] = $concrete;
 
-        if (!is_string($concrete) && !is_callable($concrete)) {
-            $this->cache[$id] = $concrete;
+        switch (true) {
+            case is_string($concrete) && isset($this->bindings[$concrete]):
+                $this->bindings[$id] = [self::BOUND_ALIAS, $concrete];
+                break;
+            case is_string($concrete) && class_exists($concrete, true):
+                $this->bindings[$id] = [self::BOUND_CLASS, $concrete];
+                break;
+            case is_callable($concrete):
+                $this->bindings[$id] = [self::BOUND_FACTORY, $concrete];
+                break;
+            case is_object($concrete):
+                $this->cache[$id] = $concrete;
+                break;
+            default:
+                throw new FrameworkException(sprintf("Service [%s] cannot be bound.", $id));
         }
     }
 
@@ -64,31 +84,39 @@ class Container
      * Resolve a class or binding from the container.
      *
      * @template T of object
-     * @param class-string<T>|string $id
+     * @template U of class-string<T>|string
+     * @param U $id
      * @param array<string,mixed>|list<mixed> $dependencies
-     * @return T
+     * @return (U is class-string<T> ? T : object)
      */
     public function get(string $id, array $dependencies = []): object
     {
+        if (isset($this->cache[$id])) {
+            return $this->cache[$id];
+        }
+
         if (!array_key_exists($id, $this->bindings)) {
             if (class_exists($id, true)) {
-                /** @psalm-suppress InvalidReturnStatement */
-                return new $id(...$dependencies);
+                try {
+                    return new $id(...$dependencies);
+                } catch (Throwable $e) {
+                    throw new FrameworkException(sprintf("Service [%s] could not be instantiated.", $id), 0, $e);
+                }
             }
 
             throw new FrameworkException(sprintf("Service [%s] is not bound and cannot be instantiated.", $id));
         }
 
-        if (isset($this->cache[$id])) {
-            return $this->cache[$id];
+        [$type, $binding] = $this->bindings[$id];
+
+        if ($type === self::BOUND_ALIAS) {
+            return $this->get($binding, $dependencies);
         }
 
-        $resolved = $this->bindings[$id];
-
-        if (is_string($resolved) && class_exists($resolved, true)) {
-            $resolved = new $resolved(...$dependencies);
-        } elseif (is_callable($resolved)) {
-            $resolved = $resolved(...$dependencies);
+        try {
+            $resolved = $type === self::BOUND_CLASS ? new $binding(...$dependencies) : $binding($this, ...$dependencies);
+        } catch (Throwable $throwable) {
+            throw new FrameworkException(sprintf("Service [%s] could not be instantiated.", $id), 0, $throwable);
         }
 
         if (!is_object($resolved)) {
@@ -99,7 +127,6 @@ class Container
             $this->cache[$id] = $resolved;
         }
 
-        /** @var T $resolved */
         return $resolved;
     }
 }

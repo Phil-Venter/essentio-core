@@ -27,11 +27,7 @@ use function trim;
  */
 class HttpClient
 {
-    public function __construct(
-        public int $status = 200,
-        public array $headers = [],
-        public bool|float|int|string|Stringable|null $body = null,
-    ) {}
+    public function __construct(public int $status = 200, public array $headers = [], public bool|float|int|string|Stringable|null $body = null) {}
 
     /**
      * Send an HTTP request and return a Response.

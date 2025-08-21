@@ -4,22 +4,15 @@ declare(strict_types=1);
 
 namespace Essentio\Http;
 
-use Essentio\FrameworkException;
-
 use Stringable;
 
 use function array_combine;
 use function array_reverse;
 use function array_shift;
 use function explode;
-use function http_build_query;
 use function is_scalar;
 use function mb_strlen;
 use function preg_replace;
-use function rawurlencode;
-use function sprintf;
-use function str_contains;
-use function str_replace;
 use function str_starts_with;
 use function substr;
 use function trim;
@@ -68,9 +61,10 @@ class Router
     /**
      * Register a route handler for a method and path.
      *
-     * @param callable(Request): mixed $handler
+     * @param callable(Request):mixed $handler
+     * @param list<callable(Request,callable):Response> $middleware
      */
-    public function route(string $method, string $path, callable $handler): Route
+    public function route(string $method, string $path, callable $handler, array $middleware = []): void
     {
         $path = trim((string) preg_replace("#/+#", "/", $this->prefix . $path), "/");
         /** @psalm-suppress UnsupportedPropertyReferenceUsage */
@@ -87,46 +81,7 @@ class Router
             }
         }
 
-        $middleware = $this->middleware;
-
-        return $node[static::LEAF][$method] = new Route($path, $params, $middleware, $handler, $this->setName(...));
-    }
-
-    /**
-     * Assign a name to a route path.
-     */
-    protected function setName(string $name, string $path): void
-    {
-        $this->lookup[$name] = $path;
-    }
-
-    /**
-     * Generate a URL for a named route with parameters.
-     *
-     * @param array<string, scalar> $params
-     */
-    public function makeUrlByName(string $name, array $params): string
-    {
-        if (!isset($this->lookup[$name])) {
-            throw new FrameworkException(sprintf("Route named [%s] not found.", $name));
-        }
-
-        $url = $this->lookup[$name];
-
-        foreach ($params as $key => $value) {
-            $search = ":" . $key;
-            if (str_contains($url, $search)) {
-                $url = str_replace($search, rawurlencode((string) $value), $url);
-                unset($params[$key]);
-            }
-        }
-
-        if (str_contains($url, ":")) {
-            throw new FrameworkException(sprintf("Missing parameter for route [%s].", $name));
-        }
-
-        $query = $params === [] ? "" : "?" . http_build_query($params);
-        return sprintf("/%s%s", $url, $query);
+        $node[static::LEAF][$method] = [$params, array_merge($this->middleware, $middleware), $handler];
     }
 
     /**
@@ -168,11 +123,10 @@ class Router
             throw HttpException::create(405);
         }
 
-        $route = $node[static::LEAF][$method];
-        $request->parameters = array_combine($route->params, $paramValues);
-        $handler = $route->handler;
+        [$params, $middleware, $handler] = $node[static::LEAF][$method];
+        $request->parameters = array_combine($params, $paramValues);
 
-        foreach (array_reverse($route->middleware) as $mw) {
+        foreach (array_reverse($middleware) as $mw) {
             $handler = fn(Request $request) => $mw($request, $handler);
         }
 
