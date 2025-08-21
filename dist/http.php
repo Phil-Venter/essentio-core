@@ -84,20 +84,26 @@ class Application
     }
 }
 
-class Container
+final class Container
 {
-    protected static $instance;
+    protected const BOUND_CLASS = "__new__";
 
-    protected array $bindings = [];
+    protected const BOUND_FACTORY = "__call__";
 
-    protected array $cache = [];
+    protected const BOUND_ALIAS = "__alias__";
+
+    private static $instance;
+
+    private array $bindings = [];
+
+    private array $cache = [];
 
     /**
      * Get the container singleton instance.
      */
     public static function instance(): static
     {
-        return static::$instance ??= new static();
+        return static::$instance ??= new self();
     }
 
     /**
@@ -105,15 +111,27 @@ class Container
      *
      * @template T of object
      * @param class-string<T>|string $id
-     * @param callable():T|T|class-string<T>|null $concrete
+     * @param callable():T|T|class-string<T>|string|null $concrete
      */
     public function bind(string $id, callable|object|string|null $concrete = null): void
     {
         $concrete ??= $id;
-        $this->bindings[$id] = $concrete;
 
-        if (!is_string($concrete) && !is_callable($concrete)) {
-            $this->cache[$id] = $concrete;
+        switch (true) {
+            case is_string($concrete) && isset($this->bindings[$concrete]):
+                $this->bindings[$id] = [self::BOUND_ALIAS, $concrete];
+                break;
+            case is_string($concrete) && class_exists($concrete, true):
+                $this->bindings[$id] = [self::BOUND_CLASS, $concrete];
+                break;
+            case is_callable($concrete):
+                $this->bindings[$id] = [self::BOUND_FACTORY, $concrete];
+                break;
+            case is_object($concrete):
+                $this->cache[$id] = $concrete;
+                break;
+            default:
+                throw new FrameworkException(sprintf("Service [%s] cannot be bound.", $id));
         }
     }
 
@@ -134,31 +152,39 @@ class Container
      * Resolve a class or binding from the container.
      *
      * @template T of object
-     * @param class-string<T>|string $id
+     * @template U of class-string<T>|string
+     * @param U $id
      * @param array<string,mixed>|list<mixed> $dependencies
-     * @return T
+     * @return (U is class-string<T> ? T : object)
      */
     public function get(string $id, array $dependencies = []): object
     {
+        if (isset($this->cache[$id])) {
+            return $this->cache[$id];
+        }
+
         if (!array_key_exists($id, $this->bindings)) {
             if (class_exists($id, true)) {
-                /** @psalm-suppress InvalidReturnStatement */
-                return new $id(...$dependencies);
+                try {
+                    return new $id(...$dependencies);
+                } catch (Throwable $e) {
+                    throw new FrameworkException(sprintf("Service [%s] could not be instantiated.", $id), 0, $e);
+                }
             }
 
             throw new FrameworkException(sprintf("Service [%s] is not bound and cannot be instantiated.", $id));
         }
 
-        if (isset($this->cache[$id])) {
-            return $this->cache[$id];
+        [$type, $binding] = $this->bindings[$id];
+
+        if ($type === self::BOUND_ALIAS) {
+            return $this->get($binding, $dependencies);
         }
 
-        $resolved = $this->bindings[$id];
-
-        if (is_string($resolved) && class_exists($resolved, true)) {
-            $resolved = new $resolved(...$dependencies);
-        } elseif (is_callable($resolved)) {
-            $resolved = $resolved(...$dependencies);
+        try {
+            $resolved = $type === self::BOUND_CLASS ? new $binding(...$dependencies) : $binding($this, ...$dependencies);
+        } catch (Throwable $throwable) {
+            throw new FrameworkException(sprintf("Service [%s] could not be instantiated.", $id), 0, $throwable);
         }
 
         if (!is_object($resolved)) {
@@ -169,7 +195,6 @@ class Container
             $this->cache[$id] = $resolved;
         }
 
-        /** @var T $resolved */
         return $resolved;
     }
 }
@@ -515,43 +540,6 @@ class Response
     }
 }
 
-class Route
-{
-    /**
-     * @var callable
-     */
-    public $handler;
-
-    protected $setName;
-
-    /**
-     * @param list<string> $params
-     * @param list<callable> $middleware
-     */
-    public function __construct(
-        public readonly string $path,
-        public readonly array $params,
-        public array $middleware,
-        callable $handler,
-        callable $setName
-    ) {
-        $this->handler = $handler;
-        $this->setName = $setName;
-    }
-
-    public function name(string $name): static
-    {
-        ($this->setName)($name, $this->path);
-        return $this;
-    }
-
-    public function middleware(callable $middleware): static
-    {
-        $this->middleware[] = $middleware;
-        return $this;
-    }
-}
-
 class Router
 {
     protected const LEAF = "__leafnode__";
@@ -593,9 +581,10 @@ class Router
     /**
      * Register a route handler for a method and path.
      *
-     * @param callable(Request): mixed $handler
+     * @param callable(Request):mixed $handler
+     * @param list<callable(Request,callable):Response> $middleware
      */
-    public function route(string $method, string $path, callable $handler): Route
+    public function route(string $method, string $path, callable $handler, array $middleware = []): void
     {
         $path = trim((string) preg_replace("#/+#", "/", $this->prefix . $path), "/");
         /** @psalm-suppress UnsupportedPropertyReferenceUsage */
@@ -612,46 +601,7 @@ class Router
             }
         }
 
-        $middleware = $this->middleware;
-
-        return $node[static::LEAF][$method] = new Route($path, $params, $middleware, $handler, $this->setName(...));
-    }
-
-    /**
-     * Assign a name to a route path.
-     */
-    protected function setName(string $name, string $path): void
-    {
-        $this->lookup[$name] = $path;
-    }
-
-    /**
-     * Generate a URL for a named route with parameters.
-     *
-     * @param array<string, scalar> $params
-     */
-    public function makeUrlByName(string $name, array $params): string
-    {
-        if (!isset($this->lookup[$name])) {
-            throw new FrameworkException(sprintf("Route named [%s] not found.", $name));
-        }
-
-        $url = $this->lookup[$name];
-
-        foreach ($params as $key => $value) {
-            $search = ":" . $key;
-            if (str_contains($url, $search)) {
-                $url = str_replace($search, rawurlencode((string) $value), $url);
-                unset($params[$key]);
-            }
-        }
-
-        if (str_contains($url, ":")) {
-            throw new FrameworkException(sprintf("Missing parameter for route [%s].", $name));
-        }
-
-        $query = $params === [] ? "" : "?" . http_build_query($params);
-        return sprintf("/%s%s", $url, $query);
+        $node[static::LEAF][$method] = [$params, array_merge($this->middleware, $middleware), $handler];
     }
 
     /**
@@ -693,11 +643,10 @@ class Router
             throw HttpException::create(405);
         }
 
-        $route = $node[static::LEAF][$method];
-        $request->parameters = array_combine($route->params, $paramValues);
-        $handler = $route->handler;
+        [$params, $middleware, $handler] = $node[static::LEAF][$method];
+        $request->parameters = array_combine($params, $paramValues);
 
-        foreach (array_reverse($route->middleware) as $mw) {
+        foreach (array_reverse($middleware) as $mw) {
             $handler = fn(Request $request) => $mw($request, $handler);
         }
 
@@ -728,9 +677,10 @@ class ValidationException extends FrameworkException {}
 /**
  * Resolve a class from the container.
  *
- * @template T
- * @param class-string<T> $id
- * @return T
+ * @template T of object
+ * @template U of class-string<T>|string
+ * @param U $id
+ * @return (U is class-string<T> ? T : object)
  */
 function app(string $id): object
 {
@@ -740,10 +690,11 @@ function app(string $id): object
 /**
  * Instantiate a class with dependencies.
  *
- * @template T
- * @param class-string<T> $id
+ * @template T of object
+ * @template U of class-string<T>|string
+ * @param U $id
  * @param array<string,mixed>|list<mixed> $dependencies
- * @return T
+ * @return (U is class-string<T> ? T : object)
  */
 function make(string $id, array $dependencies = []): object
 {
@@ -753,9 +704,9 @@ function make(string $id, array $dependencies = []): object
 /**
  * Register a binding into the container.
  *
- * @template T
- * @param class-string<T> $id
- * @param callable():T|class-string<T>|null $concrete
+ * @template T of object
+ * @param class-string<T>|string $id
+ * @param callable():T|T|class-string<T>|string|null $concrete
  */
 function bind(string $id, callable|string|null $concrete = null): void
 {
@@ -765,9 +716,9 @@ function bind(string $id, callable|string|null $concrete = null): void
 /**
  * Register a singleton into the container.
  *
- * @template T
- * @param class-string<T> $id
- * @param callable():T|class-string<T>|null $concrete
+ * @template T of object
+ * @param class-string<T>|string $id
+ * @param callable():T|T|class-string<T>|null $concrete
  */
 function once(string $id, callable|string|null $concrete = null): void
 {
@@ -857,52 +808,62 @@ function group(string $prefix, callable $group): void
 
 /**
  * Register a GET route.
+ *
+ * @param callable(Request):mixed $handler
+ * @param list<callable(Request,callable):Response> $middleware
  */
-function get(string $path, callable $handle): Route
+function get(string $path, callable $handler, callable ...$middleware): void
 {
-    return app(Router::class)->route("GET", $path, $handle);
+    /** @var list<callable(Request,callable):Response> $middleware */
+    app(Router::class)->route("GET", $path, $handler, $middleware);
 }
 
 /**
  * Register a POST route.
+ *
+ * @param callable(Request):mixed $handler
+ * @param list<callable(Request,callable):Response> $middleware
  */
-function post(string $path, callable $handle): Route
+function post(string $path, callable $handler, callable ...$middleware): void
 {
-    return app(Router::class)->route("POST", $path, $handle);
+    /** @var list<callable(Request,callable):Response> $middleware */
+    app(Router::class)->route("POST", $path, $handler, $middleware);
 }
 
 /**
  * Register a PUT route.
+ *
+ * @param callable(Request):mixed $handler
+ * @param list<callable(Request,callable):Response> $middleware
  */
-function put(string $path, callable $handle): Route
+function put(string $path, callable $handler, callable ...$middleware): void
 {
-    return app(Router::class)->route("PUT", $path, $handle);
+    /** @var list<callable(Request,callable):Response> $middleware */
+    app(Router::class)->route("PUT", $path, $handler, $middleware);
 }
 
 /**
  * Register a PATCH route.
+ *
+ * @param callable(Request):mixed $handler
+ * @param list<callable(Request,callable):Response> $middleware
  */
-function patch(string $path, callable $handle): Route
+function patch(string $path, callable $handler, callable ...$middleware): void
 {
-    return app(Router::class)->route("PATCH", $path, $handle);
+    /** @var list<callable(Request,callable):Response> $middleware */
+    app(Router::class)->route("PATCH", $path, $handler, $middleware);
 }
 
 /**
  * Register a DELETE route.
- */
-function delete(string $path, callable $handle): Route
-{
-    return app(Router::class)->route("DELETE", $path, $handle);
-}
-
-/**
- * Generate a named route URL.
  *
- * @param array<string,scalar> $params
+ * @param callable(Request):mixed $handler
+ * @param list<callable(Request,callable):Response> $middleware
  */
-function named_url(string $name, array $params = []): string
+function delete(string $path, callable $handler, callable ...$middleware): void
 {
-    return app(Router::class)->makeUrlByName($name, $params);
+    /** @var list<callable(Request,callable):Response> $middleware */
+    app(Router::class)->route("DELETE", $path, $handler, $middleware);
 }
 
 /**
