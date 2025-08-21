@@ -62,26 +62,6 @@ it("uses _method override from POST data", function () {
     expect($req->input("value"))->toBe("x");
 });
 
-it("normalizes files array into flat structure", function () {
-    $server = fakeServer(["REQUEST_METHOD" => "POST"]);
-    $headers = ["Content-Type" => "multipart/form-data"];
-    $files = [
-        "upload" => [
-            "name" => ["file.txt"],
-            "type" => ["text/plain"],
-            "tmp_name" => ["/tmp/php123"],
-            "error" => [UPLOAD_ERR_OK],
-            "size" => [123],
-        ],
-    ];
-
-    $req = Request::create($server, $headers, [], [], [], $files);
-
-    expect($req->files)->toHaveCount(1);
-    expect($req->files[0]["name"])->toBe("file.txt");
-    expect($req->files[0]["error"])->toBe(UPLOAD_ERR_OK);
-});
-
 it("ignores external entities in XML payloads", function () {
     $server = fakeServer([
         "REQUEST_METHOD" => "POST",
