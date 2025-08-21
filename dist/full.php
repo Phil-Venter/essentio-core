@@ -465,34 +465,6 @@ class Request
 
         $contentType = explode(";", $headers["Content-Type"] ?? "", 2)[0];
 
-        $flatFiles = [];
-        foreach ($files as $file) {
-            if (!is_array($file["name"] ?? null)) {
-                if (($file["error"] ?? null) === UPLOAD_ERR_OK) {
-                    $flatFiles[] = $file;
-                }
-
-                continue;
-            }
-
-            /** @psalm-suppress PossiblyInvalidArgument */
-            $counter = count($file["name"]);
-
-            /** @psalm-suppress PossiblyInvalidArgument */
-            for ($i = 0; $i < $counter; $i++) {
-                if ($file["error"][$i] !== UPLOAD_ERR_OK) {
-                    continue;
-                }
-
-                $temp = [];
-                foreach ($file as $key => $vals) {
-                    $temp[$key] = $vals[$i];
-                }
-
-                $flatFiles[] = $temp;
-            }
-        }
-
         $parsedBody = match ($contentType) {
             "application/json" => json_decode($rawInput, true) ?? [],
             "application/xml", "text/xml" => ($xml = simplexml_load_string($rawInput, null, LIBXML_NONET))
@@ -501,7 +473,7 @@ class Request
             default => $post,
         };
 
-        return new static($method, $port, $path, $query, $contentType, $headers, $cookies, $flatFiles, $parsedBody, []);
+        return new static($method, $port, $path, $query, $contentType, $headers, $cookies, $files, $parsedBody, []);
     }
 
     /**

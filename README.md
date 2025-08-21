@@ -225,19 +225,19 @@ If it happens, it’s because you wrote it.
 <!-- cloc -->
 | FILE          | CODE | BLANK | COMMENT | TOTAL |
 | ------------- | ---: | ----: | ------: | ----: |
-| api-plus.php  | 1241 |   342 |     454 |  2037 |
-| api.php       |  635 |   170 |     274 |  1079 |
+| api-plus.php  | 1221 |   336 |     452 |  2009 |
+| api.php       |  615 |   164 |     272 |  1051 |
 | base-plus.php |  479 |   139 |     187 |   805 |
 | base.php      |  197 |    53 |      93 |   343 |
 | cli-plus.php  |  559 |   159 |     208 |   926 |
 | cli.php       |  277 |    73 |     114 |   464 |
-| full-plus.php | 1453 |   396 |     542 |  2391 |
-| full.php      |  847 |   224 |     362 |  1433 |
-| http-plus.php | 1162 |   316 |     425 |  1903 |
-| http.php      |  556 |   144 |     245 |   945 |
-| web-plus.php  | 1294 |   350 |     492 |  2136 |
-| web.php       |  688 |   178 |     312 |  1178 |
-| src/*         | 1719 |   478 |     590 |  2787 |
+| full-plus.php | 1433 |   390 |     540 |  2363 |
+| full.php      |  827 |   218 |     360 |  1405 |
+| http-plus.php | 1142 |   310 |     423 |  1875 |
+| http.php      |  536 |   138 |     243 |   917 |
+| web-plus.php  | 1274 |   344 |     490 |  2108 |
+| web.php       |  668 |   172 |     310 |  1150 |
+| src/*         | 1699 |   472 |     588 |  2759 |
 <!-- ./cloc -->
 
 ---
